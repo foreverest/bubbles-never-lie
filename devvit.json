@@ -1,0 +1,44 @@
+{
+  "$schema": "https://developers.reddit.com/schema/config-file.v1.json",
+  "name": "bubble-stats",
+  "post": {
+    "dir": "dist/client",
+    "entrypoints": {
+      "default": {
+        "entry": "game.html",
+        "height": "tall"
+      }
+    }
+  },
+  "server": {
+    "dir": "dist/server",
+    "entry": "index.cjs"
+  },
+  "permissions": {
+    "reddit": {
+      "enable": true,
+      "scope": "user"
+    }
+  },
+  "menu": {
+    "items": [
+      {
+        "label": "Create bubble stats post",
+        "description": "Chart subreddit posts by comments and upvotes",
+        "location": "subreddit",
+        "forUserType": "user",
+        "endpoint": "/internal/menu/create-chart"
+      }
+    ]
+  },
+  "forms": {
+    "timeframeForm": "/internal/form/create-chart-submit"
+  },
+  "scripts": {
+    "dev": "vite build --watch",
+    "build": "vite build"
+  },
+  "dev": {
+    "subreddit": "bubble_stats_dev"
+  }
+}

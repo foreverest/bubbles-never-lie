@@ -1,0 +1,33 @@
+export type TimeframePostData = {
+  type: 'bubble-stats-timeframe';
+  startDate: string;
+  endDate: string;
+  startIso: string;
+  endIso: string;
+  createdAt: string;
+};
+
+export type ChartPost = {
+  id: string;
+  title: string;
+  authorName: string;
+  comments: number;
+  score: number;
+  createdAt: string;
+  permalink: string;
+  ageRatio: number;
+};
+
+export type ChartDataResponse = {
+  type: 'chart-data';
+  subredditName: string;
+  timeframe: TimeframePostData;
+  generatedAt: string;
+  sampledPostCount: number;
+  posts: ChartPost[];
+};
+
+export type ErrorResponse = {
+  status: 'error';
+  message: string;
+};
