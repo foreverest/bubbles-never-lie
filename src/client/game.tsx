@@ -212,24 +212,24 @@ function createBubbleOption(data: BubbleDatum[]): EChartsCoreOption {
     backgroundColor: '#ffffff',
     title: {
       text: 'Creation date vs. upvotes',
-      left: 18,
-      top: 12,
+      left: 12,
+      top: 8,
       textStyle: {
         color: '#16332d',
-        fontSize: 16,
+        fontSize: 13,
         fontWeight: 700,
       },
       subtext: 'Bubble size is comments. Color is author subreddit karma.',
       subtextStyle: {
         color: '#5c6b66',
-        fontSize: 12,
+        fontSize: 10,
       },
     },
     grid: {
-      top: 86,
-      right: 32,
-      bottom: 86,
-      left: 68,
+      top: 58,
+      right: 18,
+      bottom: 56,
+      left: 54,
       containLabel: true,
     },
     tooltip: {
@@ -266,10 +266,10 @@ function createBubbleOption(data: BubbleDatum[]): EChartsCoreOption {
       dimension: 3,
       orient: 'horizontal',
       left: 'center',
-      bottom: 24,
+      bottom: 8,
       text: ['More karma', 'Less karma'],
       calculable: true,
-      itemHeight: 160,
+      itemHeight: 130,
       itemWidth: 12,
       inRange: {
         color: ['#0f8b8d', '#4caf50', '#f2c94c', '#e85d75'],
@@ -282,7 +282,7 @@ function createBubbleOption(data: BubbleDatum[]): EChartsCoreOption {
       type: 'time',
       name: 'Post creation date',
       nameLocation: 'middle',
-      nameGap: 36,
+      nameGap: 26,
       splitLine: {
         lineStyle: {
           color: '#e3ece8',
@@ -297,7 +297,7 @@ function createBubbleOption(data: BubbleDatum[]): EChartsCoreOption {
     yAxis: {
       name: 'Upvotes',
       nameLocation: 'middle',
-      nameGap: 48,
+      nameGap: 36,
       min: minScore,
       splitLine: {
         lineStyle: {
