@@ -29,14 +29,16 @@ type LoadState =
   | { status: 'error'; message: string };
 
 type BubbleDatum = [
-  comments: number,
+  createdAtTime: number,
   score: number,
-  ageRatio: number,
+  comments: number,
+  authorSubredditKarma: number,
   title: string,
   authorName: string,
   createdAt: string,
   permalink: string,
   id: string,
+  authorSubredditKarmaKnown: boolean,
 ];
 
 function App() {
@@ -123,8 +125,8 @@ function App() {
             <dd>{data.sampledPostCount}</dd>
           </div>
           <div>
-            <dt>Radius</dt>
-            <dd>Equal</dd>
+            <dt>Size</dt>
+            <dd>Comments</dd>
           </div>
         </dl>
       </header>
@@ -149,14 +151,16 @@ function BubbleChart({ posts }: { posts: ChartPost[] }) {
   const chartData = useMemo<BubbleDatum[]>(
     () =>
       posts.map((post) => [
-        post.comments,
+        Date.parse(post.createdAt),
         post.score,
-        post.ageRatio,
+        post.comments,
+        post.authorSubredditKarma ?? 0,
         post.title,
         post.authorName,
         post.createdAt,
         post.permalink,
         post.id,
+        post.authorSubredditKarma !== null,
       ]),
     [posts]
   );
@@ -200,11 +204,14 @@ function BubbleChart({ posts }: { posts: ChartPost[] }) {
 
 function createBubbleOption(data: BubbleDatum[]): EChartsCoreOption {
   const minScore = Math.min(0, ...data.map((datum) => datum[1]));
+  const maxComments = Math.max(1, ...data.map((datum) => datum[2]));
+  const minKarma = Math.min(0, ...data.map((datum) => datum[3]));
+  const maxKarma = Math.max(0, ...data.map((datum) => datum[3]));
 
   return {
     backgroundColor: '#ffffff',
     title: {
-      text: 'Comments vs. upvotes',
+      text: 'Creation date vs. upvotes',
       left: 18,
       top: 12,
       textStyle: {
@@ -212,7 +219,7 @@ function createBubbleOption(data: BubbleDatum[]): EChartsCoreOption {
         fontSize: 16,
         fontWeight: 700,
       },
-      subtext: 'Color moves from older to newer posts within the selected timeframe.',
+      subtext: 'Bubble size is comments. Color is author subreddit karma.',
       subtextStyle: {
         color: '#5c6b66',
         fontSize: 12,
@@ -236,30 +243,31 @@ function createBubbleOption(data: BubbleDatum[]): EChartsCoreOption {
       extraCssText: 'border-radius:8px;box-shadow:0 12px 30px rgba(22,51,45,0.24);',
       formatter(params: { data?: unknown }) {
         const datum = params.data as BubbleDatum;
-        const created = new Date(datum[5]).toLocaleString(undefined, {
+        const created = new Date(datum[6]).toLocaleString(undefined, {
           dateStyle: 'medium',
           timeStyle: 'short',
         });
 
         return [
           '<div class="chart-tooltip">',
-          `<strong>${escapeHtml(datum[3])}</strong>`,
-          `<span>u/${escapeHtml(datum[4])}</span>`,
-          `<span>${datum[0].toLocaleString()} comments</span>`,
+          `<strong>${escapeHtml(datum[4])}</strong>`,
+          `<span>u/${escapeHtml(datum[5])}</span>`,
           `<span>${datum[1].toLocaleString()} upvotes</span>`,
+          `<span>${datum[2].toLocaleString()} comments</span>`,
+          `<span>${datum[9] ? datum[3].toLocaleString() : 'Unavailable'} subreddit karma</span>`,
           `<span>${escapeHtml(created)}</span>`,
           '</div>',
         ].join('');
       },
     },
     visualMap: {
-      min: 0,
-      max: 1,
-      dimension: 2,
+      min: minKarma,
+      max: maxKarma,
+      dimension: 3,
       orient: 'horizontal',
       left: 'center',
       bottom: 24,
-      text: ['Newer', 'Older'],
+      text: ['More karma', 'Less karma'],
       calculable: true,
       itemHeight: 160,
       itemWidth: 12,
@@ -271,10 +279,10 @@ function createBubbleOption(data: BubbleDatum[]): EChartsCoreOption {
       },
     },
     xAxis: {
-      name: 'Comments',
+      type: 'time',
+      name: 'Post creation date',
       nameLocation: 'middle',
       nameGap: 36,
-      min: 0,
       splitLine: {
         lineStyle: {
           color: '#e3ece8',
@@ -307,7 +315,10 @@ function createBubbleOption(data: BubbleDatum[]): EChartsCoreOption {
         name: 'Posts',
         type: 'scatter',
         data,
-        symbolSize: 18,
+        symbolSize(value: BubbleDatum) {
+          const comments = Math.max(0, value[2]);
+          return 10 + Math.sqrt(comments / maxComments) * 34;
+        },
         itemStyle: {
           borderColor: '#16332d',
           borderWidth: 1,

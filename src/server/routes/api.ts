@@ -22,7 +22,6 @@ api.get('/posts', async (c) => {
   const subredditName = context.subredditName;
   const startTime = Date.parse(timeframe.startIso);
   const endTime = Date.parse(timeframe.endIso);
-  const rangeDuration = Math.max(endTime - startTime, 1);
 
   try {
     const posts = await reddit
@@ -33,18 +32,29 @@ api.get('/posts', async (c) => {
       })
       .all();
 
-    const chartPosts: ChartPost[] = posts
+    const filteredPosts = posts
       .filter((post) => post.id !== context.postId)
-      .map((post) => toChartPost(post, startTime, rangeDuration))
-      .filter((post): post is ChartPost => {
+      .map(toPostCandidate)
+      .filter((post): post is PostCandidate => {
         if (!post) {
           return false;
         }
 
-        const createdTime = Date.parse(post.createdAt);
+        const createdTime = post.createdAt.getTime();
         return createdTime >= startTime && createdTime <= endTime;
       })
-      .sort((a, b) => Date.parse(a.createdAt) - Date.parse(b.createdAt));
+      .sort((a, b) => a.createdAt.getTime() - b.createdAt.getTime());
+    const authorKarma = await getAuthorKarmaByUsername(filteredPosts);
+    const chartPosts: ChartPost[] = filteredPosts.map((post) => ({
+      id: post.id,
+      title: post.title,
+      authorName: post.authorName,
+      comments: post.numberOfComments,
+      score: post.score,
+      authorSubredditKarma: authorKarma.get(post.authorName) ?? null,
+      createdAt: post.createdAt.toISOString(),
+      permalink: post.permalink,
+    }));
 
     return c.json<ChartDataResponse>(
       {
@@ -71,47 +81,107 @@ api.get('/posts', async (c) => {
   }
 });
 
-const toChartPost = (
-  post: Post,
-  startTime: number,
-  rangeDuration: number
-): ChartPost | null => {
+type PostCandidate = {
+  id: string;
+  title: string;
+  authorName: string;
+  numberOfComments: number;
+  score: number;
+  createdAt: Date;
+  permalink: string;
+};
+
+const toPostCandidate = (post: Post): PostCandidate | null => {
   const createdAt = normalizeCreatedAt(post.createdAt);
   if (!createdAt) {
     return null;
   }
 
-  const createdTime = Date.parse(createdAt);
-
   return {
     id: post.id,
     title: post.title,
     authorName: post.authorName,
-    comments: post.numberOfComments,
+    numberOfComments: post.numberOfComments,
     score: post.score,
     createdAt,
     permalink: post.permalink,
-    ageRatio: clamp((createdTime - startTime) / rangeDuration, 0, 1),
   };
 };
 
-const normalizeCreatedAt = (createdAt: Post['createdAt']): string | null => {
+const getAuthorKarmaByUsername = async (
+  posts: PostCandidate[]
+): Promise<Map<string, number>> => {
+  const usernames = Array.from(
+    new Set(posts.map((post) => post.authorName).filter((username) => username !== '[deleted]'))
+  );
+  const results = await mapWithConcurrency(usernames, 6, async (username) =>
+    [username, await getAuthorKarma(username)] as const
+  );
+
+  return new Map(
+    results.flatMap(([username, karma]) => (karma === null ? [] : [[username, karma]]))
+  );
+};
+
+const getAuthorKarma = async (username: string): Promise<number | null> => {
+  try {
+    const karma = await reddit.getUserKarmaFromCurrentSubreddit(username);
+    return sumKarma(karma);
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    console.warn(`Unable to load subreddit karma for u/${username}: ${message}`);
+    return null;
+  }
+};
+
+const sumKarma = (karma: GetUserKarmaForSubredditResponse): number =>
+  (karma.fromPosts ?? 0) + (karma.fromComments ?? 0);
+
+type GetUserKarmaForSubredditResponse = {
+  fromPosts?: number | undefined;
+  fromComments?: number | undefined;
+};
+
+const mapWithConcurrency = async <Input, Output>(
+  items: Input[],
+  limit: number,
+  mapper: (item: Input) => Promise<Output>
+): Promise<Output[]> => {
+  const results = new Array<Output | undefined>(items.length);
+  let nextIndex = 0;
+  const workerCount = Math.min(limit, items.length);
+
+  await Promise.all(
+    Array.from({ length: workerCount }, async () => {
+      while (nextIndex < items.length) {
+        const index = nextIndex;
+        nextIndex += 1;
+        const item = items[index];
+
+        if (item !== undefined) {
+          results[index] = await mapper(item);
+        }
+      }
+    })
+  );
+
+  return results.filter((result): result is Output => result !== undefined);
+};
+
+const normalizeCreatedAt = (createdAt: Post['createdAt']): Date | null => {
   if (createdAt instanceof Date) {
-    return createdAt.toISOString();
+    return createdAt;
   }
 
   if (typeof createdAt === 'string') {
     const date = new Date(createdAt);
-    return Number.isNaN(date.getTime()) ? null : date.toISOString();
+    return Number.isNaN(date.getTime()) ? null : date;
   }
 
   if (typeof createdAt === 'number') {
     const date = new Date(createdAt);
-    return Number.isNaN(date.getTime()) ? null : date.toISOString();
+    return Number.isNaN(date.getTime()) ? null : date;
   }
 
   return null;
 };
-
-const clamp = (value: number, min: number, max: number): number =>
-  Math.min(Math.max(value, min), max);

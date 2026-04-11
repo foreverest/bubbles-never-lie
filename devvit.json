@@ -6,7 +6,8 @@
     "entrypoints": {
       "default": {
         "entry": "game.html",
-        "height": "tall"
+        "height": "tall",
+        "inline": true
       }
     }
   },
@@ -17,7 +18,7 @@
   "permissions": {
     "reddit": {
       "enable": true,
-      "scope": "user"
+      "scope": "moderator"
     }
   },
   "menu": {

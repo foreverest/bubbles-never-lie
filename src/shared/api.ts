@@ -13,9 +13,9 @@ export type ChartPost = {
   authorName: string;
   comments: number;
   score: number;
+  authorSubredditKarma: number | null;
   createdAt: string;
   permalink: string;
-  ageRatio: number;
 };
 
 export type ChartDataResponse = {
