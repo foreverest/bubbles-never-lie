@@ -51,33 +51,6 @@ select {
   justify-content: center;
 }
 
-.chart-header {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  gap: 10px;
-  align-items: center;
-  width: 100%;
-}
-
-.chart-header h1,
-.chart-header p {
-  margin: 0;
-  overflow-wrap: anywhere;
-}
-
-.chart-header h1 {
-  font-size: 1.4rem;
-  line-height: 1.08;
-  letter-spacing: 0;
-}
-
-.chart-header p:not(.eyebrow) {
-  margin-top: 2px;
-  color: #5c6b66;
-  font-size: 0.85rem;
-  line-height: 1.5;
-}
-
 .eyebrow {
   margin: 0 0 3px;
   color: #0b7778;
@@ -87,34 +60,31 @@ select {
   text-transform: uppercase;
 }
 
-.metric-strip {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(68px, 1fr));
+.tab-list {
+  display: flex;
+  flex: 0 0 auto;
   gap: 6px;
-  margin: 0;
-}
-
-.metric-strip div {
   min-width: 0;
-  padding: 6px 8px;
-  border: 1px solid rgba(22, 51, 45, 0.14);
+}
+
+.tab-button {
+  min-width: 78px;
+  height: 32px;
+  padding: 0 12px;
+  border: 1px solid rgba(22, 51, 45, 0.18);
   border-radius: 8px;
-  background: rgba(255, 255, 255, 0.84);
-}
-
-.metric-strip dt {
-  color: #5c6b66;
-  font-size: 0.64rem;
-  font-weight: 700;
-  letter-spacing: 0;
-  text-transform: uppercase;
-}
-
-.metric-strip dd {
-  margin: 3px 0 0;
-  font-size: 0.95rem;
+  color: #39514a;
+  background: rgba(255, 255, 255, 0.7);
+  cursor: pointer;
+  font-size: 0.86rem;
   font-weight: 800;
-  line-height: 1;
+  letter-spacing: 0;
+}
+
+.tab-button--active {
+  color: #ffffff;
+  border-color: #0b7778;
+  background: #0b7778;
 }
 
 .chart-region {
@@ -132,6 +102,33 @@ select {
   width: 100%;
   height: 100%;
   min-height: 0;
+}
+
+.stats-panel {
+  display: grid;
+  flex: 1;
+  min-height: 0;
+  place-content: center;
+  gap: 8px;
+  overflow: hidden;
+  border: 1px solid rgba(22, 51, 45, 0.14);
+  border-radius: 8px;
+  background: #ffffff;
+  text-align: center;
+}
+
+.stats-panel span {
+  color: #5c6b66;
+  font-size: 0.8rem;
+  font-weight: 800;
+  letter-spacing: 0;
+  text-transform: uppercase;
+}
+
+.stats-panel strong {
+  color: #16332d;
+  font-size: 2.8rem;
+  line-height: 1;
 }
 
 .chart-tooltip {
@@ -202,23 +199,9 @@ select {
     padding: 8px;
   }
 
-  .chart-header {
-    grid-template-columns: 1fr;
-  }
-
-  .chart-header h1 {
-    font-size: 1.2rem;
-  }
-
-  .metric-strip {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-  }
-
-  .metric-strip div {
-    padding: 5px 6px;
-  }
-
-  .metric-strip dd {
-    font-size: 0.85rem;
+  .tab-button {
+    min-width: 72px;
+    height: 30px;
+    padding: 0 10px;
   }
 }

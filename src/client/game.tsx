@@ -4,7 +4,6 @@ import {
   GridComponent,
   TitleComponent,
   TooltipComponent,
-  VisualMapComponent,
 } from 'echarts/components';
 import * as echarts from 'echarts/core';
 import type { EChartsCoreOption } from 'echarts/core';
@@ -12,7 +11,7 @@ import { ScatterChart } from 'echarts/charts';
 import { CanvasRenderer } from 'echarts/renderers';
 import { StrictMode, useEffect, useMemo, useRef, useState } from 'react';
 import { createRoot } from 'react-dom/client';
-import type { ChartDataResponse, ChartPost, ErrorResponse } from '../shared/api';
+import type { ChartDataResponse, ErrorResponse } from '../shared/api';
 
 echarts.use([
   CanvasRenderer,
@@ -20,13 +19,14 @@ echarts.use([
   ScatterChart,
   TitleComponent,
   TooltipComponent,
-  VisualMapComponent,
 ]);
 
 type LoadState =
   | { status: 'loading' }
   | { status: 'ready'; data: ChartDataResponse }
   | { status: 'error'; message: string };
+
+type TabName = 'posts' | 'stats';
 
 type BubbleDatum = [
   createdAtTime: number,
@@ -43,6 +43,7 @@ type BubbleDatum = [
 
 function App() {
   const [state, setState] = useState<LoadState>({ status: 'loading' });
+  const [activeTab, setActiveTab] = useState<TabName>('posts');
 
   useEffect(() => {
     let cancelled = false;
@@ -107,50 +108,54 @@ function App() {
 
   return (
     <main className="app-shell">
-      <header className="chart-header">
-        <div>
-          <p className="eyebrow">r/{data.subredditName}</p>
-          <h1>Bubble stats</h1>
-          <p>
-            {data.timeframe.startDate} to {data.timeframe.endDate}
-          </p>
-        </div>
-        <dl className="metric-strip" aria-label="Chart summary">
-          <div>
-            <dt>Posts</dt>
-            <dd>{postCount}</dd>
-          </div>
-          <div>
-            <dt>Sampled</dt>
-            <dd>{data.sampledPostCount}</dd>
-          </div>
-          <div>
-            <dt>Size</dt>
-            <dd>Comments</dd>
-          </div>
-        </dl>
-      </header>
+      <nav className="tab-list" aria-label="Bubble stats sections" role="tablist">
+        <button
+          aria-selected={activeTab === 'posts'}
+          className={activeTab === 'posts' ? 'tab-button tab-button--active' : 'tab-button'}
+          onClick={() => setActiveTab('posts')}
+          role="tab"
+          type="button"
+        >
+          Posts
+        </button>
+        <button
+          aria-selected={activeTab === 'stats'}
+          className={activeTab === 'stats' ? 'tab-button tab-button--active' : 'tab-button'}
+          onClick={() => setActiveTab('stats')}
+          role="tab"
+          type="button"
+        >
+          Stats
+        </button>
+      </nav>
 
-      <section className="chart-region" aria-label="Bubble chart">
-        {postCount > 0 ? (
-          <BubbleChart posts={data.posts} />
-        ) : (
-          <div className="empty-state">
-            <p>No posts matched this timeframe.</p>
-            <span>Try a wider date range from the create-post menu.</span>
-          </div>
-        )}
-      </section>
+      {activeTab === 'posts' ? (
+        <section className="chart-region" aria-label="Bubble chart" role="tabpanel">
+          {postCount > 0 ? (
+            <BubbleChart data={data} />
+          ) : (
+            <div className="empty-state">
+              <p>No posts matched this timeframe.</p>
+              <span>Try a wider date range from the create-post menu.</span>
+            </div>
+          )}
+        </section>
+      ) : (
+        <section className="stats-panel" aria-label="Stats" role="tabpanel">
+          <span>Posts</span>
+          <strong>{postCount.toLocaleString()}</strong>
+        </section>
+      )}
     </main>
   );
 }
 
-function BubbleChart({ posts }: { posts: ChartPost[] }) {
+function BubbleChart({ data }: { data: ChartDataResponse }) {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const chartRef = useRef<echarts.EChartsType | null>(null);
   const chartData = useMemo<BubbleDatum[]>(
     () =>
-      posts.map((post) => [
+      data.posts.map((post) => [
         Date.parse(post.createdAt),
         post.score,
         post.comments,
@@ -162,7 +167,7 @@ function BubbleChart({ posts }: { posts: ChartPost[] }) {
         post.id,
         post.authorSubredditKarma !== null,
       ]),
-    [posts]
+    [data.posts]
   );
 
   useEffect(() => {
@@ -189,8 +194,8 @@ function BubbleChart({ posts }: { posts: ChartPost[] }) {
       return;
     }
 
-    chart.setOption(createBubbleOption(chartData), true);
-  }, [chartData]);
+    chart.setOption(createBubbleOption(chartData, data), true);
+  }, [chartData, data]);
 
   return (
     <div
@@ -202,7 +207,7 @@ function BubbleChart({ posts }: { posts: ChartPost[] }) {
   );
 }
 
-function createBubbleOption(data: BubbleDatum[]): EChartsCoreOption {
+function createBubbleOption(data: BubbleDatum[], chartData: ChartDataResponse): EChartsCoreOption {
   const minScore = Math.min(0, ...data.map((datum) => datum[1]));
   const maxComments = Math.max(1, ...data.map((datum) => datum[2]));
   const minKarma = Math.min(0, ...data.map((datum) => datum[3]));
@@ -211,7 +216,7 @@ function createBubbleOption(data: BubbleDatum[]): EChartsCoreOption {
   return {
     backgroundColor: '#ffffff',
     title: {
-      text: 'Creation date vs. upvotes',
+      text: `Posts in ${chartData.subredditName}`,
       left: 12,
       top: 8,
       textStyle: {
@@ -219,7 +224,7 @@ function createBubbleOption(data: BubbleDatum[]): EChartsCoreOption {
         fontSize: 13,
         fontWeight: 700,
       },
-      subtext: 'Bubble size is comments. Color is author subreddit karma.',
+      subtext: `${chartData.timeframe.startDate} to ${chartData.timeframe.endDate}`,
       subtextStyle: {
         color: '#5c6b66',
         fontSize: 10,
@@ -258,24 +263,6 @@ function createBubbleOption(data: BubbleDatum[]): EChartsCoreOption {
           `<span>${escapeHtml(created)}</span>`,
           '</div>',
         ].join('');
-      },
-    },
-    visualMap: {
-      min: minKarma,
-      max: maxKarma,
-      dimension: 3,
-      orient: 'horizontal',
-      left: 'center',
-      bottom: 8,
-      text: ['More karma', 'Less karma'],
-      calculable: true,
-      itemHeight: 130,
-      itemWidth: 12,
-      inRange: {
-        color: ['#0f8b8d', '#4caf50', '#f2c94c', '#e85d75'],
-      },
-      textStyle: {
-        color: '#39514a',
       },
     },
     xAxis: {
@@ -322,6 +309,10 @@ function createBubbleOption(data: BubbleDatum[]): EChartsCoreOption {
         itemStyle: {
           borderColor: '#16332d',
           borderWidth: 1,
+          color(params: { data?: unknown }) {
+            const datum = params.data as BubbleDatum;
+            return datum[9] ? getKarmaColor(datum[3], minKarma, maxKarma) : '#8b9b95';
+          },
           opacity: 0.88,
         },
         emphasis: {
@@ -335,6 +326,24 @@ function createBubbleOption(data: BubbleDatum[]): EChartsCoreOption {
       },
     ],
   };
+}
+
+function getKarmaColor(value: number, min: number, max: number): string {
+  const ratio = max === min ? 1 : (value - min) / (max - min);
+
+  if (ratio < 0.25) {
+    return '#0f8b8d';
+  }
+
+  if (ratio < 0.5) {
+    return '#4caf50';
+  }
+
+  if (ratio < 0.75) {
+    return '#f2c94c';
+  }
+
+  return '#e85d75';
 }
 
 function escapeHtml(value: string): string {
