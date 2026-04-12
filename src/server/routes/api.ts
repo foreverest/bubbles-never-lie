@@ -44,14 +44,15 @@ api.get('/posts', async (c) => {
         return createdTime >= startTime && createdTime <= endTime;
       })
       .sort((a, b) => a.createdAt.getTime() - b.createdAt.getTime());
-    const authorKarma = await getAuthorKarmaByUsername(filteredPosts);
+    const authorMetadata = await getAuthorMetadataByUsername(filteredPosts);
     const chartPosts: ChartPost[] = filteredPosts.map((post) => ({
       id: post.id,
       title: post.title,
       authorName: post.authorName,
+      authorAvatarUrl: authorMetadata.get(post.authorName)?.avatarUrl ?? null,
       comments: post.numberOfComments,
       score: post.score,
-      authorSubredditKarma: authorKarma.get(post.authorName) ?? null,
+      authorSubredditKarma: authorMetadata.get(post.authorName)?.subredditKarma ?? null,
       createdAt: post.createdAt.toISOString(),
       permalink: post.permalink,
     }));
@@ -91,6 +92,11 @@ type PostCandidate = {
   permalink: string;
 };
 
+type AuthorMetadata = {
+  subredditKarma: number | null;
+  avatarUrl: string | null;
+};
+
 const toPostCandidate = (post: Post): PostCandidate | null => {
   const createdAt = normalizeCreatedAt(post.createdAt);
   if (!createdAt) {
@@ -108,19 +114,29 @@ const toPostCandidate = (post: Post): PostCandidate | null => {
   };
 };
 
-const getAuthorKarmaByUsername = async (
+const getAuthorMetadataByUsername = async (
   posts: PostCandidate[]
-): Promise<Map<string, number>> => {
+): Promise<Map<string, AuthorMetadata>> => {
   const usernames = Array.from(
     new Set(posts.map((post) => post.authorName).filter((username) => username !== '[deleted]'))
   );
   const results = await mapWithConcurrency(usernames, 6, async (username) =>
-    [username, await getAuthorKarma(username)] as const
+    [username, await getAuthorMetadata(username)] as const
   );
 
-  return new Map(
-    results.flatMap(([username, karma]) => (karma === null ? [] : [[username, karma]]))
-  );
+  return new Map(results);
+};
+
+const getAuthorMetadata = async (username: string): Promise<AuthorMetadata> => {
+  const [subredditKarma, avatarUrl] = await Promise.all([
+    getAuthorKarma(username),
+    getAuthorAvatarUrl(username),
+  ]);
+
+  return {
+    subredditKarma,
+    avatarUrl,
+  };
 };
 
 const getAuthorKarma = async (username: string): Promise<number | null> => {
@@ -130,6 +146,16 @@ const getAuthorKarma = async (username: string): Promise<number | null> => {
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
     console.warn(`Unable to load subreddit karma for u/${username}: ${message}`);
+    return null;
+  }
+};
+
+const getAuthorAvatarUrl = async (username: string): Promise<string | null> => {
+  try {
+    return (await reddit.getSnoovatarUrl(username)) ?? null;
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    console.warn(`Unable to load avatar for u/${username}: ${message}`);
     return null;
   }
 };

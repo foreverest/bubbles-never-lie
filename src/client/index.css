@@ -144,7 +144,27 @@ select {
   overflow-wrap: anywhere;
 }
 
-.chart-tooltip span {
+.chart-tooltip > span {
+  opacity: 0.82;
+}
+
+.chart-tooltip > .chart-tooltip__author {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  opacity: 1;
+}
+
+.chart-tooltip__avatar {
+  width: 18px;
+  height: 18px;
+  flex: 0 0 auto;
+  border: 1px solid rgba(255, 255, 255, 0.72);
+  border-radius: 50%;
+  object-fit: cover;
+}
+
+.chart-tooltip__username {
   opacity: 0.82;
 }
 

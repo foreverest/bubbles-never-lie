@@ -35,6 +35,7 @@ type BubbleDatum = [
   authorSubredditKarma: number,
   title: string,
   authorName: string,
+  authorAvatarUrl: string | null,
   createdAt: string,
   permalink: string,
   id: string,
@@ -162,6 +163,7 @@ function BubbleChart({ data }: { data: ChartDataResponse }) {
         post.authorSubredditKarma ?? 0,
         post.title,
         post.authorName,
+        post.authorAvatarUrl,
         post.createdAt,
         post.permalink,
         post.id,
@@ -248,7 +250,10 @@ function createBubbleOption(data: BubbleDatum[], chartData: ChartDataResponse): 
       extraCssText: 'border-radius:8px;box-shadow:0 12px 30px rgba(22,51,45,0.24);',
       formatter(params: { data?: unknown }) {
         const datum = params.data as BubbleDatum;
-        const created = new Date(datum[6]).toLocaleString(undefined, {
+        const avatar = datum[6]
+          ? `<img alt="" class="chart-tooltip__avatar" src="${escapeHtml(datum[6])}">`
+          : '';
+        const created = new Date(datum[7]).toLocaleString(undefined, {
           dateStyle: 'medium',
           timeStyle: 'short',
         });
@@ -256,10 +261,10 @@ function createBubbleOption(data: BubbleDatum[], chartData: ChartDataResponse): 
         return [
           '<div class="chart-tooltip">',
           `<strong>${escapeHtml(datum[4])}</strong>`,
-          `<span>u/${escapeHtml(datum[5])}</span>`,
+          `<span class="chart-tooltip__author">${avatar}<span class="chart-tooltip__username">u/${escapeHtml(datum[5])}</span></span>`,
           `<span>${datum[1].toLocaleString()} upvotes</span>`,
           `<span>${datum[2].toLocaleString()} comments</span>`,
-          `<span>${datum[9] ? datum[3].toLocaleString() : 'Unavailable'} subreddit karma</span>`,
+          `<span>${datum[10] ? datum[3].toLocaleString() : 'Unavailable'} subreddit karma</span>`,
           `<span>${escapeHtml(created)}</span>`,
           '</div>',
         ].join('');
@@ -313,7 +318,7 @@ function createBubbleOption(data: BubbleDatum[], chartData: ChartDataResponse): 
           borderWidth: 2,
           color(params: { data?: unknown }) {
             const datum = params.data as BubbleDatum;
-            return datum[9] ? getKarmaColor(datum[3], minKarma, maxKarma) : '#8b9b95';
+            return datum[10] ? getKarmaColor(datum[3], minKarma, maxKarma) : '#8b9b95';
           },
           opacity: 0.8,
         },

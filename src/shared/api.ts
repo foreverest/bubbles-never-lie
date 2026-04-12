@@ -11,6 +11,7 @@ export type ChartPost = {
   id: string;
   title: string;
   authorName: string;
+  authorAvatarUrl: string | null;
   comments: number;
   score: number;
   authorSubredditKarma: number | null;
