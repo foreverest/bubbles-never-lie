@@ -270,6 +270,8 @@ function createBubbleOption(data: BubbleDatum[], chartData: ChartDataResponse): 
       name: 'Post creation date',
       nameLocation: 'middle',
       nameGap: 26,
+      min: Date.parse(chartData.timeframe.startIso),
+      max: Date.parse(chartData.timeframe.endIso),
       splitLine: {
         lineStyle: {
           color: '#e3ece8',
