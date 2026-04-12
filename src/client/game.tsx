@@ -42,6 +42,11 @@ type BubbleDatum = [
   authorSubredditKarmaKnown: boolean,
 ];
 
+const UPVOTE_ICON =
+  '<svg aria-hidden="true" class="chart-tooltip__stat-icon" viewBox="0 0 20 20"><path d="M10 3 3.5 10H7v6h6v-6h3.5L10 3Z" fill="none" stroke="currentColor" stroke-linejoin="round" stroke-width="2"/></svg>';
+const COMMENT_ICON =
+  '<svg aria-hidden="true" class="chart-tooltip__stat-icon" viewBox="0 0 20 20"><path d="M4 5.5h12v8H8.4L4 16.5v-11Z" fill="none" stroke="currentColor" stroke-linejoin="round" stroke-width="2"/></svg>';
+
 function App() {
   const [state, setState] = useState<LoadState>({ status: 'loading' });
   const [activeTab, setActiveTab] = useState<TabName>('posts');
@@ -243,30 +248,32 @@ function createBubbleOption(data: BubbleDatum[], chartData: ChartDataResponse): 
       trigger: 'item',
       confine: true,
       borderWidth: 0,
-      backgroundColor: '#16332d',
+      backgroundColor: '#101010',
       textStyle: {
         color: '#ffffff',
       },
-      extraCssText: 'border-radius:8px;box-shadow:0 12px 30px rgba(22,51,45,0.24);',
+      extraCssText: 'border-radius:8px;box-shadow:0 12px 30px rgba(0,0,0,0.28);padding:0;',
       formatter(params: { data?: unknown }) {
         const datum = params.data as BubbleDatum;
         const avatar = datum[6]
           ? `<img alt="" class="chart-tooltip__avatar" src="${escapeHtml(datum[6])}">`
-          : '';
-        const created = new Date(datum[7]).toLocaleString(undefined, {
-          dateStyle: 'medium',
-          timeStyle: 'short',
-        });
+          : '<span aria-hidden="true" class="chart-tooltip__avatar chart-tooltip__avatar--fallback"></span>';
+        const createdAgo = formatRelativeAge(new Date(datum[7]));
 
         return [
-          '<div class="chart-tooltip">',
-          `<strong>${escapeHtml(datum[4])}</strong>`,
-          `<span class="chart-tooltip__author">${avatar}<span class="chart-tooltip__username">u/${escapeHtml(datum[5])}</span></span>`,
-          `<span>${datum[1].toLocaleString()} upvotes</span>`,
-          `<span>${datum[2].toLocaleString()} comments</span>`,
-          `<span>${datum[10] ? datum[3].toLocaleString() : 'Unavailable'} subreddit karma</span>`,
-          `<span>${escapeHtml(created)}</span>`,
+          '<article class="chart-tooltip">',
+          '<div class="chart-tooltip__meta">',
+          avatar,
+          `<span class="chart-tooltip__username">u/${escapeHtml(datum[5])}</span>`,
+          '<span aria-hidden="true" class="chart-tooltip__separator">&middot;</span>',
+          `<span class="chart-tooltip__age">${escapeHtml(createdAgo)}</span>`,
           '</div>',
+          `<strong class="chart-tooltip__title">${escapeHtml(datum[4])}</strong>`,
+          '<div class="chart-tooltip__stats">',
+          `<span class="chart-tooltip__stat">${UPVOTE_ICON}${datum[1].toLocaleString()} upvotes</span>`,
+          `<span class="chart-tooltip__stat">${COMMENT_ICON}${datum[2].toLocaleString()} comments</span>`,
+          '</div>',
+          '</article>',
         ].join('');
       },
     },
@@ -351,6 +358,26 @@ function getKarmaColor(value: number, min: number, max: number): string {
   }
 
   return '#e85d75';
+}
+
+function formatRelativeAge(date: Date): string {
+  const secondsAgo = Math.max(0, Math.floor((Date.now() - date.getTime()) / 1000));
+  const units = [
+    { seconds: 31_536_000, label: 'yr.' },
+    { seconds: 2_592_000, label: 'mo.' },
+    { seconds: 604_800, label: 'wk.' },
+    { seconds: 86_400, label: 'd.' },
+    { seconds: 3_600, label: 'hr.' },
+    { seconds: 60, label: 'min.' },
+  ];
+
+  for (const unit of units) {
+    if (secondsAgo >= unit.seconds) {
+      return `${Math.floor(secondsAgo / unit.seconds)} ${unit.label} ago`;
+    }
+  }
+
+  return 'just now';
 }
 
 function escapeHtml(value: string): string {
