@@ -1,5 +1,6 @@
 import './index.css';
 
+import { navigateTo } from '@devvit/web/client';
 import {
   GridComponent,
   TitleComponent,
@@ -185,10 +186,22 @@ function BubbleChart({ data }: { data: ChartDataResponse }) {
     const chart = echarts.init(containerRef.current, undefined, { renderer: 'canvas' });
     chartRef.current = chart;
 
+    const handleChartClick = (params: { data?: unknown }) => {
+      const datum = params.data;
+      if (!Array.isArray(datum)) {
+        return;
+      }
+
+      openPost(datum[8]);
+    };
+
+    chart.on('click', handleChartClick);
+
     const resizeObserver = new ResizeObserver(() => chart.resize());
     resizeObserver.observe(containerRef.current);
 
     return () => {
+      chart.off('click', handleChartClick);
       resizeObserver.disconnect();
       chart.dispose();
       chartRef.current = null;
@@ -315,6 +328,7 @@ function createBubbleOption(data: BubbleDatum[], chartData: ChartDataResponse): 
       {
         name: 'Posts',
         type: 'scatter',
+        cursor: 'pointer',
         data,
         symbolSize(value: BubbleDatum) {
           const comments = Math.max(0, value[2]);
@@ -378,6 +392,15 @@ function formatRelativeAge(date: Date): string {
   }
 
   return 'just now';
+}
+
+function openPost(permalink: unknown): void {
+  if (typeof permalink !== 'string') {
+    return;
+  }
+
+  const url = new URL(permalink, 'https://www.reddit.com');
+  navigateTo(url.toString());
 }
 
 function escapeHtml(value: string): string {
