@@ -236,7 +236,7 @@ function createBubbleOption(data: BubbleDatum[], chartData: ChartDataResponse): 
   return {
     backgroundColor: '#ffffff',
     title: {
-      text: `Posts in ${chartData.subredditName}`,
+      text: `Posts in r/${chartData.subredditName}`.toUpperCase(),
       left: 12,
       top: 8,
       textStyle: {
@@ -244,7 +244,7 @@ function createBubbleOption(data: BubbleDatum[], chartData: ChartDataResponse): 
         fontSize: 13,
         fontWeight: 700,
       },
-      subtext: `${chartData.timeframe.startDate} to ${chartData.timeframe.endDate}`,
+      subtext: `created between ${chartData.timeframe.startDate} and ${chartData.timeframe.endDate}`,
       subtextStyle: {
         color: '#5c6b66',
         fontSize: 10,
@@ -292,9 +292,9 @@ function createBubbleOption(data: BubbleDatum[], chartData: ChartDataResponse): 
     },
     xAxis: {
       type: 'time',
-      name: 'Time',
-      nameLocation: 'middle',
-      nameGap: 22,
+      // name: 'Time',
+      // nameLocation: 'middle',
+      // nameGap: 22,
       min: Date.parse(chartData.timeframe.startIso),
       max: Date.parse(chartData.timeframe.endIso),
       splitLine: {
@@ -313,7 +313,9 @@ function createBubbleOption(data: BubbleDatum[], chartData: ChartDataResponse): 
       nameLocation: 'middle',
       nameGap: 30,
       min: minScore,
+      minInterval: 1,
       splitLine: {
+        show: false,
         lineStyle: {
           color: '#e3ece8',
         },
@@ -341,12 +343,12 @@ function createBubbleOption(data: BubbleDatum[], chartData: ChartDataResponse): 
             const datum = params.data as BubbleDatum;
             return datum[10] ? getKarmaColor(datum[3], minKarma, maxKarma) : '#8b9b95';
           },
-          opacity: 0.8,
+          opacity: 0.5,
         },
         emphasis: {
           scale: 1.35,
           itemStyle: {
-            opacity: 0.6,
+            opacity: 0.75,
             shadowBlur: 10,
             shadowColor: 'rgba(22, 51, 45, 0.25)',
           },
