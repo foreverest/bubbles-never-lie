@@ -309,18 +309,18 @@ function createBubbleOption(data: BubbleDatum[], chartData: ChartDataResponse): 
           return 10 + Math.sqrt(comments / maxComments) * 34;
         },
         itemStyle: {
-          borderColor: '#16332d',
-          borderWidth: 1,
+          borderColor: '#ffffff',
+          borderWidth: 2,
           color(params: { data?: unknown }) {
             const datum = params.data as BubbleDatum;
             return datum[9] ? getKarmaColor(datum[3], minKarma, maxKarma) : '#8b9b95';
           },
-          opacity: 0.88,
+          opacity: 0.8,
         },
         emphasis: {
           scale: 1.35,
           itemStyle: {
-            opacity: 1,
+            opacity: 0.6,
             shadowBlur: 10,
             shadowColor: 'rgba(22, 51, 45, 0.25)',
           },
