@@ -233,8 +233,8 @@ function createBubbleOption(data: BubbleDatum[], chartData: ChartDataResponse): 
     grid: {
       top: 58,
       right: 18,
-      bottom: 56,
-      left: 54,
+      bottom: 42,
+      left: 42,
       containLabel: true,
     },
     tooltip: {
@@ -267,9 +267,9 @@ function createBubbleOption(data: BubbleDatum[], chartData: ChartDataResponse): 
     },
     xAxis: {
       type: 'time',
-      name: 'Post creation date',
+      name: 'Time',
       nameLocation: 'middle',
-      nameGap: 26,
+      nameGap: 22,
       min: Date.parse(chartData.timeframe.startIso),
       max: Date.parse(chartData.timeframe.endIso),
       splitLine: {
@@ -286,7 +286,7 @@ function createBubbleOption(data: BubbleDatum[], chartData: ChartDataResponse): 
     yAxis: {
       name: 'Upvotes',
       nameLocation: 'middle',
-      nameGap: 36,
+      nameGap: 30,
       min: minScore,
       splitLine: {
         lineStyle: {

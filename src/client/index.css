@@ -43,7 +43,7 @@ select {
   flex-direction: column;
   gap: 10px;
   overflow: hidden;
-  padding: 10px;
+  padding: 8px 6px 6px;
 }
 
 .app-shell--centered {
@@ -196,7 +196,7 @@ select {
 @media (max-width: 720px) {
   .app-shell {
     gap: 8px;
-    padding: 8px;
+    padding: 6px;
   }
 
   .tab-button {
