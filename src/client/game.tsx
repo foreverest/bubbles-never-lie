@@ -292,9 +292,6 @@ function createBubbleOption(data: BubbleDatum[], chartData: ChartDataResponse): 
     },
     xAxis: {
       type: 'time',
-      // name: 'Time',
-      // nameLocation: 'middle',
-      // nameGap: 22,
       min: Date.parse(chartData.timeframe.startIso),
       max: Date.parse(chartData.timeframe.endIso),
       splitLine: {
