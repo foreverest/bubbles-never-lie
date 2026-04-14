@@ -20,10 +20,12 @@ The chart is useful for spotting busy posting periods, posts that drove conversa
 Use the subreddit menu item named "Create bubble stats post". The app opens a short form where you can enter:
 
 - A post title.
-- A start date.
-- An end date.
+- A start year, month, and day.
+- A start hour.
+- A timezone.
+- A chart length from 1 to 7 days.
 
-Dates use the `YYYY-MM-DD` format. The default range covers the last seven days, and the start date must be on or before the end date. When the form is submitted, the app creates a new Reddit post and opens it.
+The form defaults to the current date, hour 0, the current timezone when available, and a 1-day chart length. When the form is submitted, the app creates a new Reddit post and opens it.
 
 ## How to read the chart
 

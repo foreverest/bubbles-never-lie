@@ -1,27 +1,35 @@
 import { context } from '@devvit/web/server';
 import { Hono } from 'hono';
 import type { MenuItemRequest, UiResponse } from '@devvit/web/shared';
-import { createTimeframeForm, defaultDateRange } from '../core/timeframe';
+import {
+  createTimeframeForm,
+  defaultTimeframeFormValues,
+  resolveCurrentTimeZone,
+} from '../core/timeframe';
 import { canUseTestDataSource } from '../core/subreddits';
 
 export const menu = new Hono();
+const timeZoneHeader = 'devvit-accept-timezone';
 
 menu.post('/create-chart', async (c) => {
   await c.req.json<MenuItemRequest>();
-  const defaults = defaultDateRange();
+  const currentTimeZone = resolveCurrentTimeZone(context.metadata[timeZoneHeader]?.values[0]);
+  const defaults = defaultTimeframeFormValues(currentTimeZone);
+  const formDefaults = {
+    title: 'Subreddit bubble stats',
+    ...defaults,
+  };
   const allowTestDataSource = canUseTestDataSource(context.subredditName);
 
   return c.json<UiResponse>(
     {
       showForm: {
         name: 'timeframeForm',
-        form: createTimeframeForm({ allowTestDataSource }),
-        data: {
-          title: 'Subreddit bubble stats',
-          startDate: defaults.startDate,
-          endDate: defaults.endDate,
-          ...(allowTestDataSource ? { useTestDataSource: false } : {}),
-        },
+        form: createTimeframeForm({
+          allowTestDataSource,
+          currentTimeZone,
+          defaultValues: formDefaults,
+        }),
       },
     },
     200
