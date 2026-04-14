@@ -237,7 +237,6 @@ function BubbleChart({ data }: { data: ChartDataResponse }) {
           ) : null}
           <span>r/{data.subredditName}</span>
         </div>
-        <p>{formatTimeframeSummary(data.timeframe)}</p>
       </div>
       <div
         className="chart-stage"
@@ -247,24 +246,6 @@ function BubbleChart({ data }: { data: ChartDataResponse }) {
       />
     </>
   );
-}
-
-function formatTimeframeSummary(timeframe: ChartDataResponse['timeframe']): string {
-  if (
-    timeframe.timeZone &&
-    typeof timeframe.startHour === 'number' &&
-    typeof timeframe.durationDays === 'number'
-  ) {
-    const durationLabel =
-      timeframe.durationDays === 1 ? '1 day' : `${timeframe.durationDays} days`;
-    return [
-      `posts created from ${timeframe.startDate}`,
-      `at ${timeframe.startHour}:00 ${timeframe.timeZone}`,
-      `for ${durationLabel}`,
-    ].join(' ');
-  }
-
-  return `posts created between ${timeframe.startDate} and ${timeframe.endDate}`;
 }
 
 function createBubbleOption(

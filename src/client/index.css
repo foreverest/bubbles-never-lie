@@ -109,10 +109,7 @@ select {
   z-index: 1;
   top: 8px;
   left: 12px;
-  display: flex;
   max-width: calc(100% - 24px);
-  flex-direction: column;
-  gap: 2px;
   pointer-events: none;
 }
 
@@ -142,16 +139,6 @@ select {
   border-radius: 50%;
   background: #f3f8f5;
   object-fit: cover;
-}
-
-.chart-title p {
-  margin: 0;
-  overflow: hidden;
-  color: #5c6b66;
-  font-size: 0.62rem;
-  line-height: 1.2;
-  text-overflow: ellipsis;
-  white-space: nowrap;
 }
 
 .stats-panel {
