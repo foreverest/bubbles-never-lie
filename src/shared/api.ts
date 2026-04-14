@@ -23,6 +23,7 @@ export type ChartPost = {
 export type ChartDataResponse = {
   type: 'chart-data';
   subredditName: string;
+  subredditIconUrl: string | null;
   timeframe: TimeframePostData;
   generatedAt: string;
   sampledPostCount: number;

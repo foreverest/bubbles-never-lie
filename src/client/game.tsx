@@ -3,7 +3,6 @@ import './index.css';
 import { navigateTo } from '@devvit/web/client';
 import {
   GridComponent,
-  TitleComponent,
   TooltipComponent,
 } from 'echarts/components';
 import * as echarts from 'echarts/core';
@@ -18,7 +17,6 @@ echarts.use([
   CanvasRenderer,
   GridComponent,
   ScatterChart,
-  TitleComponent,
   TooltipComponent,
 ]);
 
@@ -216,12 +214,27 @@ function BubbleChart({ data }: { data: ChartDataResponse }) {
   }, [chartData, data]);
 
   return (
-    <div
-      className="chart-stage"
-      ref={containerRef}
-      role="img"
-      aria-label="Posts plotted by comments and upvotes"
-    />
+    <>
+      <div className="chart-title" aria-hidden="true">
+        <div className="chart-title__name">
+          {data.subredditIconUrl ? (
+            <img
+              alt=""
+              className="chart-title__icon"
+              src={data.subredditIconUrl}
+            />
+          ) : null}
+          <span>r/{data.subredditName}</span>
+        </div>
+        <p>posts created between {data.timeframe.startDate} and {data.timeframe.endDate}</p>
+      </div>
+      <div
+        className="chart-stage"
+        ref={containerRef}
+        role="img"
+        aria-label={`Posts in r/${data.subredditName} plotted by comments and upvotes`}
+      />
+    </>
   );
 }
 
@@ -233,21 +246,6 @@ function createBubbleOption(data: BubbleDatum[], chartData: ChartDataResponse): 
 
   return {
     backgroundColor: '#ffffff',
-    title: {
-      text: `Posts in r/${chartData.subredditName}`.toUpperCase(),
-      left: 12,
-      top: 8,
-      textStyle: {
-        color: '#16332d',
-        fontSize: 13,
-        fontWeight: 700,
-      },
-      subtext: `created between ${chartData.timeframe.startDate} and ${chartData.timeframe.endDate}`,
-      subtextStyle: {
-        color: '#5c6b66',
-        fontSize: 10,
-      },
-    },
     grid: {
       top: 58,
       right: 18,

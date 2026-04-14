@@ -104,6 +104,56 @@ select {
   min-height: 0;
 }
 
+.chart-title {
+  position: absolute;
+  z-index: 1;
+  top: 8px;
+  left: 12px;
+  display: flex;
+  max-width: calc(100% - 24px);
+  flex-direction: column;
+  gap: 2px;
+  pointer-events: none;
+}
+
+.chart-title__name {
+  display: flex;
+  align-items: center;
+  min-width: 0;
+  gap: 7px;
+  color: #16332d;
+  font-size: 0.82rem;
+  font-weight: 800;
+  line-height: 20px;
+}
+
+.chart-title__name span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.chart-title__icon {
+  width: 20px;
+  height: 20px;
+  flex: 0 0 auto;
+  border: 1px solid rgba(22, 51, 45, 0.14);
+  border-radius: 50%;
+  background: #f3f8f5;
+  object-fit: cover;
+}
+
+.chart-title p {
+  margin: 0;
+  overflow: hidden;
+  color: #5c6b66;
+  font-size: 0.62rem;
+  line-height: 1.2;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .stats-panel {
   display: grid;
   flex: 1;

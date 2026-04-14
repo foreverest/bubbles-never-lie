@@ -2,6 +2,7 @@ import { context } from '@devvit/web/server';
 import { Hono } from 'hono';
 import type { ChartDataResponse, ErrorResponse } from '../../shared/api';
 import { readPostsForTimeframe } from '../core/post-cache';
+import { readCachedSubredditIconUrl } from '../core/subreddit-icons';
 import { resolveChartDataSubredditName } from '../core/subreddits';
 import { readTimeframePostData } from '../core/timeframe';
 
@@ -28,12 +29,15 @@ api.get('/posts', async (c) => {
   const endTime = timeframe.end.getTime();
 
   try {
-    const cachedPosts = await readPostsForTimeframe({
-      subredditName,
-      startTime,
-      endTime,
-      excludedPostId: context.postId ?? null,
-    });
+    const [cachedPosts, subredditIconUrl] = await Promise.all([
+      readPostsForTimeframe({
+        subredditName,
+        startTime,
+        endTime,
+        excludedPostId: context.postId ?? null,
+      }),
+      readCachedSubredditIconUrl(subredditName),
+    ]);
 
     if (!cachedPosts.lastSuccessAt) {
       if (cachedPosts.lastError) {
@@ -53,6 +57,7 @@ api.get('/posts', async (c) => {
       {
         type: 'chart-data',
         subredditName,
+        subredditIconUrl,
         timeframe: timeframe.postData,
         generatedAt: new Date().toISOString(),
         sampledPostCount: cachedPosts.sampledPostCount,

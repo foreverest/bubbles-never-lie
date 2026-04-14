@@ -37,14 +37,18 @@
     "timeframeForm": "/internal/form/create-chart-submit"
   },
   "triggers": {
-    "onAppInstall": "/internal/cache/refresh-post-cache",
-    "onAppUpgrade": "/internal/cache/refresh-post-cache"
+    "onAppInstall": "/internal/cache/refresh-app-cache",
+    "onAppUpgrade": "/internal/cache/refresh-app-cache"
   },
   "scheduler": {
     "tasks": {
       "refreshPostCache": {
         "endpoint": "/internal/cache/refresh-post-cache",
         "cron": "* * * * *"
+      },
+      "refreshSubredditIcons": {
+        "endpoint": "/internal/cache/refresh-subreddit-icons",
+        "cron": "0 * * * *"
       }
     }
   },
