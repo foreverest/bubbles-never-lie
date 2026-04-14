@@ -3,7 +3,6 @@ import type { TimeframePostData } from '../../shared/api';
 import { TEST_DATA_SOURCE_SUBREDDIT_NAME } from './subreddits';
 
 const minYear = 2026;
-const maxYear = 2030;
 const defaultStartHour = 0;
 const defaultDurationDays = 1;
 const defaultTimeZone = 'UTC';
@@ -60,7 +59,7 @@ type TimeframeParts = DateParts & {
 export const defaultTimeframeFormValues = (timeZoneHint?: string): TimeframeFormValues => {
   const timeZone = resolveCurrentTimeZone(timeZoneHint);
   const currentDate = getDatePartsInTimeZone(new Date(), timeZone);
-  const year = clamp(currentDate.year, minYear, maxYear);
+  const year = clamp(currentDate.year, minYear, getMaxYear(timeZone));
   const day = Math.min(currentDate.day, getDaysInMonth(year, currentDate.month));
 
   return {
@@ -75,6 +74,7 @@ export const defaultTimeframeFormValues = (timeZoneHint?: string): TimeframeForm
 
 export const createTimeframeForm = (options: TimeframeFormOptions = {}): Form => {
   const currentTimeZone = resolveCurrentTimeZone(options.currentTimeZone);
+  const maxYear = getMaxYear(currentTimeZone);
   const defaultValues = options.defaultValues ?? defaultTimeframeFormValues(currentTimeZone);
   const fields: Form['fields'] = [
     {
@@ -167,12 +167,14 @@ export const createTimeframeForm = (options: TimeframeFormOptions = {}): Form =>
 };
 
 export const parseFormDateRange = (values: TimeframeFormValues): DateRange => {
+  const timeZone = parseTimeZone(values.timeZone);
+
   return createDateRangeFromParts({
-    year: parseSelectNumber(values.startYear, 'year', minYear, maxYear),
+    year: parseSelectNumber(values.startYear, 'year', minYear, getMaxYear(timeZone)),
     month: parseSelectNumber(values.startMonth, 'month', 1, 12),
     day: parseSelectNumber(values.startDay, 'day', 1, 31),
     startHour: parseSelectNumber(values.startHour, 'hour', 0, 23),
-    timeZone: parseTimeZone(values.timeZone),
+    timeZone,
     durationDays: parseSelectNumber(values.durationDays, 'chart length', 1, 7),
   });
 };
@@ -598,6 +600,9 @@ const addCalendarDays = (parts: DateParts, days: number): DateParts => {
 
 const getDaysInMonth = (year: number, month: number): number =>
   new Date(Date.UTC(year, month, 0)).getUTCDate();
+
+const getMaxYear = (timeZone: string): number =>
+  Math.max(minYear, getDatePartsInTimeZone(new Date(), timeZone).year + 1);
 
 const formatDateInTimeZone = (date: Date, timeZone: string): string =>
   formatDateParts(getDatePartsInTimeZone(date, timeZone));
