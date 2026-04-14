@@ -328,6 +328,7 @@ function createBubbleOption(
         },
       },
       axisLabel: {
+        margin: 14,
         formatter: (value: number, tickIndex: number) =>
           formatXAxisLabel(
             value,
