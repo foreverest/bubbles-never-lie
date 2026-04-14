@@ -2,6 +2,7 @@ import './index.css';
 
 import { navigateTo } from '@devvit/web/client';
 import {
+  DataZoomComponent,
   GridComponent,
   TooltipComponent,
 } from 'echarts/components';
@@ -15,6 +16,7 @@ import type { ChartDataResponse, ErrorResponse } from '../shared/api';
 
 echarts.use([
   CanvasRenderer,
+  DataZoomComponent,
   GridComponent,
   ScatterChart,
   TooltipComponent,
@@ -39,6 +41,15 @@ type BubbleDatum = {
   permalink: string;
   authorSubredditKarmaKnown: boolean;
 };
+
+type TimeRange = {
+  start: number;
+  end: number;
+};
+
+type GetVisibleTimeRange = () => TimeRange | null;
+
+const TIME_EDGE_TOLERANCE_MS = 1_000;
 
 const UPVOTE_ICON =
   '<svg aria-hidden="true" class="chart-tooltip__stat-icon" viewBox="0 0 20 20"><path d="M10 3 3.5 10H7v6h6v-6h3.5L10 3Z" fill="none" stroke="currentColor" stroke-linejoin="round" stroke-width="2"/></svg>';
@@ -210,7 +221,7 @@ function BubbleChart({ data }: { data: ChartDataResponse }) {
       return;
     }
 
-    chart.setOption(createBubbleOption(chartData, data), true);
+    chart.setOption(createBubbleOption(chartData, data, () => readVisibleTimeRange(chart)), true);
   }, [chartData, data]);
 
   return (
@@ -256,20 +267,28 @@ function formatTimeframeSummary(timeframe: ChartDataResponse['timeframe']): stri
   return `posts created between ${timeframe.startDate} and ${timeframe.endDate}`;
 }
 
-function createBubbleOption(data: BubbleDatum[], chartData: ChartDataResponse): EChartsCoreOption {
+function createBubbleOption(
+  data: BubbleDatum[],
+  chartData: ChartDataResponse,
+  getVisibleTimeRange?: GetVisibleTimeRange
+): EChartsCoreOption {
   const minScore = Math.min(0, ...data.map((datum) => datum.score));
   const maxComments = Math.max(1, ...data.map((datum) => datum.comments));
   const minKarma = Math.min(0, ...data.map((datum) => datum.authorSubredditKarma));
   const maxKarma = Math.max(0, ...data.map((datum) => datum.authorSubredditKarma));
+  const startTime = Date.parse(chartData.timeframe.startIso);
+  const endTime = Date.parse(chartData.timeframe.endIso);
 
   return {
-    backgroundColor: '#ffffff',
     grid: {
       top: 58,
       right: 18,
-      bottom: 42,
+      bottom: 32,
       left: 42,
       containLabel: true,
+    },
+    dataZoom: {
+      type: 'inside',
     },
     tooltip: {
       trigger: 'item',
@@ -310,32 +329,50 @@ function createBubbleOption(data: BubbleDatum[], chartData: ChartDataResponse): 
     },
     xAxis: {
       type: 'time',
-      min: Date.parse(chartData.timeframe.startIso),
-      max: Date.parse(chartData.timeframe.endIso),
+      min: startTime,
+      max: endTime,
       splitLine: {
+        show: true,
         lineStyle: {
+          type: 'dashed',
           color: '#e3ece8',
         },
       },
       axisLine: {
+        show: true,
         lineStyle: {
           color: '#9ab0a8',
         },
+      },
+      axisLabel: {
+        formatter: (value: number, tickIndex: number) =>
+          formatXAxisLabel(
+            value,
+            tickIndex,
+            { start: startTime, end: endTime },
+            getVisibleTimeRange?.() ?? null
+          ),
+        showMinLabel: true,
+        alignMinLabel: 'center',
+        showMaxLabel: true,
+        alignMaxLabel: 'center',
       },
     },
     yAxis: {
       name: 'Upvotes',
       nameLocation: 'middle',
-      nameGap: 30,
+      nameGap: 40,
       min: minScore,
       minInterval: 1,
       splitLine: {
-        show: false,
+        show: true,
         lineStyle: {
+          type: 'dashed',
           color: '#e3ece8',
         },
       },
       axisLine: {
+        show: true,
         lineStyle: {
           color: '#9ab0a8',
         },
@@ -376,6 +413,76 @@ function createBubbleOption(data: BubbleDatum[], chartData: ChartDataResponse): 
       },
     ],
   };
+}
+
+function readVisibleTimeRange(chart: echarts.EChartsType): TimeRange | null {
+  const option = chart.getOption() as { dataZoom?: unknown };
+  const dataZoomOptions = Array.isArray(option.dataZoom) ? option.dataZoom : [option.dataZoom];
+  const dataZoomOption = dataZoomOptions.find(isDataZoomRangeOption);
+
+  return dataZoomOption
+    ? {
+        start: dataZoomOption.startValue,
+        end: dataZoomOption.endValue,
+      }
+    : null;
+}
+
+function isDataZoomRangeOption(value: unknown): value is { startValue: number; endValue: number } {
+  if (!value || typeof value !== 'object') {
+    return false;
+  }
+
+  const option = value as Partial<Record<'startValue' | 'endValue', unknown>>;
+  return (
+    typeof option.startValue === 'number' &&
+    typeof option.endValue === 'number' &&
+    Number.isFinite(option.startValue) &&
+    Number.isFinite(option.endValue)
+  );
+}
+
+function formatXAxisLabel(
+  value: number,
+  tickIndex: number,
+  chartTimeRange: TimeRange,
+  visibleTimeRange: TimeRange | null
+): string {
+  const date = new Date(value);
+  const currentTimeRange = visibleTimeRange ?? chartTimeRange;
+  const isBoundary =
+    tickIndex === 0 ||
+    isTimeRangeEdge(value, currentTimeRange.start) ||
+    isTimeRangeEdge(value, currentTimeRange.end);
+
+  if (isTimeRangeEdge(value, chartTimeRange.end) && date.getMinutes() === 59) {
+    date.setMinutes(date.getMinutes() + 1);
+    date.setSeconds(0);
+    date.setMilliseconds(0);
+  }
+
+  if (isBoundary) {
+    return isMidnight(date)
+      ? echarts.time.format(date.getTime(), '{MMM} {dd}', false)
+      : echarts.time.format(date.getTime(), '{MMM} {dd}\n{HH}:{mm}', false);
+  }
+
+  return isMidnight(date)
+    ? echarts.time.format(value, '{MMM} {dd}', false)
+    : echarts.time.format(value, '{HH}:{mm}', false);
+}
+
+function isTimeRangeEdge(value: number, edge: number): boolean {
+  return Math.abs(value - edge) <= TIME_EDGE_TOLERANCE_MS;
+}
+
+function isMidnight(date: Date): boolean {
+  return (
+    date.getHours() === 0 &&
+    date.getMinutes() === 0 &&
+    date.getSeconds() === 0 &&
+    date.getMilliseconds() === 0
+  );
 }
 
 function getBubbleDatum(value: unknown): BubbleDatum | null {
