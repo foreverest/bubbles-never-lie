@@ -41,14 +41,15 @@ select {
   height: 100%;
   min-height: 0;
   flex-direction: column;
-  gap: 10px;
+  gap: 0;
   overflow: hidden;
-  padding: 8px 6px 6px;
+  padding: 0;
 }
 
 .app-shell--centered {
   align-items: center;
   justify-content: center;
+  padding: 16px;
 }
 
 .eyebrow {
@@ -65,6 +66,8 @@ select {
   flex: 0 0 auto;
   gap: 6px;
   min-width: 0;
+  pointer-events: auto;
+  transform: translate(-8px, 4px);
 }
 
 .tab-button {
@@ -72,7 +75,7 @@ select {
   height: 32px;
   padding: 0 12px;
   border: 1px solid rgba(22, 51, 45, 0.18);
-  border-radius: 8px;
+  border-radius: 999px;
   color: #39514a;
   background: rgba(255, 255, 255, 0.7);
   cursor: pointer;
@@ -92,10 +95,26 @@ select {
   flex: 1;
   min-height: 0;
   overflow: hidden;
-  border: 1px solid rgba(22, 51, 45, 0.14);
-  border-radius: 8px;
   background: #ffffff;
-  box-shadow: 0 20px 45px rgba(22, 51, 45, 0.12);
+}
+
+.chart-panel {
+  height: 100%;
+  min-height: 0;
+}
+
+.chart-header {
+  position: absolute;
+  z-index: 2;
+  top: 8px;
+  right: 12px;
+  left: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-width: 0;
+  pointer-events: none;
 }
 
 .chart-stage {
@@ -105,12 +124,10 @@ select {
 }
 
 .chart-title {
-  position: absolute;
-  z-index: 1;
-  top: 8px;
-  left: 12px;
-  max-width: calc(100% - 24px);
+  flex: 1 1 auto;
+  min-width: 0;
   pointer-events: none;
+  transform: translate(8px, 4px);
 }
 
 .chart-title__name {
@@ -143,14 +160,11 @@ select {
 
 .stats-panel {
   display: grid;
-  flex: 1;
+  height: 100%;
   min-height: 0;
   place-content: center;
   gap: 8px;
   overflow: hidden;
-  border: 1px solid rgba(22, 51, 45, 0.14);
-  border-radius: 8px;
-  background: #ffffff;
   text-align: center;
 }
 
@@ -300,8 +314,12 @@ select {
 
 @media (max-width: 720px) {
   .app-shell {
-    gap: 8px;
-    padding: 6px;
+    gap: 0;
+    padding: 0;
+  }
+
+  .app-shell--centered {
+    padding: 16px;
   }
 
   .tab-button {

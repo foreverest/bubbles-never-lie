@@ -123,45 +123,78 @@ function App() {
 
   return (
     <main className="app-shell">
+      <section className="chart-region" aria-label="Bubble stats">
+        <ChartHeader data={data} activeTab={activeTab} onTabChange={setActiveTab} />
+
+        {activeTab === 'posts' ? (
+          <section className="chart-panel" id="posts-panel" aria-label="Posts" role="tabpanel">
+            {postCount > 0 ? (
+              <BubbleChart data={data} />
+            ) : (
+              <div className="empty-state">
+                <p>No posts matched this timeframe.</p>
+                <span>Try a wider date range from the create-post menu.</span>
+              </div>
+            )}
+          </section>
+        ) : (
+          <section className="stats-panel" id="stats-panel" aria-label="Stats" role="tabpanel">
+            <span>Posts</span>
+            <strong>{postCount.toLocaleString()}</strong>
+          </section>
+        )}
+      </section>
+    </main>
+  );
+}
+
+function ChartHeader({
+  data,
+  activeTab,
+  onTabChange,
+}: {
+  data: ChartDataResponse;
+  activeTab: TabName;
+  onTabChange: (tab: TabName) => void;
+}) {
+  return (
+    <header className="chart-header">
+      <div className="chart-title" aria-hidden="true">
+        <div className="chart-title__name">
+          {data.subredditIconUrl ? (
+            <img
+              alt=""
+              className="chart-title__icon"
+              src={data.subredditIconUrl}
+            />
+          ) : null}
+          <span>r/{data.subredditName}</span>
+        </div>
+      </div>
+
       <nav className="tab-list" aria-label="Bubble stats sections" role="tablist">
         <button
+          aria-controls="posts-panel"
           aria-selected={activeTab === 'posts'}
           className={activeTab === 'posts' ? 'tab-button tab-button--active' : 'tab-button'}
-          onClick={() => setActiveTab('posts')}
+          onClick={() => onTabChange('posts')}
           role="tab"
           type="button"
         >
           Posts
         </button>
         <button
+          aria-controls="stats-panel"
           aria-selected={activeTab === 'stats'}
           className={activeTab === 'stats' ? 'tab-button tab-button--active' : 'tab-button'}
-          onClick={() => setActiveTab('stats')}
+          onClick={() => onTabChange('stats')}
           role="tab"
           type="button"
         >
           Stats
         </button>
       </nav>
-
-      {activeTab === 'posts' ? (
-        <section className="chart-region" aria-label="Bubble chart" role="tabpanel">
-          {postCount > 0 ? (
-            <BubbleChart data={data} />
-          ) : (
-            <div className="empty-state">
-              <p>No posts matched this timeframe.</p>
-              <span>Try a wider date range from the create-post menu.</span>
-            </div>
-          )}
-        </section>
-      ) : (
-        <section className="stats-panel" aria-label="Stats" role="tabpanel">
-          <span>Posts</span>
-          <strong>{postCount.toLocaleString()}</strong>
-        </section>
-      )}
-    </main>
+    </header>
   );
 }
 
@@ -225,26 +258,12 @@ function BubbleChart({ data }: { data: ChartDataResponse }) {
   }, [chartData, data]);
 
   return (
-    <>
-      <div className="chart-title" aria-hidden="true">
-        <div className="chart-title__name">
-          {data.subredditIconUrl ? (
-            <img
-              alt=""
-              className="chart-title__icon"
-              src={data.subredditIconUrl}
-            />
-          ) : null}
-          <span>r/{data.subredditName}</span>
-        </div>
-      </div>
-      <div
-        className="chart-stage"
-        ref={containerRef}
-        role="img"
-        aria-label={`Posts in r/${data.subredditName} plotted by comments and upvotes`}
-      />
-    </>
+    <div
+      className="chart-stage"
+      ref={containerRef}
+      role="img"
+      aria-label={`Posts in r/${data.subredditName} plotted by comments and upvotes`}
+    />
   );
 }
 
@@ -262,9 +281,9 @@ function createBubbleOption(
 
   return {
     grid: {
-      top: 42,
-      right: 18,
-      bottom: 32,
+      top: 56,
+      right: 12,
+      bottom: 24,
       left: 42,
       containLabel: true,
     },
@@ -346,6 +365,7 @@ function createBubbleOption(
       name: 'Upvotes',
       nameLocation: 'middle',
       nameGap: 40,
+      type: 'value',
       min: minScore,
       minInterval: 1,
       splitLine: {
