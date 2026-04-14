@@ -7,6 +7,7 @@ import { resolveChartDataSubredditName } from '../core/subreddits';
 import { readTimeframePostData } from '../core/timeframe';
 
 export const api = new Hono();
+const chartDataErrorMessage = 'Unable to load subreddit posts. Try again shortly.';
 
 api.get('/posts', async (c) => {
   const timeframe = readTimeframePostData(context.postData);
@@ -66,15 +67,17 @@ api.get('/posts', async (c) => {
       200
     );
   } catch (error) {
-    const message = error instanceof Error ? error.message : 'Unable to load subreddit posts.';
-    console.error(`Chart data error: ${message}`);
+    console.error(`Chart data error: ${getErrorMessage(error)}`);
 
     return c.json<ErrorResponse>(
       {
         status: 'error',
-        message,
+        message: chartDataErrorMessage,
       },
       500
     );
   }
 });
+
+const getErrorMessage = (error: unknown): string =>
+  error instanceof Error ? error.message : String(error) || 'Unable to load subreddit posts.';
