@@ -1,6 +1,7 @@
 import { reddit, redis } from '@devvit/web/server';
 import type { Post } from '@devvit/web/server';
-import type { ChartPost } from '../../shared/api';
+import { AUTHOR_SUBREDDIT_KARMA_BUCKET_COUNT } from '../../shared/api';
+import type { AuthorSubredditKarmaBucket, ChartPost } from '../../shared/api';
 import { shouldUseSyntheticAuthorKarma } from './subreddits';
 
 const POST_INDEX_PREFIX = 'bubble-stats:posts:index';
@@ -84,8 +85,15 @@ export const readPostsForTimeframe = async ({
     .filter((postId) => postId !== excludedPostId);
   const cachedPosts = await readCachedPosts(keys, postIds);
   const authorMetadata = await readAuthorMetadata(keys, cachedPosts);
+  const authorKarmaBuckets = createAuthorKarmaBuckets(authorMetadata);
   const posts = cachedPosts
-    .map((post) => toChartPost(post, authorMetadata.get(post.authorName) ?? null))
+    .map((post) =>
+      toChartPost(
+        post,
+        authorMetadata.get(post.authorName) ?? null,
+        authorKarmaBuckets.get(post.authorName) ?? null
+      )
+    )
     .sort((a, b) => Date.parse(a.createdAt) - Date.parse(b.createdAt));
 
   return {
@@ -394,7 +402,8 @@ const getAuthorAvatarUrl = async (username: string): Promise<string | null> => {
 
 const toChartPost = (
   post: CachedPost,
-  authorMetadata: CachedAuthorMetadata | null
+  authorMetadata: CachedAuthorMetadata | null,
+  authorSubredditKarmaBucket: AuthorSubredditKarmaBucket | null
 ): ChartPost => ({
   id: post.id,
   title: post.title,
@@ -402,10 +411,40 @@ const toChartPost = (
   authorAvatarUrl: authorMetadata?.avatarUrl ?? null,
   comments: post.comments,
   score: post.score,
-  authorSubredditKarma: authorMetadata?.subredditKarma ?? null,
+  authorSubredditKarmaBucket,
   createdAt: post.createdAt,
   permalink: post.permalink,
 });
+
+const createAuthorKarmaBuckets = (
+  authorMetadata: Map<string, CachedAuthorMetadata>
+): Map<string, AuthorSubredditKarmaBucket> => {
+  const knownAuthors = [...authorMetadata.entries()]
+    .flatMap(([authorName, metadata]) =>
+      typeof metadata.subredditKarma === 'number' && Number.isFinite(metadata.subredditKarma)
+        ? [{ authorName, subredditKarma: metadata.subredditKarma }]
+        : []
+    )
+    .sort(
+      (a, b) =>
+        a.subredditKarma - b.subredditKarma || a.authorName.localeCompare(b.authorName)
+    );
+  const authorKarmaBuckets = new Map<string, AuthorSubredditKarmaBucket>();
+  const maxAuthorIndex = knownAuthors.length - 1;
+
+  knownAuthors.forEach((author, index) => {
+    const bucket =
+      maxAuthorIndex === 0
+        ? AUTHOR_SUBREDDIT_KARMA_BUCKET_COUNT - 1
+        : Math.round(
+            (index / maxAuthorIndex) * (AUTHOR_SUBREDDIT_KARMA_BUCKET_COUNT - 1)
+          );
+
+    authorKarmaBuckets.set(author.authorName, bucket as AuthorSubredditKarmaBucket);
+  });
+
+  return authorKarmaBuckets;
+};
 
 const getUniqueRefreshableAuthorNames = (posts: CachedPost[]): string[] =>
   Array.from(
@@ -469,7 +508,7 @@ const parseCachedAuthorMetadata = (value: string | null): CachedAuthorMetadata |
 
   if (
     !parsed ||
-    (parsed.subredditKarma !== null && typeof parsed.subredditKarma !== 'number') ||
+    !isNullableFiniteNumber(parsed.subredditKarma) ||
     (parsed.avatarUrl !== null && typeof parsed.avatarUrl !== 'string') ||
     typeof parsed.fetchedAt !== 'string' ||
     Number.isNaN(Date.parse(parsed.fetchedAt))
@@ -483,6 +522,9 @@ const parseCachedAuthorMetadata = (value: string | null): CachedAuthorMetadata |
     fetchedAt: parsed.fetchedAt,
   };
 };
+
+const isNullableFiniteNumber = (value: unknown): value is number | null =>
+  value === null || (typeof value === 'number' && Number.isFinite(value));
 
 const parseJsonRecord = (value: string): Record<string, unknown> | null => {
   try {

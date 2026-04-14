@@ -1,6 +1,6 @@
 # Bubble Stats
 
-Bubble Stats creates an interactive subreddit post that helps people understand recent post activity at a glance. Pick a date range, publish a chart, and use the bubbles to compare when posts were created, how many upvotes they received, how much conversation they generated, and whether the author's subreddit karma is known.
+Bubble Stats creates an interactive subreddit post that helps people understand recent post activity at a glance. Pick a date range, publish a chart, and use the bubbles to compare when posts were created, how many upvotes they received, how much conversation they generated, and whether the author's subreddit karma bucket is known.
 
 ## What the app does
 
@@ -10,10 +10,10 @@ Bubble Stats turns subreddit posts into a bubble chart:
 - The left-to-right position shows when the post was created.
 - The up-and-down position shows the post's upvote score.
 - The bubble size shows how many comments the post received.
-- The bubble color reflects the author's subreddit karma when that information is available.
-- Gray bubbles mean the author's subreddit karma was not available.
+- The bubble color reflects the author's relative subreddit karma bucket among authors in the chart when that information is available.
+- Gray bubbles mean the author's subreddit karma bucket was not available.
 
-The chart is useful for spotting busy posting periods, posts that drove conversation, posts with unusually high or low vote scores, and patterns around contributors who have known subreddit karma.
+The chart is useful for spotting busy posting periods, posts that drove conversation, posts with unusually high or low vote scores, and patterns around contributors who have known subreddit karma buckets.
 
 ## How to create a chart
 
@@ -42,4 +42,4 @@ Bubble Stats is designed for recent subreddit activity. It samples the newest su
 
 If the app was just installed or upgraded, a chart may briefly say the post cache is warming. Try again shortly. If no posts match the selected range, the chart shows an empty state and suggests trying a wider date range.
 
-The app uses post information that appears in the chart, including title, author name, author avatar when available, creation time, score, comment count, permalink, and author subreddit karma when available.
+The app uses post information that appears in the chart, including title, author name, author avatar when available, creation time, score, comment count, permalink, and an author subreddit karma bucket when available.

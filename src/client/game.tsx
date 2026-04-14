@@ -12,7 +12,12 @@ import { ScatterChart } from 'echarts/charts';
 import { CanvasRenderer } from 'echarts/renderers';
 import { StrictMode, useEffect, useMemo, useRef, useState } from 'react';
 import { createRoot } from 'react-dom/client';
-import type { ChartDataResponse, ErrorResponse } from '../shared/api';
+import { AUTHOR_SUBREDDIT_KARMA_BUCKET_COUNT } from '../shared/api';
+import type {
+  AuthorSubredditKarmaBucket,
+  ChartDataResponse,
+  ErrorResponse,
+} from '../shared/api';
 
 echarts.use([
   CanvasRenderer,
@@ -33,13 +38,12 @@ type BubbleDatum = {
   value: [createdAtTime: number, score: number];
   score: number;
   comments: number;
-  authorSubredditKarma: number;
+  authorSubredditKarmaBucket: AuthorSubredditKarmaBucket | null;
   title: string;
   authorName: string;
   authorAvatarUrl: string | null;
   createdAt: string;
   permalink: string;
-  authorSubredditKarmaKnown: boolean;
 };
 
 type TimeRange = {
@@ -55,6 +59,19 @@ const UPVOTE_ICON =
   '<svg aria-hidden="true" class="chart-tooltip__stat-icon" viewBox="0 0 20 20"><path d="M10 3 3.5 10H7v6h6v-6h3.5L10 3Z" fill="none" stroke="currentColor" stroke-linejoin="round" stroke-width="2"/></svg>';
 const COMMENT_ICON =
   '<svg aria-hidden="true" class="chart-tooltip__stat-icon" viewBox="0 0 20 20"><path d="M4 5.5h12v8H8.4L4 16.5v-11Z" fill="none" stroke="currentColor" stroke-linejoin="round" stroke-width="2"/></svg>';
+const UNKNOWN_KARMA_COLOR = '#8b9b95';
+const KARMA_BUCKET_COLORS = [
+  '#667085',
+  '#5f7488',
+  '#527f8d',
+  '#438b85',
+  '#369875',
+  '#43a95f',
+  '#73bb51',
+  '#aecd45',
+  '#e2d13f',
+  '#ffb703',
+];
 
 function App() {
   const [state, setState] = useState<LoadState>({ status: 'loading' });
@@ -380,13 +397,12 @@ function BubbleChart({ data, zoomEnabled }: { data: ChartDataResponse; zoomEnabl
         value: [Date.parse(post.createdAt), post.score],
         score: post.score,
         comments: post.comments,
-        authorSubredditKarma: post.authorSubredditKarma ?? 0,
+        authorSubredditKarmaBucket: post.authorSubredditKarmaBucket,
         title: post.title,
         authorName: post.authorName,
         authorAvatarUrl: post.authorAvatarUrl,
         createdAt: post.createdAt,
         permalink: post.permalink,
-        authorSubredditKarmaKnown: post.authorSubredditKarma !== null,
       })),
     [data.posts]
   );
@@ -451,8 +467,6 @@ function createBubbleOption(
 ): EChartsCoreOption {
   const minScore = Math.min(0, ...data.map((datum) => datum.score));
   const maxComments = Math.max(1, ...data.map((datum) => datum.comments));
-  const minKarma = Math.min(0, ...data.map((datum) => datum.authorSubredditKarma));
-  const maxKarma = Math.max(0, ...data.map((datum) => datum.authorSubredditKarma));
   const startTime = Date.parse(chartData.timeframe.startIso);
   const endTime = Date.parse(chartData.timeframe.endIso);
 
@@ -570,11 +584,7 @@ function createBubbleOption(
           borderWidth: 2,
           color(params: { data?: unknown }) {
             const datum = getBubbleDatum(params.data);
-            if (!datum?.authorSubredditKarmaKnown) {
-              return '#8b9b95';
-            }
-
-            return getKarmaColor(datum.authorSubredditKarma, minKarma, maxKarma);
+            return getKarmaBucketColor(datum?.authorSubredditKarmaBucket ?? null);
           },
           opacity: 0.5,
         },
@@ -683,13 +693,12 @@ function getBubbleDatum(value: unknown): BubbleDatum | null {
     typeof datum.value[1] !== 'number' ||
     typeof datum.score !== 'number' ||
     typeof datum.comments !== 'number' ||
-    typeof datum.authorSubredditKarma !== 'number' ||
+    !isAuthorSubredditKarmaBucket(datum.authorSubredditKarmaBucket) ||
     typeof datum.title !== 'string' ||
     typeof datum.authorName !== 'string' ||
     (datum.authorAvatarUrl !== null && typeof datum.authorAvatarUrl !== 'string') ||
     typeof datum.createdAt !== 'string' ||
-    typeof datum.permalink !== 'string' ||
-    typeof datum.authorSubredditKarmaKnown !== 'boolean'
+    typeof datum.permalink !== 'string'
   ) {
     return null;
   }
@@ -697,22 +706,22 @@ function getBubbleDatum(value: unknown): BubbleDatum | null {
   return value as BubbleDatum;
 }
 
-function getKarmaColor(value: number, min: number, max: number): string {
-  const ratio = max === min ? 1 : (value - min) / (max - min);
+function isAuthorSubredditKarmaBucket(
+  value: unknown
+): value is AuthorSubredditKarmaBucket | null {
+  return (
+    value === null ||
+    (typeof value === 'number' &&
+      Number.isInteger(value) &&
+      value >= 0 &&
+      value < AUTHOR_SUBREDDIT_KARMA_BUCKET_COUNT)
+  );
+}
 
-  if (ratio < 0.25) {
-    return '#0f8b8d';
-  }
-
-  if (ratio < 0.5) {
-    return '#4caf50';
-  }
-
-  if (ratio < 0.75) {
-    return '#f2c94c';
-  }
-
-  return '#e85d75';
+function getKarmaBucketColor(bucket: AuthorSubredditKarmaBucket | null): string {
+  return bucket === null
+    ? UNKNOWN_KARMA_COLOR
+    : KARMA_BUCKET_COLORS[bucket] ?? UNKNOWN_KARMA_COLOR;
 }
 
 function formatRelativeAge(date: Date): string {
