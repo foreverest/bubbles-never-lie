@@ -262,7 +262,7 @@ function createBubbleOption(
 
   return {
     grid: {
-      top: 58,
+      top: 42,
       right: 18,
       bottom: 32,
       left: 42,
@@ -270,6 +270,8 @@ function createBubbleOption(
     },
     dataZoom: {
       type: 'inside',
+      filterMode: 'none',
+      minSpan: 10,
     },
     tooltip: {
       trigger: 'item',
