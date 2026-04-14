@@ -16,6 +16,13 @@ export type TimeframeFormValues = {
   title?: string;
 };
 
+export type ValidatedTimeframePostData = {
+  postData: TimeframePostData;
+  start: Date;
+  end: Date;
+  createdAt: Date;
+};
+
 export const defaultDateRange = (): Pick<DateRange, 'startDate' | 'endDate'> => {
   const end = new Date();
   const start = new Date(end);
@@ -84,7 +91,7 @@ export const createPostData = (range: DateRange): TimeframePostData => ({
 
 export const readTimeframePostData = (
   postData: JsonObject | undefined
-): TimeframePostData | null => {
+): ValidatedTimeframePostData | null => {
   if (!postData || postData.type !== 'bubble-stats-timeframe') {
     return null;
   }
@@ -100,13 +107,37 @@ export const readTimeframePostData = (
     return null;
   }
 
+  const start = tryParseDateOnly(data.startDate, 'startDate');
+  const end = tryParseDateOnly(data.endDate, 'endDate');
+  const startIso = tryParseIsoDate(data.startIso);
+  const endIso = tryParseIsoDate(data.endIso);
+  const createdAt = tryParseIsoDate(data.createdAt);
+
+  if (
+    !start ||
+    !end ||
+    !startIso ||
+    !endIso ||
+    !createdAt ||
+    start.getTime() > end.getTime() ||
+    start.getTime() !== startIso.getTime() ||
+    end.getTime() !== endIso.getTime()
+  ) {
+    return null;
+  }
+
   return {
-    type: 'bubble-stats-timeframe',
-    startDate: data.startDate,
-    endDate: data.endDate,
-    startIso: data.startIso,
-    endIso: data.endIso,
-    createdAt: data.createdAt,
+    postData: {
+      type: 'bubble-stats-timeframe',
+      startDate: data.startDate,
+      endDate: data.endDate,
+      startIso: data.startIso,
+      endIso: data.endIso,
+      createdAt: data.createdAt,
+    },
+    start,
+    end,
+    createdAt,
   };
 };
 
@@ -145,6 +176,23 @@ const parseDateOnly = (value: string, fieldName: string): Date => {
   }
 
   return date;
+};
+
+const tryParseDateOnly = (value: string, fieldName: string): Date | null => {
+  if (!dateOnlyPattern.test(value)) {
+    return null;
+  }
+
+  try {
+    return parseDateOnly(value, fieldName);
+  } catch {
+    return null;
+  }
+};
+
+const tryParseIsoDate = (value: string): Date | null => {
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? null : date;
 };
 
 const toDateInputValue = (date: Date): string => date.toISOString().slice(0, 10);

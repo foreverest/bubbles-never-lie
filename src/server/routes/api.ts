@@ -20,8 +20,8 @@ api.get('/posts', async (c) => {
   }
 
   const subredditName = context.subredditName;
-  const startTime = Date.parse(timeframe.startIso);
-  const endTime = Date.parse(timeframe.endIso);
+  const startTime = timeframe.start.getTime();
+  const endTime = timeframe.end.getTime();
 
   try {
     const posts = await reddit
@@ -35,11 +35,7 @@ api.get('/posts', async (c) => {
     const filteredPosts = posts
       .filter((post) => post.id !== context.postId)
       .map(toPostCandidate)
-      .filter((post): post is PostCandidate => {
-        if (!post) {
-          return false;
-        }
-
+      .filter((post) => {
         const createdTime = post.createdAt.getTime();
         return createdTime >= startTime && createdTime <= endTime;
       })
@@ -61,7 +57,7 @@ api.get('/posts', async (c) => {
       {
         type: 'chart-data',
         subredditName,
-        timeframe,
+        timeframe: timeframe.postData,
         generatedAt: new Date().toISOString(),
         sampledPostCount: posts.length,
         posts: chartPosts,
@@ -97,22 +93,15 @@ type AuthorMetadata = {
   avatarUrl: string | null;
 };
 
-const toPostCandidate = (post: Post): PostCandidate | null => {
-  const createdAt = normalizeCreatedAt(post.createdAt);
-  if (!createdAt) {
-    return null;
-  }
-
-  return {
-    id: post.id,
-    title: post.title,
-    authorName: post.authorName,
-    numberOfComments: post.numberOfComments,
-    score: post.score,
-    createdAt,
-    permalink: post.permalink,
-  };
-};
+const toPostCandidate = (post: Post): PostCandidate => ({
+  id: post.id,
+  title: post.title,
+  authorName: post.authorName,
+  numberOfComments: post.numberOfComments,
+  score: post.score,
+  createdAt: post.createdAt,
+  permalink: post.permalink,
+});
 
 const getAuthorMetadataByUsername = async (
   posts: PostCandidate[]
@@ -192,22 +181,4 @@ const mapWithConcurrency = async <Input, Output>(
   );
 
   return results.filter((result): result is Output => result !== undefined);
-};
-
-const normalizeCreatedAt = (createdAt: Post['createdAt']): Date | null => {
-  if (createdAt instanceof Date) {
-    return createdAt;
-  }
-
-  if (typeof createdAt === 'string') {
-    const date = new Date(createdAt);
-    return Number.isNaN(date.getTime()) ? null : date;
-  }
-
-  if (typeof createdAt === 'number') {
-    const date = new Date(createdAt);
-    return Number.isNaN(date.getTime()) ? null : date;
-  }
-
-  return null;
 };

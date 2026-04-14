@@ -29,19 +29,18 @@ type LoadState =
 
 type TabName = 'posts' | 'stats';
 
-type BubbleDatum = [
-  createdAtTime: number,
-  score: number,
-  comments: number,
-  authorSubredditKarma: number,
-  title: string,
-  authorName: string,
-  authorAvatarUrl: string | null,
-  createdAt: string,
-  permalink: string,
-  id: string,
-  authorSubredditKarmaKnown: boolean,
-];
+type BubbleDatum = {
+  value: [createdAtTime: number, score: number];
+  score: number;
+  comments: number;
+  authorSubredditKarma: number;
+  title: string;
+  authorName: string;
+  authorAvatarUrl: string | null;
+  createdAt: string;
+  permalink: string;
+  authorSubredditKarmaKnown: boolean;
+};
 
 const UPVOTE_ICON =
   '<svg aria-hidden="true" class="chart-tooltip__stat-icon" viewBox="0 0 20 20"><path d="M10 3 3.5 10H7v6h6v-6h3.5L10 3Z" fill="none" stroke="currentColor" stroke-linejoin="round" stroke-width="2"/></svg>';
@@ -162,19 +161,18 @@ function BubbleChart({ data }: { data: ChartDataResponse }) {
   const chartRef = useRef<echarts.EChartsType | null>(null);
   const chartData = useMemo<BubbleDatum[]>(
     () =>
-      data.posts.map((post) => [
-        Date.parse(post.createdAt),
-        post.score,
-        post.comments,
-        post.authorSubredditKarma ?? 0,
-        post.title,
-        post.authorName,
-        post.authorAvatarUrl,
-        post.createdAt,
-        post.permalink,
-        post.id,
-        post.authorSubredditKarma !== null,
-      ]),
+      data.posts.map((post) => ({
+        value: [Date.parse(post.createdAt), post.score],
+        score: post.score,
+        comments: post.comments,
+        authorSubredditKarma: post.authorSubredditKarma ?? 0,
+        title: post.title,
+        authorName: post.authorName,
+        authorAvatarUrl: post.authorAvatarUrl,
+        createdAt: post.createdAt,
+        permalink: post.permalink,
+        authorSubredditKarmaKnown: post.authorSubredditKarma !== null,
+      })),
     [data.posts]
   );
 
@@ -187,12 +185,12 @@ function BubbleChart({ data }: { data: ChartDataResponse }) {
     chartRef.current = chart;
 
     const handleChartClick = (params: { data?: unknown }) => {
-      const datum = params.data;
-      if (!Array.isArray(datum)) {
+      const datum = getBubbleDatum(params.data);
+      if (!datum) {
         return;
       }
 
-      openPost(datum[8]);
+      openPost(datum.permalink);
     };
 
     chart.on('click', handleChartClick);
@@ -228,10 +226,10 @@ function BubbleChart({ data }: { data: ChartDataResponse }) {
 }
 
 function createBubbleOption(data: BubbleDatum[], chartData: ChartDataResponse): EChartsCoreOption {
-  const minScore = Math.min(0, ...data.map((datum) => datum[1]));
-  const maxComments = Math.max(1, ...data.map((datum) => datum[2]));
-  const minKarma = Math.min(0, ...data.map((datum) => datum[3]));
-  const maxKarma = Math.max(0, ...data.map((datum) => datum[3]));
+  const minScore = Math.min(0, ...data.map((datum) => datum.score));
+  const maxComments = Math.max(1, ...data.map((datum) => datum.comments));
+  const minKarma = Math.min(0, ...data.map((datum) => datum.authorSubredditKarma));
+  const maxKarma = Math.max(0, ...data.map((datum) => datum.authorSubredditKarma));
 
   return {
     backgroundColor: '#ffffff',
@@ -267,24 +265,28 @@ function createBubbleOption(data: BubbleDatum[], chartData: ChartDataResponse): 
       },
       extraCssText: 'border-radius:8px;box-shadow:0 12px 30px rgba(0,0,0,0.28);padding:0;',
       formatter(params: { data?: unknown }) {
-        const datum = params.data as BubbleDatum;
-        const avatar = datum[6]
-          ? `<img alt="" class="chart-tooltip__avatar" src="${escapeHtml(datum[6])}">`
+        const datum = getBubbleDatum(params.data);
+        if (!datum) {
+          return '';
+        }
+
+        const avatar = datum.authorAvatarUrl
+          ? `<img alt="" class="chart-tooltip__avatar" src="${escapeHtml(datum.authorAvatarUrl)}">`
           : '<span aria-hidden="true" class="chart-tooltip__avatar chart-tooltip__avatar--fallback"></span>';
-        const createdAgo = formatRelativeAge(new Date(datum[7]));
+        const createdAgo = formatRelativeAge(new Date(datum.createdAt));
 
         return [
           '<article class="chart-tooltip">',
           '<div class="chart-tooltip__meta">',
           avatar,
-          `<span class="chart-tooltip__username">u/${escapeHtml(datum[5])}</span>`,
+          `<span class="chart-tooltip__username">u/${escapeHtml(datum.authorName)}</span>`,
           '<span aria-hidden="true" class="chart-tooltip__separator">&middot;</span>',
           `<span class="chart-tooltip__age">${escapeHtml(createdAgo)}</span>`,
           '</div>',
-          `<strong class="chart-tooltip__title">${escapeHtml(datum[4])}</strong>`,
+          `<strong class="chart-tooltip__title">${escapeHtml(datum.title)}</strong>`,
           '<div class="chart-tooltip__stats">',
-          `<span class="chart-tooltip__stat">${UPVOTE_ICON}${datum[1].toLocaleString()} upvotes</span>`,
-          `<span class="chart-tooltip__stat">${COMMENT_ICON}${datum[2].toLocaleString()} comments</span>`,
+          `<span class="chart-tooltip__stat">${UPVOTE_ICON}${datum.score.toLocaleString()} upvotes</span>`,
+          `<span class="chart-tooltip__stat">${COMMENT_ICON}${datum.comments.toLocaleString()} comments</span>`,
           '</div>',
           '</article>',
         ].join('');
@@ -329,16 +331,21 @@ function createBubbleOption(data: BubbleDatum[], chartData: ChartDataResponse): 
         type: 'scatter',
         cursor: 'pointer',
         data,
-        symbolSize(value: BubbleDatum) {
-          const comments = Math.max(0, value[2]);
+        symbolSize(_value: unknown, params?: { data?: unknown }) {
+          const datum = getBubbleDatum(params?.data);
+          const comments = datum ? Math.max(0, datum.comments) : 0;
           return 10 + Math.sqrt(comments / maxComments) * 34;
         },
         itemStyle: {
           borderColor: '#ffffff',
           borderWidth: 2,
           color(params: { data?: unknown }) {
-            const datum = params.data as BubbleDatum;
-            return datum[10] ? getKarmaColor(datum[3], minKarma, maxKarma) : '#8b9b95';
+            const datum = getBubbleDatum(params.data);
+            if (!datum?.authorSubredditKarmaKnown) {
+              return '#8b9b95';
+            }
+
+            return getKarmaColor(datum.authorSubredditKarma, minKarma, maxKarma);
           },
           opacity: 0.5,
         },
@@ -353,6 +360,32 @@ function createBubbleOption(data: BubbleDatum[], chartData: ChartDataResponse): 
       },
     ],
   };
+}
+
+function getBubbleDatum(value: unknown): BubbleDatum | null {
+  if (!value || typeof value !== 'object') {
+    return null;
+  }
+
+  const datum = value as Partial<Record<keyof BubbleDatum, unknown>>;
+  if (
+    !Array.isArray(datum.value) ||
+    typeof datum.value[0] !== 'number' ||
+    typeof datum.value[1] !== 'number' ||
+    typeof datum.score !== 'number' ||
+    typeof datum.comments !== 'number' ||
+    typeof datum.authorSubredditKarma !== 'number' ||
+    typeof datum.title !== 'string' ||
+    typeof datum.authorName !== 'string' ||
+    (datum.authorAvatarUrl !== null && typeof datum.authorAvatarUrl !== 'string') ||
+    typeof datum.createdAt !== 'string' ||
+    typeof datum.permalink !== 'string' ||
+    typeof datum.authorSubredditKarmaKnown !== 'boolean'
+  ) {
+    return null;
+  }
+
+  return value as BubbleDatum;
 }
 
 function getKarmaColor(value: number, min: number, max: number): string {
@@ -393,11 +426,7 @@ function formatRelativeAge(date: Date): string {
   return 'just now';
 }
 
-function openPost(permalink: unknown): void {
-  if (typeof permalink !== 'string') {
-    return;
-  }
-
+function openPost(permalink: string): void {
   const url = new URL(permalink, 'https://www.reddit.com');
   navigateTo(url.toString());
 }
