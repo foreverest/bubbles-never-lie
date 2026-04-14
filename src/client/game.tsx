@@ -412,8 +412,10 @@ function BubbleChart({ data, zoomEnabled }: { data: ChartDataResponse; zoomEnabl
       return;
     }
 
-    const chart = echarts.init(containerRef.current, undefined, { renderer: 'canvas' });
+    const container = containerRef.current;
+    const chart = echarts.init(container, undefined, { renderer: 'canvas' });
     chartRef.current = chart;
+    let resizeFrame = 0;
 
     const handleChartClick = (params: { data?: unknown }) => {
       const datum = getBubbleDatum(params.data);
@@ -426,12 +428,30 @@ function BubbleChart({ data, zoomEnabled }: { data: ChartDataResponse; zoomEnabl
 
     chart.on('click', handleChartClick);
 
-    const resizeObserver = new ResizeObserver(() => chart.resize());
-    resizeObserver.observe(containerRef.current);
+    const resizeChart = () => {
+      if (resizeFrame) {
+        return;
+      }
+
+      resizeFrame = window.requestAnimationFrame(() => {
+        resizeFrame = 0;
+        chart.resize();
+      });
+    };
+    const resizeObserver = new ResizeObserver(resizeChart);
+    resizeObserver.observe(container);
+    window.addEventListener('resize', resizeChart);
+    window.visualViewport?.addEventListener('resize', resizeChart);
 
     return () => {
+      if (resizeFrame) {
+        window.cancelAnimationFrame(resizeFrame);
+      }
+
       chart.off('click', handleChartClick);
       resizeObserver.disconnect();
+      window.removeEventListener('resize', resizeChart);
+      window.visualViewport?.removeEventListener('resize', resizeChart);
       chart.dispose();
       chartRef.current = null;
     };
