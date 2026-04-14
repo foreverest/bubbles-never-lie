@@ -162,7 +162,7 @@ function App() {
             )}
           </section>
         ) : (
-          <section className="stats-panel" id="stats-panel" aria-label="Stats">
+          <section className="chart-panel stats-panel" id="stats-panel" aria-label="Stats">
             <span>Posts</span>
             <strong>{postCount.toLocaleString()}</strong>
           </section>
@@ -472,9 +472,9 @@ function createBubbleOption(
 
   const option: EChartsCoreOption = {
     grid: {
-      top: 56,
-      right: 12,
-      bottom: 24,
+      top: 24,
+      right: 16,
+      bottom: 28,
       left: 42,
       containLabel: true,
     },
