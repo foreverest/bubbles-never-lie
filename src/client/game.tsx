@@ -134,7 +134,7 @@ function App() {
         />
 
         {activeTab === 'posts' ? (
-          <section className="chart-panel" id="posts-panel" aria-label="Posts" role="tabpanel">
+          <section className="chart-panel" id="posts-panel" aria-label="Posts">
             {postCount > 0 ? (
               <BubbleChart data={data} zoomEnabled={zoomEnabled} />
             ) : (
@@ -145,7 +145,7 @@ function App() {
             )}
           </section>
         ) : (
-          <section className="stats-panel" id="stats-panel" aria-label="Stats" role="tabpanel">
+          <section className="stats-panel" id="stats-panel" aria-label="Stats">
             <span>Posts</span>
             <strong>{postCount.toLocaleString()}</strong>
           </section>
@@ -168,23 +168,40 @@ function ChartHeader({
   zoomEnabled: boolean;
   onZoomEnabledChange: (enabled: boolean) => void;
 }) {
+  const [sectionMenuOpen, setSectionMenuOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const sectionMenuRef = useRef<HTMLDivElement | null>(null);
   const settingsRef = useRef<HTMLDivElement | null>(null);
+  const activeTabLabel = activeTab === 'posts' ? 'Posts' : 'Stats';
 
   useEffect(() => {
-    if (!settingsOpen) {
+    if (!sectionMenuOpen && !settingsOpen) {
       return;
     }
 
     const handleDocumentPointerDown = (event: PointerEvent) => {
       const target = event.target;
-      if (target instanceof Node && !settingsRef.current?.contains(target)) {
+
+      if (
+        target instanceof Node &&
+        sectionMenuOpen &&
+        !sectionMenuRef.current?.contains(target)
+      ) {
+        setSectionMenuOpen(false);
+      }
+
+      if (
+        target instanceof Node &&
+        settingsOpen &&
+        !settingsRef.current?.contains(target)
+      ) {
         setSettingsOpen(false);
       }
     };
 
     const handleDocumentKeyDown = (event: KeyboardEvent) => {
       if (event.key === 'Escape') {
+        setSectionMenuOpen(false);
         setSettingsOpen(false);
       }
     };
@@ -196,7 +213,12 @@ function ChartHeader({
       document.removeEventListener('pointerdown', handleDocumentPointerDown);
       document.removeEventListener('keydown', handleDocumentKeyDown);
     };
-  }, [settingsOpen]);
+  }, [sectionMenuOpen, settingsOpen]);
+
+  const handleSectionSelect = (tab: TabName) => {
+    onTabChange(tab);
+    setSectionMenuOpen(false);
+  };
 
   return (
     <header className="chart-header">
@@ -214,28 +236,75 @@ function ChartHeader({
       </div>
 
       <div className="chart-controls">
-        <nav className="tab-list" aria-label="Bubble stats sections" role="tablist">
+        <div className="chart-section-menu" ref={sectionMenuRef}>
           <button
-            aria-controls="posts-panel"
-            aria-selected={activeTab === 'posts'}
-            className={activeTab === 'posts' ? 'tab-button tab-button--active' : 'tab-button'}
-            onClick={() => onTabChange('posts')}
-            role="tab"
+            aria-controls={`${activeTab}-panel`}
+            aria-expanded={sectionMenuOpen}
+            aria-haspopup="true"
+            aria-label="Bubble stats section"
+            className={
+              sectionMenuOpen
+                ? 'section-menu-button section-menu-button--open'
+                : 'section-menu-button'
+            }
+            onClick={() => {
+              setSettingsOpen(false);
+              setSectionMenuOpen((open) => !open);
+            }}
             type="button"
           >
-            Posts
+            <span>{activeTabLabel}</span>
+            <svg
+              aria-hidden="true"
+              className="section-menu-button__icon"
+              viewBox="0 0 12 12"
+            >
+              <path
+                d="M3 4.5 6 7.5l3-3"
+                fill="none"
+                stroke="currentColor"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth="1.6"
+              />
+            </svg>
           </button>
-          <button
-            aria-controls="stats-panel"
-            aria-selected={activeTab === 'stats'}
-            className={activeTab === 'stats' ? 'tab-button tab-button--active' : 'tab-button'}
-            onClick={() => onTabChange('stats')}
-            role="tab"
-            type="button"
-          >
-            Stats
-          </button>
-        </nav>
+
+          {sectionMenuOpen ? (
+            <div
+              className="chart-section-menu__menu"
+              aria-label="Bubble stats sections"
+              role="menu"
+            >
+              <button
+                aria-checked={activeTab === 'posts'}
+                className={
+                  activeTab === 'posts'
+                    ? 'chart-section-menu__item chart-section-menu__item--active'
+                    : 'chart-section-menu__item'
+                }
+                onClick={() => handleSectionSelect('posts')}
+                role="menuitemradio"
+                type="button"
+              >
+                Posts
+              </button>
+              <button
+                aria-checked={activeTab === 'stats'}
+                className={
+                  activeTab === 'stats'
+                    ? 'chart-section-menu__item chart-section-menu__item--active'
+                    : 'chart-section-menu__item'
+                }
+                onClick={() => handleSectionSelect('stats')}
+                role="menuitemradio"
+                type="button"
+              >
+                Stats
+              </button>
+            </div>
+          ) : null}
+        </div>
 
         <div className="chart-settings" ref={settingsRef}>
           <button
@@ -247,7 +316,10 @@ function ChartHeader({
                 ? 'chart-menu-button chart-menu-button--open'
                 : 'chart-menu-button'
             }
-            onClick={() => setSettingsOpen((open) => !open)}
+            onClick={() => {
+              setSectionMenuOpen(false);
+              setSettingsOpen((open) => !open);
+            }}
             type="button"
           >
             <svg

@@ -61,13 +61,6 @@ select {
   text-transform: uppercase;
 }
 
-.tab-list {
-  display: flex;
-  flex: 0 0 auto;
-  gap: 6px;
-  min-width: 0;
-}
-
 .chart-controls {
   display: flex;
   flex: 0 0 auto;
@@ -78,24 +71,80 @@ select {
   transform: translate(-8px, 4px);
 }
 
-.tab-button {
-  min-width: 78px;
+.chart-section-menu {
+  position: relative;
+  flex: 0 0 auto;
+}
+
+.section-menu-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+  min-width: 90px;
   height: 32px;
-  padding: 0 12px;
+  padding: 0 10px 0 12px;
   border: 1px solid rgba(22, 51, 45, 0.18);
   border-radius: 999px;
-  color: #39514a;
-  background: rgba(255, 255, 255, 0.7);
+  color: #ffffff;
+  background: #0b7778;
   cursor: pointer;
   font-size: 0.86rem;
   font-weight: 800;
   letter-spacing: 0;
 }
 
-.tab-button--active {
-  color: #ffffff;
+.section-menu-button--open,
+.section-menu-button:focus-visible {
   border-color: #0b7778;
-  background: #0b7778;
+  background: #096566;
+}
+
+.section-menu-button__icon {
+  width: 12px;
+  height: 12px;
+  flex: 0 0 auto;
+}
+
+.chart-section-menu__menu {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  display: grid;
+  width: 116px;
+  padding: 6px;
+  border: 1px solid rgba(22, 51, 45, 0.14);
+  border-radius: 8px;
+  background: #ffffff;
+  box-shadow: 0 12px 28px rgba(22, 51, 45, 0.16);
+}
+
+.chart-section-menu__item {
+  display: flex;
+  width: 100%;
+  min-height: 34px;
+  align-items: center;
+  padding: 6px 8px;
+  border: 0;
+  border-radius: 6px;
+  color: #16332d;
+  background: transparent;
+  cursor: pointer;
+  font-size: 0.82rem;
+  font-weight: 800;
+  letter-spacing: 0;
+  text-align: left;
+}
+
+.chart-section-menu__item--active {
+  color: #0b7778;
+  background: #eef7f3;
+}
+
+.chart-section-menu__item:hover,
+.chart-section-menu__item:focus-visible {
+  background: #eef7f3;
+  outline: none;
 }
 
 .chart-settings {
@@ -432,10 +481,10 @@ select {
     padding: 16px;
   }
 
-  .tab-button {
-    min-width: 72px;
+  .section-menu-button {
+    min-width: 82px;
     height: 30px;
-    padding: 0 10px;
+    padding: 0 9px 0 10px;
   }
 
   .chart-menu-button {
