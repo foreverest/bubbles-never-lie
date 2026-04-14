@@ -16,6 +16,7 @@
     "entry": "index.cjs"
   },
   "permissions": {
+    "redis": true,
     "reddit": {
       "enable": true,
       "scope": "moderator"
@@ -34,6 +35,18 @@
   },
   "forms": {
     "timeframeForm": "/internal/form/create-chart-submit"
+  },
+  "triggers": {
+    "onAppInstall": "/internal/cache/refresh-post-cache",
+    "onAppUpgrade": "/internal/cache/refresh-post-cache"
+  },
+  "scheduler": {
+    "tasks": {
+      "refreshPostCache": {
+        "endpoint": "/internal/cache/refresh-post-cache",
+        "cron": "* * * * *"
+      }
+    }
   },
   "scripts": {
     "dev": "vite build --watch",
