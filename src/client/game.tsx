@@ -59,6 +59,7 @@ const COMMENT_ICON =
 function App() {
   const [state, setState] = useState<LoadState>({ status: 'loading' });
   const [activeTab, setActiveTab] = useState<TabName>('posts');
+  const [zoomEnabled, setZoomEnabled] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -124,12 +125,18 @@ function App() {
   return (
     <main className="app-shell">
       <section className="chart-region" aria-label="Bubble stats">
-        <ChartHeader data={data} activeTab={activeTab} onTabChange={setActiveTab} />
+        <ChartHeader
+          data={data}
+          activeTab={activeTab}
+          onTabChange={setActiveTab}
+          zoomEnabled={zoomEnabled}
+          onZoomEnabledChange={setZoomEnabled}
+        />
 
         {activeTab === 'posts' ? (
           <section className="chart-panel" id="posts-panel" aria-label="Posts" role="tabpanel">
             {postCount > 0 ? (
-              <BubbleChart data={data} />
+              <BubbleChart data={data} zoomEnabled={zoomEnabled} />
             ) : (
               <div className="empty-state">
                 <p>No posts matched this timeframe.</p>
@@ -152,11 +159,45 @@ function ChartHeader({
   data,
   activeTab,
   onTabChange,
+  zoomEnabled,
+  onZoomEnabledChange,
 }: {
   data: ChartDataResponse;
   activeTab: TabName;
   onTabChange: (tab: TabName) => void;
+  zoomEnabled: boolean;
+  onZoomEnabledChange: (enabled: boolean) => void;
 }) {
+  const [settingsOpen, setSettingsOpen] = useState(false);
+  const settingsRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    if (!settingsOpen) {
+      return;
+    }
+
+    const handleDocumentPointerDown = (event: PointerEvent) => {
+      const target = event.target;
+      if (target instanceof Node && !settingsRef.current?.contains(target)) {
+        setSettingsOpen(false);
+      }
+    };
+
+    const handleDocumentKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        setSettingsOpen(false);
+      }
+    };
+
+    document.addEventListener('pointerdown', handleDocumentPointerDown);
+    document.addEventListener('keydown', handleDocumentKeyDown);
+
+    return () => {
+      document.removeEventListener('pointerdown', handleDocumentPointerDown);
+      document.removeEventListener('keydown', handleDocumentKeyDown);
+    };
+  }, [settingsOpen]);
+
   return (
     <header className="chart-header">
       <div className="chart-title" aria-hidden="true">
@@ -172,33 +213,93 @@ function ChartHeader({
         </div>
       </div>
 
-      <nav className="tab-list" aria-label="Bubble stats sections" role="tablist">
-        <button
-          aria-controls="posts-panel"
-          aria-selected={activeTab === 'posts'}
-          className={activeTab === 'posts' ? 'tab-button tab-button--active' : 'tab-button'}
-          onClick={() => onTabChange('posts')}
-          role="tab"
-          type="button"
-        >
-          Posts
-        </button>
-        <button
-          aria-controls="stats-panel"
-          aria-selected={activeTab === 'stats'}
-          className={activeTab === 'stats' ? 'tab-button tab-button--active' : 'tab-button'}
-          onClick={() => onTabChange('stats')}
-          role="tab"
-          type="button"
-        >
-          Stats
-        </button>
-      </nav>
+      <div className="chart-controls">
+        <nav className="tab-list" aria-label="Bubble stats sections" role="tablist">
+          <button
+            aria-controls="posts-panel"
+            aria-selected={activeTab === 'posts'}
+            className={activeTab === 'posts' ? 'tab-button tab-button--active' : 'tab-button'}
+            onClick={() => onTabChange('posts')}
+            role="tab"
+            type="button"
+          >
+            Posts
+          </button>
+          <button
+            aria-controls="stats-panel"
+            aria-selected={activeTab === 'stats'}
+            className={activeTab === 'stats' ? 'tab-button tab-button--active' : 'tab-button'}
+            onClick={() => onTabChange('stats')}
+            role="tab"
+            type="button"
+          >
+            Stats
+          </button>
+        </nav>
+
+        <div className="chart-settings" ref={settingsRef}>
+          <button
+            aria-expanded={settingsOpen}
+            aria-haspopup="true"
+            aria-label="Chart settings"
+            className={
+              settingsOpen
+                ? 'chart-menu-button chart-menu-button--open'
+                : 'chart-menu-button'
+            }
+            onClick={() => setSettingsOpen((open) => !open)}
+            type="button"
+          >
+            <svg
+              aria-hidden="true"
+              className="chart-menu-button__icon"
+              viewBox="0 0 20 20"
+            >
+              <path
+                d="M8.9 2.5h2.2l.4 2.1c.4.1.8.3 1.1.5l1.8-1.2L16 5.5l-1.2 1.8c.2.4.4.7.5 1.1l2.1.4v2.3l-2.1.4c-.1.4-.3.8-.5 1.1l1.2 1.8-1.6 1.6-1.8-1.2c-.4.2-.7.4-1.1.5l-.4 2.1H8.9l-.4-2.1c-.4-.1-.8-.3-1.1-.5l-1.8 1.2L4 14.5l1.2-1.8c-.2-.4-.4-.7-.5-1.1l-2.1-.4V8.9l2.1-.4c.1-.4.3-.8.5-1.1L4 5.5l1.6-1.6 1.8 1.2c.4-.2.7-.4 1.1-.5l.4-2.1Z"
+                fill="none"
+                stroke="currentColor"
+                strokeLinejoin="round"
+                strokeWidth="1.6"
+              />
+              <circle
+                cx="10"
+                cy="10"
+                fill="none"
+                r="2.7"
+                stroke="currentColor"
+                strokeWidth="1.6"
+              />
+            </svg>
+          </button>
+
+          {settingsOpen ? (
+            <div className="chart-settings__menu" aria-label="Chart settings" role="group">
+              <button
+                aria-checked={zoomEnabled}
+                className={
+                  zoomEnabled
+                    ? 'chart-settings__switch chart-settings__switch--on'
+                    : 'chart-settings__switch'
+                }
+                onClick={() => onZoomEnabledChange(!zoomEnabled)}
+                role="switch"
+                type="button"
+              >
+                <span>Zoom</span>
+                <span className="chart-settings__switch-track" aria-hidden="true">
+                  <span className="chart-settings__switch-thumb" />
+                </span>
+              </button>
+            </div>
+          ) : null}
+        </div>
+      </div>
     </header>
   );
 }
 
-function BubbleChart({ data }: { data: ChartDataResponse }) {
+function BubbleChart({ data, zoomEnabled }: { data: ChartDataResponse; zoomEnabled: boolean }) {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const chartRef = useRef<echarts.EChartsType | null>(null);
   const chartData = useMemo<BubbleDatum[]>(
@@ -254,8 +355,11 @@ function BubbleChart({ data }: { data: ChartDataResponse }) {
       return;
     }
 
-    chart.setOption(createBubbleOption(chartData, data, () => readVisibleTimeRange(chart)), true);
-  }, [chartData, data]);
+    chart.setOption(
+      createBubbleOption(chartData, data, zoomEnabled, () => readVisibleTimeRange(chart)),
+      true
+    );
+  }, [chartData, data, zoomEnabled]);
 
   return (
     <div
@@ -270,6 +374,7 @@ function BubbleChart({ data }: { data: ChartDataResponse }) {
 function createBubbleOption(
   data: BubbleDatum[],
   chartData: ChartDataResponse,
+  zoomEnabled: boolean,
   getVisibleTimeRange?: GetVisibleTimeRange
 ): EChartsCoreOption {
   const minScore = Math.min(0, ...data.map((datum) => datum.score));
@@ -279,18 +384,13 @@ function createBubbleOption(
   const startTime = Date.parse(chartData.timeframe.startIso);
   const endTime = Date.parse(chartData.timeframe.endIso);
 
-  return {
+  const option: EChartsCoreOption = {
     grid: {
       top: 56,
       right: 12,
       bottom: 24,
       left: 42,
       containLabel: true,
-    },
-    dataZoom: {
-      type: 'inside',
-      filterMode: 'none',
-      minSpan: 10,
     },
     tooltip: {
       trigger: 'item',
@@ -417,6 +517,16 @@ function createBubbleOption(
       },
     ],
   };
+
+  if (zoomEnabled) {
+    option.dataZoom = {
+      type: 'inside',
+      filterMode: 'none',
+      minSpan: 10,
+    };
+  }
+
+  return option;
 }
 
 function readVisibleTimeRange(chart: echarts.EChartsType): TimeRange | null {
