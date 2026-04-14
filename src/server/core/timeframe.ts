@@ -1,5 +1,6 @@
 import type { Form, JsonObject } from '@devvit/web/shared';
 import type { TimeframePostData } from '../../shared/api';
+import { TEST_DATA_SOURCE_SUBREDDIT_NAME } from './subreddits';
 
 const dateOnlyPattern = /^\d{4}-\d{2}-\d{2}$/;
 
@@ -14,6 +15,11 @@ export type TimeframeFormValues = {
   startDate?: string;
   endDate?: string;
   title?: string;
+  useTestDataSource?: boolean;
+};
+
+export type TimeframeFormOptions = {
+  allowTestDataSource?: boolean;
 };
 
 export type ValidatedTimeframePostData = {
@@ -34,13 +40,8 @@ export const defaultDateRange = (): Pick<DateRange, 'startDate' | 'endDate'> => 
   };
 };
 
-export const createTimeframeForm = (): Form => ({
-  title: 'Create bubble stats post',
-  description:
-    'Use YYYY-MM-DD dates. The chart samples the newest subreddit posts and filters them to that range.',
-  acceptLabel: 'Create post',
-  cancelLabel: 'Cancel',
-  fields: [
+export const createTimeframeForm = (options: TimeframeFormOptions = {}): Form => {
+  const fields: Form['fields'] = [
     {
       type: 'string',
       name: 'title',
@@ -61,8 +62,26 @@ export const createTimeframeForm = (): Form => ({
       required: true,
       placeholder: 'YYYY-MM-DD',
     },
-  ],
-});
+  ];
+
+  if (options.allowTestDataSource) {
+    fields.push({
+      type: 'boolean',
+      name: 'useTestDataSource',
+      label: `Use r/${TEST_DATA_SOURCE_SUBREDDIT_NAME} as data source`,
+      defaultValue: false,
+    });
+  }
+
+  return {
+    title: 'Create bubble stats post',
+    description:
+      'Use YYYY-MM-DD dates. The chart samples the newest subreddit posts and filters them to that range.',
+    acceptLabel: 'Create post',
+    cancelLabel: 'Cancel',
+    fields,
+  };
+};
 
 export const parseFormDateRange = (values: TimeframeFormValues): DateRange => {
   const startDate = normalizeDateInput(values.startDate);
@@ -83,26 +102,44 @@ export const parseFormDateRange = (values: TimeframeFormValues): DateRange => {
   };
 };
 
-export const createPostData = (range: DateRange): TimeframePostData => ({
-  type: 'bubble-stats-timeframe',
-  ...range,
-  createdAt: new Date().toISOString(),
-});
+export const createPostData = (
+  range: DateRange,
+  options: { useTestDataSource?: boolean } = {}
+): TimeframePostData => {
+  const postData: TimeframePostData = {
+    type: 'bubble-stats-timeframe',
+    ...range,
+    createdAt: new Date().toISOString(),
+  };
+
+  if (options.useTestDataSource) {
+    postData.dataSourceSubredditName = TEST_DATA_SOURCE_SUBREDDIT_NAME;
+  }
+
+  return postData;
+};
 
 export const readTimeframePostData = (
-  postData: JsonObject | undefined
+  postDataValue: JsonObject | undefined
 ): ValidatedTimeframePostData | null => {
-  if (!postData || postData.type !== 'bubble-stats-timeframe') {
+  if (!postDataValue || postDataValue.type !== 'bubble-stats-timeframe') {
     return null;
   }
 
-  const data = postData as Partial<TimeframePostData>;
+  const data = postDataValue as Partial<TimeframePostData>;
   if (
     typeof data.startDate !== 'string' ||
     typeof data.endDate !== 'string' ||
     typeof data.startIso !== 'string' ||
     typeof data.endIso !== 'string' ||
     typeof data.createdAt !== 'string'
+  ) {
+    return null;
+  }
+
+  if (
+    data.dataSourceSubredditName !== undefined &&
+    data.dataSourceSubredditName !== TEST_DATA_SOURCE_SUBREDDIT_NAME
   ) {
     return null;
   }
@@ -126,15 +163,21 @@ export const readTimeframePostData = (
     return null;
   }
 
+  const validatedPostData: TimeframePostData = {
+    type: 'bubble-stats-timeframe',
+    startDate: data.startDate,
+    endDate: data.endDate,
+    startIso: data.startIso,
+    endIso: data.endIso,
+    createdAt: data.createdAt,
+  };
+
+  if (data.dataSourceSubredditName === TEST_DATA_SOURCE_SUBREDDIT_NAME) {
+    validatedPostData.dataSourceSubredditName = data.dataSourceSubredditName;
+  }
+
   return {
-    postData: {
-      type: 'bubble-stats-timeframe',
-      startDate: data.startDate,
-      endDate: data.endDate,
-      startIso: data.startIso,
-      endIso: data.endIso,
-      createdAt: data.createdAt,
-    },
+    postData: validatedPostData,
     start,
     end,
     createdAt,

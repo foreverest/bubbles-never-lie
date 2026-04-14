@@ -5,6 +5,7 @@ export type TimeframePostData = {
   startIso: string;
   endIso: string;
   createdAt: string;
+  dataSourceSubredditName?: string;
 };
 
 export type ChartPost = {

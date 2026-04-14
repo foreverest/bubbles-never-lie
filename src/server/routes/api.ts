@@ -2,6 +2,7 @@ import { context } from '@devvit/web/server';
 import { Hono } from 'hono';
 import type { ChartDataResponse, ErrorResponse } from '../../shared/api';
 import { readPostsForTimeframe } from '../core/post-cache';
+import { resolveChartDataSubredditName } from '../core/subreddits';
 import { readTimeframePostData } from '../core/timeframe';
 
 export const api = new Hono();
@@ -19,7 +20,10 @@ api.get('/posts', async (c) => {
     );
   }
 
-  const subredditName = context.subredditName;
+  const subredditName = resolveChartDataSubredditName(
+    context.subredditName,
+    timeframe.postData.dataSourceSubredditName
+  );
   const startTime = timeframe.start.getTime();
   const endTime = timeframe.end.getTime();
 

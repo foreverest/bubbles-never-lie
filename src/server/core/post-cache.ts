@@ -1,6 +1,7 @@
 import { reddit, redis } from '@devvit/web/server';
 import type { Post } from '@devvit/web/server';
 import type { ChartPost } from '../../shared/api';
+import { shouldUseSyntheticAuthorKarma } from './subreddits';
 
 const POST_INDEX_PREFIX = 'bubble-stats:posts:index';
 const POST_DATA_PREFIX = 'bubble-stats:posts:data';
@@ -16,6 +17,8 @@ const POST_RETENTION_MS = 90 * DAY_MS;
 const AUTHOR_METADATA_STALE_MS = 24 * 60 * 60 * 1000;
 const AUTHOR_METADATA_RETENTION_MS = 90 * DAY_MS;
 const AUTHOR_PRUNE_SCAN_COUNT = 200;
+const SYNTHETIC_KARMA_MIN = -100;
+const SYNTHETIC_KARMA_MAX = 50_000;
 
 export type PostCacheReadOptions = {
   subredditName: string;
@@ -110,7 +113,12 @@ export const refreshPostCache = async (
     const cachedPosts = posts.map(toCachedPost);
 
     await writeCachedPosts(keys, cachedPosts);
-    const refreshedAuthorCount = await refreshAuthorMetadata(keys, cachedPosts, fetchedAt);
+    const refreshedAuthorCount = await refreshAuthorMetadata(
+      keys,
+      cachedPosts,
+      fetchedAt,
+      shouldUseSyntheticAuthorKarma(subredditName)
+    );
     const prunedPostCount = await pruneOldPosts(keys, fetchedAt.getTime());
     const prunedAuthorCount = await pruneOldAuthorMetadata(keys, fetchedAt.getTime());
     const generatedAt = new Date().toISOString();
@@ -226,7 +234,8 @@ const readAuthorMetadata = async (
 const refreshAuthorMetadata = async (
   keys: CacheKeys,
   posts: CachedPost[],
-  fetchedAt: Date
+  fetchedAt: Date,
+  useSyntheticAuthorKarma: boolean
 ): Promise<number> => {
   const usernames = getUniqueRefreshableAuthorNames(posts);
   const usernamesToRefresh: string[] = [];
@@ -246,8 +255,14 @@ const refreshAuthorMetadata = async (
 
       const username = chunk[index];
       const metadata = parseCachedAuthorMetadata(value);
+      const hasFreshMetadata = metadata && Date.parse(metadata.fetchedAt) >= staleCutoff;
+      const hasSyntheticKarma =
+        useSyntheticAuthorKarma && typeof metadata?.subredditKarma === 'number';
 
-      if (!username || (metadata && Date.parse(metadata.fetchedAt) >= staleCutoff)) {
+      if (
+        !username ||
+        (hasFreshMetadata && (!useSyntheticAuthorKarma || hasSyntheticKarma))
+      ) {
         return;
       }
 
@@ -258,7 +273,11 @@ const refreshAuthorMetadata = async (
   const refreshed = await mapWithConcurrency(
     usernamesToRefresh,
     AUTHOR_METADATA_CONCURRENCY,
-    async (username) => [username, await getAuthorMetadata(username, fetchedAt)] as const
+    async (username) =>
+      [
+        username,
+        await getAuthorMetadata(username, fetchedAt, useSyntheticAuthorKarma),
+      ] as const
   );
   const authorFields: Record<string, string> = {};
 
@@ -332,10 +351,11 @@ const readAuthorPruneCursor = async (keys: CacheKeys): Promise<number> => {
 
 const getAuthorMetadata = async (
   username: string,
-  fetchedAt: Date
+  fetchedAt: Date,
+  useSyntheticAuthorKarma: boolean
 ): Promise<CachedAuthorMetadata> => {
   const [subredditKarma, avatarUrl] = await Promise.all([
-    getAuthorKarma(username),
+    getAuthorKarma(username, useSyntheticAuthorKarma),
     getAuthorAvatarUrl(username),
   ]);
 
@@ -346,7 +366,14 @@ const getAuthorMetadata = async (
   };
 };
 
-const getAuthorKarma = async (username: string): Promise<number | null> => {
+const getAuthorKarma = async (
+  username: string,
+  useSyntheticAuthorKarma: boolean
+): Promise<number | null> => {
+  if (useSyntheticAuthorKarma) {
+    return getSyntheticAuthorKarma();
+  }
+
   try {
     const karma = await reddit.getUserKarmaFromCurrentSubreddit(username);
     return sumKarma(karma);
@@ -388,6 +415,12 @@ const getUniqueRefreshableAuthorNames = (posts: CachedPost[]): string[] =>
         .filter((username) => username !== '[deleted]' && username.trim() !== '')
     )
   );
+
+const getSyntheticAuthorKarma = (): number =>
+  randomInteger(SYNTHETIC_KARMA_MIN, SYNTHETIC_KARMA_MAX);
+
+const randomInteger = (min: number, max: number): number =>
+  Math.floor(Math.random() * (max - min + 1)) + min;
 
 const parseCount = (value: string | undefined): number => {
   const count = Number(value);
