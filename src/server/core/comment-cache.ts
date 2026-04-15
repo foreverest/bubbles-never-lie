@@ -6,21 +6,15 @@ import { readCachedPostIdsForTimeframe } from './post-cache';
 const COMMENT_INDEX_PREFIX = 'bubble-stats:comments:index';
 const COMMENT_DATA_PREFIX = 'bubble-stats:comments:data';
 const COMMENT_AUTHOR_DATA_PREFIX = 'bubble-stats:comments:authors:data';
-const COMMENT_META_PREFIX = 'bubble-stats:comments:meta';
 const REDIS_WRITE_CHUNK_SIZE = 100;
 const COMMENT_REFRESH_POST_CHUNK_SIZE = 50;
 const COMMENT_REFRESH_CHUNK_JOB_DELAY_MS = 60 * 1000;
 export const COMMENT_REFRESH_CHUNK_JOB_NAME = 'refreshCommentCacheChunk';
-const COMMENT_PRUNE_BATCH_SIZE = 500;
-const MAX_COMMENT_PRUNE_BATCHES_PER_RUN = 10;
 const COMMENT_AUTHOR_AVATAR_CONCURRENCY = 4;
 const MAX_COMMENT_AUTHORS_TO_REFRESH_PER_POST = 25;
-const COMMENT_AUTHOR_PRUNE_SCAN_COUNT = 200;
 const COMMENT_PREVIEW_LENGTH = 20;
 const DAY_MS = 24 * 60 * 60 * 1000;
-const COMMENT_RETENTION_MS = 90 * DAY_MS;
 const COMMENT_AUTHOR_AVATAR_STALE_MS = DAY_MS;
-const COMMENT_AUTHOR_AVATAR_RETENTION_MS = 90 * DAY_MS;
 const PARENT_POST_LOOKBACK_MS = 90 * DAY_MS;
 
 export type CommentCacheReadOptions = {
@@ -43,8 +37,6 @@ export type CommentCacheRefreshResult = {
   scheduledPostCount: number;
   scheduledJobCount: number;
   scheduledJobIds: string[];
-  prunedCommentCount: number;
-  prunedAuthorAvatarCount: number;
   generatedAt: string;
 };
 
@@ -66,7 +58,6 @@ type CacheKeys = {
   index: string;
   comments: string;
   authors: string;
-  meta: string;
 };
 
 type CachedComment = {
@@ -130,7 +121,6 @@ export const readCommentCountForTimeframe = async ({
 export const refreshCommentCache = async (
   subredditName: string
 ): Promise<CommentCacheRefreshResult> => {
-  const keys = getCacheKeys(subredditName);
   const fetchedAt = new Date();
   const parentPostIds = await readCommentParentPostIds(subredditName, fetchedAt.getTime());
   const postIdChunks = chunkItems(parentPostIds, COMMENT_REFRESH_POST_CHUNK_SIZE);
@@ -156,19 +146,11 @@ export const refreshCommentCache = async (
     scheduledJobIds.push(jobId);
   }
 
-  const prunedCommentCount = await pruneOldComments(keys, fetchedAt.getTime());
-  const prunedAuthorAvatarCount = await pruneOldCommentAuthorAvatars(
-    keys,
-    fetchedAt.getTime()
-  );
-
   return {
     parentPostCount: parentPostIds.length,
     scheduledPostCount: postIdChunks.reduce((total, postIds) => total + postIds.length, 0),
     scheduledJobCount: scheduledJobIds.length,
     scheduledJobIds,
-    prunedCommentCount,
-    prunedAuthorAvatarCount,
     generatedAt: new Date().toISOString(),
   };
 };
@@ -390,80 +372,6 @@ const selectStaleCommentAuthorAvatarNames = (
   return staleUsernames;
 };
 
-const deleteCachedComments = async (
-  keys: CacheKeys,
-  commentIds: string[]
-): Promise<void> => {
-  if (commentIds.length === 0) {
-    return;
-  }
-
-  await redis.zRem(keys.index, commentIds);
-  await redis.hDel(keys.comments, commentIds);
-};
-
-const pruneOldComments = async (keys: CacheKeys, now: number): Promise<number> => {
-  const cutoff = now - COMMENT_RETENTION_MS;
-  let prunedCommentCount = 0;
-
-  for (let batch = 0; batch < MAX_COMMENT_PRUNE_BATCHES_PER_RUN; batch += 1) {
-    const oldComments = await redis.zRange(keys.index, 0, cutoff, {
-      by: 'score',
-      limit: {
-        offset: 0,
-        count: COMMENT_PRUNE_BATCH_SIZE,
-      },
-    });
-    const oldCommentIds = oldComments.map((comment) => comment.member);
-
-    if (oldCommentIds.length === 0) {
-      break;
-    }
-
-    await deleteCachedComments(keys, oldCommentIds);
-    prunedCommentCount += oldCommentIds.length;
-  }
-
-  return prunedCommentCount;
-};
-
-const pruneOldCommentAuthorAvatars = async (
-  keys: CacheKeys,
-  now: number
-): Promise<number> => {
-  const cursor = await readCommentAuthorAvatarPruneCursor(keys);
-  const scan = await redis.hScan(
-    keys.authors,
-    cursor,
-    undefined,
-    COMMENT_AUTHOR_PRUNE_SCAN_COUNT
-  );
-  const cutoff = now - COMMENT_AUTHOR_AVATAR_RETENTION_MS;
-  const staleAuthors = scan.fieldValues
-    .filter((fieldValue) => {
-      const avatar = parseCachedCommentAuthorAvatar(fieldValue.value);
-      return !avatar || Date.parse(avatar.fetchedAt) < cutoff;
-    })
-    .map((fieldValue) => fieldValue.field);
-
-  await redis.hSet(keys.meta, {
-    authorAvatarPruneCursor: String(scan.cursor),
-  });
-
-  if (staleAuthors.length > 0) {
-    await redis.hDel(keys.authors, staleAuthors);
-  }
-
-  return staleAuthors.length;
-};
-
-const readCommentAuthorAvatarPruneCursor = async (keys: CacheKeys): Promise<number> => {
-  const cursorText = await redis.hGet(keys.meta, 'authorAvatarPruneCursor');
-  const cursor = Number(cursorText);
-
-  return Number.isInteger(cursor) && cursor >= 0 ? cursor : 0;
-};
-
 const getCacheKeys = (subredditName: string): CacheKeys => {
   const keySubreddit = subredditName.toLowerCase();
 
@@ -471,7 +379,6 @@ const getCacheKeys = (subredditName: string): CacheKeys => {
     index: `${COMMENT_INDEX_PREFIX}:${keySubreddit}`,
     comments: `${COMMENT_DATA_PREFIX}:${keySubreddit}`,
     authors: `${COMMENT_AUTHOR_DATA_PREFIX}:${keySubreddit}`,
-    meta: `${COMMENT_META_PREFIX}:${keySubreddit}`,
   };
 };
 

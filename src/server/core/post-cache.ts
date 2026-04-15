@@ -9,15 +9,9 @@ const POST_DATA_PREFIX = 'bubble-stats:posts:data';
 const AUTHOR_DATA_PREFIX = 'bubble-stats:authors:data';
 const CACHE_META_PREFIX = 'bubble-stats:posts:meta';
 const REDIS_WRITE_CHUNK_SIZE = 100;
-const POST_PRUNE_BATCH_SIZE = 500;
-const MAX_POST_PRUNE_BATCHES_PER_RUN = 10;
 const AUTHOR_METADATA_CONCURRENCY = 4;
 const MAX_AUTHORS_TO_REFRESH_PER_RUN = 25;
-const DAY_MS = 24 * 60 * 60 * 1000;
-const POST_RETENTION_MS = 90 * DAY_MS;
 const AUTHOR_METADATA_STALE_MS = 24 * 60 * 60 * 1000;
-const AUTHOR_METADATA_RETENTION_MS = 90 * DAY_MS;
-const AUTHOR_PRUNE_SCAN_COUNT = 200;
 const SYNTHETIC_KARMA_MIN = -100;
 const SYNTHETIC_KARMA_MAX = 50_000;
 
@@ -44,8 +38,6 @@ export type PostCacheRefreshResult = {
   fetchedPostCount: number;
   cachedPostCount: number;
   refreshedAuthorCount: number;
-  prunedPostCount: number;
-  prunedAuthorCount: number;
   generatedAt: string;
 };
 
@@ -183,8 +175,6 @@ export const refreshPostCache = async (
       fetchedAt,
       shouldUseSyntheticAuthorKarma(subredditName)
     );
-    const prunedPostCount = await pruneOldPosts(keys, fetchedAt.getTime());
-    const prunedAuthorCount = await pruneOldAuthorMetadata(keys, fetchedAt.getTime());
     const generatedAt = new Date().toISOString();
 
     await redis.hSet(keys.meta, {
@@ -192,8 +182,6 @@ export const refreshPostCache = async (
       lastFetchedPostCount: String(posts.length),
       lastCachedPostCount: String(cachedPosts.length),
       lastRefreshedAuthorCount: String(refreshedAuthorCount),
-      lastPrunedPostCount: String(prunedPostCount),
-      lastPrunedAuthorCount: String(prunedAuthorCount),
     });
     await redis.hDel(keys.meta, ['lastError', 'lastErrorAt']);
 
@@ -201,8 +189,6 @@ export const refreshPostCache = async (
       fetchedPostCount: posts.length,
       cachedPostCount: cachedPosts.length,
       refreshedAuthorCount,
-      prunedPostCount,
-      prunedAuthorCount,
       generatedAt,
     };
   } catch (error) {
@@ -402,63 +388,6 @@ const refreshAuthorMetadata = async (
   }
 
   return refreshed.length;
-};
-
-const pruneOldPosts = async (keys: CacheKeys, now: number): Promise<number> => {
-  const cutoff = now - POST_RETENTION_MS;
-  let prunedPostCount = 0;
-
-  for (let batch = 0; batch < MAX_POST_PRUNE_BATCHES_PER_RUN; batch += 1) {
-    const oldPosts = await redis.zRange(keys.index, 0, cutoff, {
-      by: 'score',
-      limit: {
-        offset: 0,
-        count: POST_PRUNE_BATCH_SIZE,
-      },
-    });
-    const oldPostIds = oldPosts.map((post) => post.member);
-
-    if (oldPostIds.length === 0) {
-      break;
-    }
-
-    await Promise.all([
-      redis.zRem(keys.index, oldPostIds),
-      redis.hDel(keys.posts, oldPostIds),
-    ]);
-    prunedPostCount += oldPostIds.length;
-  }
-
-  return prunedPostCount;
-};
-
-const pruneOldAuthorMetadata = async (keys: CacheKeys, now: number): Promise<number> => {
-  const cursor = await readAuthorPruneCursor(keys);
-  const scan = await redis.hScan(keys.authors, cursor, undefined, AUTHOR_PRUNE_SCAN_COUNT);
-  const cutoff = now - AUTHOR_METADATA_RETENTION_MS;
-  const staleAuthors = scan.fieldValues
-    .filter((fieldValue) => {
-      const metadata = parseCachedAuthorMetadata(fieldValue.value);
-      return !metadata || Date.parse(metadata.fetchedAt) < cutoff;
-    })
-    .map((fieldValue) => fieldValue.field);
-
-  await redis.hSet(keys.meta, {
-    authorPruneCursor: String(scan.cursor),
-  });
-
-  if (staleAuthors.length > 0) {
-    await redis.hDel(keys.authors, staleAuthors);
-  }
-
-  return staleAuthors.length;
-};
-
-const readAuthorPruneCursor = async (keys: CacheKeys): Promise<number> => {
-  const cursorText = await redis.hGet(keys.meta, 'authorPruneCursor');
-  const cursor = Number(cursorText);
-
-  return Number.isInteger(cursor) && cursor >= 0 ? cursor : 0;
 };
 
 const getAuthorMetadata = async (
