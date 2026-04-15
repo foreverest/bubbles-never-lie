@@ -164,7 +164,6 @@ test('time indexed repositories maintain createdAt indexes and skip malformed hy
     firstPost,
     secondPost,
   ]);
-  assert.equal(await dataLayer.posts.countInTimeRange({ startTime, endTime }), 3);
 
   await dataLayer.comments.upsertMany([secondComment, firstComment]);
 

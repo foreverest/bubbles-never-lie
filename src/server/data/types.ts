@@ -40,7 +40,6 @@ export type EntityRepository<Entity> = {
 export type TimeIndexedEntityRepository<Entity> = EntityRepository<Entity> & {
   getIdsInTimeRange(range: TimeRange): Promise<string[]>;
   getInTimeRange(range: TimeRange): Promise<Entity[]>;
-  countInTimeRange(range: TimeRange): Promise<number>;
 };
 
 export type PostRepository = TimeIndexedEntityRepository<PostEntity>;

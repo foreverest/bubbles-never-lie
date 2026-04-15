@@ -136,9 +136,6 @@ export const createRedisTimeIndexedRepository = <Entity>({
     async getInTimeRange(range) {
       return await getByIds(await getIdsInTimeRange(range));
     },
-    async countInTimeRange(range) {
-      return (await getIdsInTimeRange(range)).length;
-    },
   };
 };
 
