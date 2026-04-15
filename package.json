@@ -8,6 +8,7 @@
     "build": "vite build",
     "dev": "devvit playtest",
     "login": "devvit login",
+    "test": "npm run type-check && node tools/run-data-layer-tests.mjs",
     "type-check": "tsc --build"
   },
   "engines": {
