@@ -1,6 +1,10 @@
 import { context } from '@devvit/web/server';
-import { Hono } from 'hono';
-import { refreshCommentCache } from '../core/comment-cache';
+import { Hono, type HonoRequest } from 'hono';
+import {
+  refreshCommentCache,
+  refreshCommentCacheChunk,
+  type CommentCacheChunkRefreshData,
+} from '../core/comment-cache';
 import { refreshPostCache } from '../core/post-cache';
 import { refreshCurrentSubredditIconCache } from '../core/subreddit-icons';
 import { getCacheRefreshSubredditNames } from '../core/subreddits';
@@ -48,6 +52,34 @@ cache.post('/refresh-comment-cache', async (c) => {
   } catch (error) {
     const message = getErrorMessage(error);
     console.error(`Comment cache refresh error: ${message}`);
+
+    return c.json(
+      {
+        status: 'error',
+        message,
+      },
+      500
+    );
+  }
+});
+
+cache.post('/refresh-comment-cache-chunk', async (c) => {
+  console.log('Received request to refresh comment cache chunk.');
+  try {
+    const data = await readCommentCacheChunkRefreshData(c.req);
+    const result = await refreshCommentCacheChunk(data);
+
+    console.log('Comment cache chunk refresh result:', result);
+    return c.json(
+      {
+        status: 'ok',
+        result,
+      },
+      200
+    );
+  } catch (error) {
+    const message = getErrorMessage(error);
+    console.error(`Comment cache chunk refresh error: ${message}`);
 
     return c.json(
       {
@@ -165,6 +197,33 @@ const refreshCommentCachesForCurrentSubreddits = async () => {
 
   return results;
 };
+
+const readCommentCacheChunkRefreshData = async (
+  req: HonoRequest
+): Promise<CommentCacheChunkRefreshData> => {
+  const body = await req.json().catch(() => null);
+  const data = isRecord(body) && 'data' in body ? body.data : body;
+
+  if (!isCommentCacheChunkRefreshData(data)) {
+    throw new Error('Invalid comment cache chunk refresh payload.');
+  }
+
+  return data;
+};
+
+const isCommentCacheChunkRefreshData = (
+  value: unknown
+): value is CommentCacheChunkRefreshData =>
+  isRecord(value) &&
+  typeof value.subredditName === 'string' &&
+  Array.isArray(value.postIds) &&
+  value.postIds.every(isPostId);
+
+const isPostId = (value: unknown): value is `t3_${string}` =>
+  typeof value === 'string' && value.startsWith('t3_') && value.length > 3;
+
+const isRecord = (value: unknown): value is Record<string, unknown> =>
+  value !== null && typeof value === 'object' && !Array.isArray(value);
 
 const getErrorMessage = (error: unknown): string =>
   error instanceof Error ? error.message : String(error) || 'Unable to refresh post cache.';

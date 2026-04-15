@@ -1,12 +1,14 @@
-import { reddit, redis } from '@devvit/web/server';
+import { reddit, redis, scheduler } from '@devvit/web/server';
 import type { Comment } from '@devvit/web/server';
 import type { ChartComment } from '../../shared/api';
 import { readCachedPostIdsForTimeframe } from './post-cache';
 
 const COMMENT_INDEX_PREFIX = 'bubble-stats:comments:index';
 const COMMENT_DATA_PREFIX = 'bubble-stats:comments:data';
-const CACHE_META_PREFIX = 'bubble-stats:comments:meta';
 const REDIS_WRITE_CHUNK_SIZE = 100;
+const COMMENT_REFRESH_POST_CHUNK_SIZE = 50;
+const COMMENT_REFRESH_CHUNK_JOB_DELAY_MS = 60 * 1000;
+export const COMMENT_REFRESH_CHUNK_JOB_NAME = 'refreshCommentCacheChunk';
 const COMMENT_PRUNE_BATCH_SIZE = 500;
 const MAX_COMMENT_PRUNE_BATCHES_PER_RUN = 10;
 const COMMENT_PREVIEW_LENGTH = 20;
@@ -22,30 +24,38 @@ export type CommentCacheReadOptions = {
 };
 
 export type CommentCacheReadResult = {
-  lastSuccessAt: string | null;
-  lastError: string | null;
   comments: ChartComment[];
 };
 
 export type CommentCountReadResult = {
-  lastSuccessAt: string | null;
-  lastError: string | null;
   commentCount: number;
 };
 
 export type CommentCacheRefreshResult = {
+  parentPostCount: number;
+  scheduledPostCount: number;
+  scheduledJobCount: number;
+  scheduledJobIds: string[];
+  prunedCommentCount: number;
+  generatedAt: string;
+};
+
+export type CommentCacheChunkRefreshData = {
+  subredditName: string;
+  postIds: `t3_${string}`[];
+};
+
+export type CommentCacheChunkRefreshResult = {
   refreshedPostCount: number;
   failedPostCount: number;
   fetchedCommentCount: number;
   cachedCommentCount: number;
-  prunedCommentCount: number;
   generatedAt: string;
 };
 
 type CacheKeys = {
   index: string;
   comments: string;
-  meta: string;
 };
 
 type CachedComment = {
@@ -71,16 +81,6 @@ export const readCommentsForTimeframe = async ({
   excludedPostId,
 }: CommentCacheReadOptions): Promise<CommentCacheReadResult> => {
   const keys = getCacheKeys(subredditName);
-  const { lastSuccessAt, lastError } = await readCacheStatus(keys);
-
-  if (!lastSuccessAt) {
-    return {
-      lastSuccessAt: null,
-      lastError,
-      comments: [],
-    };
-  }
-
   const commentIds = await readIndexedCommentIdsForTimeframe(keys, startTime, endTime);
   const cachedComments = await readCachedComments(keys, commentIds);
   const visibleCachedComments = filterVisibleComments(cachedComments, excludedPostId);
@@ -89,8 +89,6 @@ export const readCommentsForTimeframe = async ({
     .sort((a, b) => Date.parse(a.createdAt) - Date.parse(b.createdAt));
 
   return {
-    lastSuccessAt,
-    lastError,
     comments,
   };
 };
@@ -102,23 +100,11 @@ export const readCommentCountForTimeframe = async ({
   excludedPostId,
 }: CommentCacheReadOptions): Promise<CommentCountReadResult> => {
   const keys = getCacheKeys(subredditName);
-  const { lastSuccessAt, lastError } = await readCacheStatus(keys);
-
-  if (!lastSuccessAt) {
-    return {
-      lastSuccessAt: null,
-      lastError,
-      commentCount: 0,
-    };
-  }
-
   const commentIds = await readIndexedCommentIdsForTimeframe(keys, startTime, endTime);
   const cachedComments = await readCachedComments(keys, commentIds);
   const visibleCachedComments = filterVisibleComments(cachedComments, excludedPostId);
 
   return {
-    lastSuccessAt,
-    lastError,
     commentCount: visibleCachedComments.length,
   };
 };
@@ -127,64 +113,69 @@ export const refreshCommentCache = async (
   subredditName: string
 ): Promise<CommentCacheRefreshResult> => {
   const keys = getCacheKeys(subredditName);
+  const fetchedAt = new Date();
+  const parentPostIds = await readCommentParentPostIds(subredditName, fetchedAt.getTime());
+  const postIdChunks = chunkItems(parentPostIds, COMMENT_REFRESH_POST_CHUNK_SIZE);
+  const firstRunAt = Date.now() + COMMENT_REFRESH_CHUNK_JOB_DELAY_MS;
+  const scheduledJobIds: string[] = [];
 
-  try {
-    const fetchedAt = new Date();
-    const parentPostIds = await readCommentParentPostIds(subredditName, fetchedAt.getTime());
-    console.log(`Refreshing comment cache for r/${subredditName}. Found ${parentPostIds.length} parent posts in the timeframe.`);
-    const refreshResults: PostCommentsRefreshResult[] = [];
+  console.log(
+    `Scheduling comment cache refresh for r/${subredditName}. Found ${parentPostIds.length} parent posts in the timeframe.`
+  );
 
-    for (const postId of parentPostIds) {
-      console.log(`Refreshing comments for post ${postId} in r/${subredditName}...`);
-      refreshResults.push(await refreshPostComments(keys, postId));
-    }
-    const failedPostCount = refreshResults.filter((result) => result.failed).length;
-    const fetchedCommentCount = sumRefreshCount(
+  for (const [chunkIndex, postIds] of postIdChunks.entries()) {
+    const jobId = await scheduler.runJob({
+      name: COMMENT_REFRESH_CHUNK_JOB_NAME,
+      data: {
+        subredditName,
+        postIds,
+      },
+      runAt: new Date(
+        firstRunAt + chunkIndex * COMMENT_REFRESH_CHUNK_JOB_DELAY_MS
+      ),
+    });
+
+    scheduledJobIds.push(jobId);
+  }
+
+  return {
+    parentPostCount: parentPostIds.length,
+    scheduledPostCount: postIdChunks.reduce((total, postIds) => total + postIds.length, 0),
+    scheduledJobCount: scheduledJobIds.length,
+    scheduledJobIds,
+    prunedCommentCount: await pruneOldComments(keys, fetchedAt.getTime()),
+    generatedAt: new Date().toISOString(),
+  };
+};
+
+export const refreshCommentCacheChunk = async ({
+  subredditName,
+  postIds,
+}: CommentCacheChunkRefreshData): Promise<CommentCacheChunkRefreshResult> => {
+  const keys = getCacheKeys(subredditName);
+  const refreshResults: PostCommentsRefreshResult[] = [];
+
+  console.log(
+    `Refreshing comment cache chunk for r/${subredditName}. Found ${postIds.length} parent posts in this chunk.`
+  );
+
+  for (const postId of postIds) {
+    refreshResults.push(await refreshPostComments(keys, postId));
+  }
+
+  return {
+    refreshedPostCount: postIds.length,
+    failedPostCount: refreshResults.filter((result) => result.failed).length,
+    fetchedCommentCount: sumRefreshCount(
       refreshResults,
       (result) => result.fetchedCommentCount
-    );
-    const cachedCommentCount = sumRefreshCount(
+    ),
+    cachedCommentCount: sumRefreshCount(
       refreshResults,
       (result) => result.cachedCommentCount
-    );
-    const prunedCommentCount = await pruneOldComments(keys, fetchedAt.getTime());
-    const generatedAt = new Date().toISOString();
-    const metaFields: Record<string, string> = {
-      lastSuccessAt: generatedAt,
-      lastRefreshedPostCount: String(parentPostIds.length),
-      lastFailedPostCount: String(failedPostCount),
-      lastFetchedCommentCount: String(fetchedCommentCount),
-      lastCachedCommentCount: String(cachedCommentCount),
-      lastPrunedCommentCount: String(prunedCommentCount),
-    };
-
-    if (failedPostCount > 0) {
-      metaFields.lastError = `Unable to refresh comments for ${failedPostCount} post(s).`;
-      metaFields.lastErrorAt = generatedAt;
-    }
-
-    await redis.hSet(keys.meta, metaFields);
-
-    if (failedPostCount === 0) {
-      await redis.hDel(keys.meta, ['lastError', 'lastErrorAt']);
-    }
-
-    return {
-      refreshedPostCount: parentPostIds.length,
-      failedPostCount,
-      fetchedCommentCount,
-      cachedCommentCount,
-      prunedCommentCount,
-      generatedAt,
-    };
-  } catch (error) {
-    const message = getErrorMessage(error);
-    await redis.hSet(keys.meta, {
-      lastError: message,
-      lastErrorAt: new Date().toISOString(),
-    });
-    throw error;
-  }
+    ),
+    generatedAt: new Date().toISOString(),
+  };
 };
 
 const readCommentParentPostIds = async (
@@ -213,8 +204,8 @@ const refreshPostComments = async (
     const comments = await reddit
       .getComments({
         postId,
-        limit: 10,
-        pageSize: 10,
+        limit: 1000,
+        pageSize: 100,
       })
       .all();
     console.log(`Fetched ${comments.length} comments for post ${postId}. Caching...`);
@@ -320,16 +311,8 @@ const getCacheKeys = (subredditName: string): CacheKeys => {
   return {
     index: `${COMMENT_INDEX_PREFIX}:${keySubreddit}`,
     comments: `${COMMENT_DATA_PREFIX}:${keySubreddit}`,
-    meta: `${CACHE_META_PREFIX}:${keySubreddit}`,
   };
 };
-
-const readCacheStatus = async (
-  keys: CacheKeys
-): Promise<Pick<CommentCacheReadResult, 'lastSuccessAt' | 'lastError'>> => ({
-  lastSuccessAt: (await redis.hGet(keys.meta, 'lastSuccessAt')) ?? null,
-  lastError: (await redis.hGet(keys.meta, 'lastError')) ?? null,
-});
 
 const readIndexedCommentIdsForTimeframe = async (
   keys: CacheKeys,

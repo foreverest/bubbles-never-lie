@@ -95,18 +95,6 @@ api.get('/comments', async (c) => {
       excludedPostId: chartContext.excludedPostId,
     });
 
-    if (!cachedComments.lastSuccessAt) {
-      logCacheWarming('Comment', cachedComments.lastError);
-
-      return c.json<ErrorResponse>(
-        {
-          status: 'error',
-          message: 'The comment cache is warming. Try again shortly.',
-        },
-        503
-      );
-    }
-
     return c.json<CommentsChartDataResponse>(
       {
         ...(await createChartMetadata(chartContext)),
@@ -164,18 +152,6 @@ api.get('/stats', async (c) => {
         {
           status: 'error',
           message: 'The post cache is warming. Try again shortly.',
-        },
-        503
-      );
-    }
-
-    if (!comments.lastSuccessAt) {
-      logCacheWarming('Comment', comments.lastError);
-
-      return c.json<ErrorResponse>(
-        {
-          status: 'error',
-          message: 'The comment cache is warming. Try again shortly.',
         },
         503
       );
@@ -239,7 +215,7 @@ const createChartMetadata = async ({
   generatedAt: new Date().toISOString(),
 });
 
-const logCacheWarming = (cacheName: 'Post' | 'Comment', lastError: string | null): void => {
+const logCacheWarming = (cacheName: 'Post', lastError: string | null): void => {
   if (!lastError) {
     return;
   }
