@@ -37,16 +37,27 @@ export type ChartComment = {
   permalink: string;
 };
 
-export type ChartDataResponse = {
-  type: 'chart-data';
+export type ChartResponseMetadata = {
   subredditName: string;
   subredditIconUrl: string | null;
   timeframe: TimeframePostData;
   generatedAt: string;
-  sampledPostCount: number;
-  sampledCommentCount: number;
+};
+
+export type PostsChartDataResponse = ChartResponseMetadata & {
+  type: 'posts-chart-data';
   posts: ChartPost[];
+};
+
+export type CommentsChartDataResponse = ChartResponseMetadata & {
+  type: 'comments-chart-data';
   comments: ChartComment[];
+};
+
+export type StatsDataResponse = {
+  type: 'stats-data';
+  postCount: number;
+  commentCount: number;
 };
 
 export type ErrorResponse = {

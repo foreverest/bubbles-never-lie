@@ -48,7 +48,7 @@
       },
       "refreshCommentCache": {
         "endpoint": "/internal/cache/refresh-comment-cache",
-        "cron": "0 * * * *"
+        "cron": "44 * * * *"
       },
       "refreshSubredditIcons": {
         "endpoint": "/internal/cache/refresh-subreddit-icons",

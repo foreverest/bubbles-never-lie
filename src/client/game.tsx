@@ -16,8 +16,11 @@ import { AUTHOR_SUBREDDIT_KARMA_BUCKET_COUNT } from '../shared/api';
 import type {
   AuthorSubredditKarmaBucket,
   ChartComment,
-  ChartDataResponse,
+  ChartResponseMetadata,
+  CommentsChartDataResponse,
   ErrorResponse,
+  PostsChartDataResponse,
+  StatsDataResponse,
 } from '../shared/api';
 
 echarts.use([
@@ -28,9 +31,10 @@ echarts.use([
   TooltipComponent,
 ]);
 
-type LoadState =
+type DataState<Data> =
+  | { status: 'idle' }
   | { status: 'loading' }
-  | { status: 'ready'; data: ChartDataResponse }
+  | { status: 'ready'; data: Data }
   | { status: 'error'; message: string };
 
 type TabName = 'posts' | 'comments' | 'stats';
@@ -102,79 +106,142 @@ const COMMENT_GROUP_COLORS = [
 ];
 
 function App() {
-  const [state, setState] = useState<LoadState>({ status: 'loading' });
+  const isMountedRef = useRef(true);
+  const [postsState, setPostsState] = useState<DataState<PostsChartDataResponse>>({
+    status: 'loading',
+  });
+  const [commentsState, setCommentsState] = useState<DataState<CommentsChartDataResponse>>({
+    status: 'idle',
+  });
+  const [statsState, setStatsState] = useState<DataState<StatsDataResponse>>({
+    status: 'idle',
+  });
   const [activeTab, setActiveTab] = useState<TabName>('posts');
   const [zoomEnabled, setZoomEnabled] = useState(false);
 
   useEffect(() => {
-    let cancelled = false;
+    return () => {
+      isMountedRef.current = false;
+    };
+  }, []);
 
-    async function loadChartData() {
+  useEffect(() => {
+    async function loadPostsData() {
       try {
-        const response = await fetch('/api/posts');
-        const body = (await response.json()) as ChartDataResponse | ErrorResponse;
+        const data = await fetchApiData<PostsChartDataResponse>(
+          '/api/posts',
+          'Unable to load post chart data.'
+        );
 
-        if (cancelled) {
+        if (!isMountedRef.current) {
           return;
         }
 
-        if (!response.ok || 'status' in body) {
-          console.error('Error response from /api/posts:', body);
-          setState({
-            status: 'error',
-            message: 'message' in body ? body.message : 'Unable to load chart data.',
-          });
-          return;
-        }
-
-        setState({ status: 'ready', data: body });
+        setPostsState({ status: 'ready', data });
       } catch (error) {
-        if (!cancelled) {
-          console.error('Error loading chart data:', error);
-          setState({
+        if (isMountedRef.current) {
+          console.error('Error loading post chart data:', error);
+          setPostsState({
             status: 'error',
-            message: error instanceof Error ? error.message : 'Unable to load chart data.',
+            message: error instanceof Error ? error.message : 'Unable to load post chart data.',
           });
         }
       }
     }
 
-    void loadChartData();
-
-    return () => {
-      cancelled = true;
-    };
+    void loadPostsData();
   }, []);
 
-  if (state.status === 'loading') {
+  useEffect(() => {
+    if (activeTab !== 'comments' || commentsState.status !== 'idle') {
+      return;
+    }
+
+    setCommentsState({ status: 'loading' });
+
+    async function loadCommentsData() {
+      try {
+        const data = await fetchApiData<CommentsChartDataResponse>(
+          '/api/comments',
+          'Unable to load comment chart data.'
+        );
+
+        if (isMountedRef.current) {
+          setCommentsState({ status: 'ready', data });
+        }
+      } catch (error) {
+        if (isMountedRef.current) {
+          console.error('Error loading comment chart data:', error);
+          setCommentsState({
+            status: 'error',
+            message:
+              error instanceof Error ? error.message : 'Unable to load comment chart data.',
+          });
+        }
+      }
+    }
+
+    void loadCommentsData();
+  }, [activeTab, commentsState.status]);
+
+  useEffect(() => {
+    if (activeTab !== 'stats' || statsState.status !== 'idle') {
+      return;
+    }
+
+    setStatsState({ status: 'loading' });
+
+    async function loadStatsData() {
+      try {
+        const data = await fetchApiData<StatsDataResponse>(
+          '/api/stats',
+          'Unable to load stats data.'
+        );
+
+        if (isMountedRef.current) {
+          setStatsState({ status: 'ready', data });
+        }
+      } catch (error) {
+        if (isMountedRef.current) {
+          console.error('Error loading stats data:', error);
+          setStatsState({
+            status: 'error',
+            message: error instanceof Error ? error.message : 'Unable to load stats data.',
+          });
+        }
+      }
+    }
+
+    void loadStatsData();
+  }, [activeTab, statsState.status]);
+
+  if (postsState.status === 'loading' || postsState.status === 'idle') {
     return (
       <main className="app-shell app-shell--centered">
-        <p className="status-text">Loading subreddit chart data...</p>
+        <p className="status-text">Loading subreddit post chart data...</p>
       </main>
     );
   }
 
-  if (state.status === 'error') {
+  if (postsState.status === 'error') {
     return (
       <main className="app-shell app-shell--centered">
         <section className="message-panel" aria-live="polite">
           <p className="eyebrow">Bubble stats</p>
           <h1>Chart data could not be loaded.</h1>
-          <p>{state.message}</p>
+          <p>{postsState.message}</p>
         </section>
       </main>
     );
   }
 
-  const { data } = state;
-  const postCount = data.posts.length;
-  const commentCount = data.comments.length;
+  const { data: postsData } = postsState;
 
   return (
     <main className="app-shell">
       <section className="chart-region" aria-label="Bubble stats">
         <ChartHeader
-          data={data}
+          data={postsData}
           activeTab={activeTab}
           onTabChange={setActiveTab}
           zoomEnabled={zoomEnabled}
@@ -182,42 +249,131 @@ function App() {
         />
 
         {activeTab === 'posts' ? (
-          <section className="chart-panel" id="posts-panel" aria-label="Posts">
-            {postCount > 0 ? (
-              <BubbleChart data={data} zoomEnabled={zoomEnabled} />
-            ) : (
-              <div className="empty-state">
-                <p>No posts matched this timeframe.</p>
-                <span>Try a wider date range from the create-post menu.</span>
-              </div>
-            )}
-          </section>
+          <PostsPanel data={postsData} zoomEnabled={zoomEnabled} />
         ) : activeTab === 'comments' ? (
-          <section className="chart-panel" id="comments-panel" aria-label="Comments">
-            {commentCount > 0 ? (
-              <CommentsChart data={data} zoomEnabled={zoomEnabled} />
-            ) : (
-              <div className="empty-state">
-                <p>No comments matched this timeframe.</p>
-                <span>Try a wider date range from the create-post menu.</span>
-              </div>
-            )}
-          </section>
+          <CommentsPanel state={commentsState} zoomEnabled={zoomEnabled} />
         ) : (
-          <section className="chart-panel stats-panel" id="stats-panel" aria-label="Stats">
-            <div className="stats-panel__item">
-              <span>Posts</span>
-              <strong>{postCount.toLocaleString()}</strong>
-            </div>
-            <div className="stats-panel__item">
-              <span>Comments</span>
-              <strong>{commentCount.toLocaleString()}</strong>
-            </div>
-          </section>
+          <StatsPanel state={statsState} />
         )}
       </section>
     </main>
   );
+}
+
+function PostsPanel({
+  data,
+  zoomEnabled,
+}: {
+  data: PostsChartDataResponse;
+  zoomEnabled: boolean;
+}) {
+  return (
+    <section className="chart-panel" id="posts-panel" aria-label="Posts">
+      {data.posts.length > 0 ? (
+        <BubbleChart data={data} zoomEnabled={zoomEnabled} />
+      ) : (
+        <EmptyState message="No posts matched this timeframe." />
+      )}
+    </section>
+  );
+}
+
+function CommentsPanel({
+  state,
+  zoomEnabled,
+}: {
+  state: DataState<CommentsChartDataResponse>;
+  zoomEnabled: boolean;
+}) {
+  return (
+    <section className="chart-panel" id="comments-panel" aria-label="Comments">
+      {state.status === 'ready' ? (
+        state.data.comments.length > 0 ? (
+          <CommentsChart data={state.data} zoomEnabled={zoomEnabled} />
+        ) : (
+          <EmptyState message="No comments matched this timeframe." />
+        )
+      ) : (
+        <PanelState state={state} loadingMessage="Loading comment chart data..." />
+      )}
+    </section>
+  );
+}
+
+function StatsPanel({ state }: { state: DataState<StatsDataResponse> }) {
+  if (state.status !== 'ready') {
+    return (
+      <section className="chart-panel" id="stats-panel" aria-label="Stats">
+        <PanelState state={state} loadingMessage="Loading stats data..." />
+      </section>
+    );
+  }
+
+  return (
+    <section className="chart-panel stats-panel" id="stats-panel" aria-label="Stats">
+      <div className="stats-panel__item">
+        <span>Posts</span>
+        <strong>{state.data.postCount.toLocaleString()}</strong>
+      </div>
+      <div className="stats-panel__item">
+        <span>Comments</span>
+        <strong>{state.data.commentCount.toLocaleString()}</strong>
+      </div>
+    </section>
+  );
+}
+
+function PanelState<Data>({
+  state,
+  loadingMessage,
+}: {
+  state: DataState<Data>;
+  loadingMessage: string;
+}) {
+  if (state.status === 'error') {
+    return (
+      <div className="empty-state" aria-live="polite">
+        <p>Data could not be loaded.</p>
+        <span>{state.message}</span>
+      </div>
+    );
+  }
+
+  return (
+    <div className="empty-state" aria-live="polite">
+      <p>{loadingMessage}</p>
+    </div>
+  );
+}
+
+function EmptyState({ message }: { message: string }) {
+  return (
+    <div className="empty-state">
+      <p>{message}</p>
+      <span>Try a wider date range from the create-post menu.</span>
+    </div>
+  );
+}
+
+async function fetchApiData<Data>(path: string, fallbackMessage: string): Promise<Data> {
+  const response = await fetch(path);
+  const body = (await response.json()) as Data | ErrorResponse;
+
+  if (!response.ok || isErrorResponse(body)) {
+    console.error(`Error response from ${path}:`, body);
+    throw new Error(isErrorResponse(body) ? body.message : fallbackMessage);
+  }
+
+  return body;
+}
+
+function isErrorResponse(value: unknown): value is ErrorResponse {
+  if (!value || typeof value !== 'object') {
+    return false;
+  }
+
+  const body = value as Partial<Record<keyof ErrorResponse, unknown>>;
+  return body.status === 'error' && typeof body.message === 'string';
 }
 
 function ChartHeader({
@@ -227,7 +383,7 @@ function ChartHeader({
   zoomEnabled,
   onZoomEnabledChange,
 }: {
-  data: ChartDataResponse;
+  data: ChartResponseMetadata;
   activeTab: TabName;
   onTabChange: (tab: TabName) => void;
   zoomEnabled: boolean;
@@ -449,7 +605,13 @@ function ChartHeader({
   );
 }
 
-function BubbleChart({ data, zoomEnabled }: { data: ChartDataResponse; zoomEnabled: boolean }) {
+function BubbleChart({
+  data,
+  zoomEnabled,
+}: {
+  data: PostsChartDataResponse;
+  zoomEnabled: boolean;
+}) {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const chartRef = useRef<echarts.EChartsType | null>(null);
   const chartData = useMemo<BubbleDatum[]>(
@@ -544,7 +706,7 @@ function CommentsChart({
   data,
   zoomEnabled,
 }: {
-  data: ChartDataResponse;
+  data: CommentsChartDataResponse;
   zoomEnabled: boolean;
 }) {
   const containerRef = useRef<HTMLDivElement | null>(null);
@@ -628,7 +790,7 @@ function CommentsChart({
 
 function createBubbleOption(
   data: BubbleDatum[],
-  chartData: ChartDataResponse,
+  chartData: ChartResponseMetadata,
   zoomEnabled: boolean,
   getVisibleTimeRange?: GetVisibleTimeRange
 ): EChartsCoreOption {
@@ -780,7 +942,7 @@ function createBubbleOption(
 
 function createCommentsOption(
   data: CommentBubbleDatum[],
-  chartData: ChartDataResponse,
+  chartData: ChartResponseMetadata,
   zoomEnabled: boolean,
   getVisibleTimeRange?: GetVisibleTimeRange
 ): EChartsCoreOption {

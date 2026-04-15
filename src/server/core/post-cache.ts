@@ -31,8 +31,13 @@ export type PostCacheReadOptions = {
 export type PostCacheReadResult = {
   lastSuccessAt: string | null;
   lastError: string | null;
-  sampledPostCount: number;
   posts: ChartPost[];
+};
+
+export type PostCountReadResult = {
+  lastSuccessAt: string | null;
+  lastError: string | null;
+  postCount: number;
 };
 
 export type PostCacheRefreshResult = {
@@ -87,23 +92,22 @@ export const readPostsForTimeframe = async ({
   excludedPostId,
 }: PostCacheReadOptions): Promise<PostCacheReadResult> => {
   const keys = getCacheKeys(subredditName);
-  const lastSuccessAt = await redis.hGet(keys.meta, 'lastSuccessAt');
-  const lastError = await redis.hGet(keys.meta, 'lastError');
+  const { lastSuccessAt, lastError } = await readCacheStatus(keys);
 
   if (!lastSuccessAt) {
     return {
       lastSuccessAt: null,
-      lastError: lastError ?? null,
-      sampledPostCount: 0,
+      lastError,
       posts: [],
     };
   }
 
-  const lastFetchedPostCount = await redis.hGet(keys.meta, 'lastFetchedPostCount');
-  const indexedPosts = await redis.zRange(keys.index, startTime, endTime, { by: 'score' });
-  const postIds = indexedPosts
-    .map((post) => post.member)
-    .filter((postId) => postId !== excludedPostId);
+  const postIds = await readIndexedPostIdsForTimeframe(
+    keys,
+    startTime,
+    endTime,
+    excludedPostId
+  );
   const cachedPosts = await readCachedPosts(keys, postIds);
   const authorMetadata = await readAuthorMetadata(keys, cachedPosts);
   const authorKarmaBuckets = createAuthorKarmaBuckets(authorMetadata);
@@ -118,10 +122,41 @@ export const readPostsForTimeframe = async ({
     .sort((a, b) => Date.parse(a.createdAt) - Date.parse(b.createdAt));
 
   return {
-    lastSuccessAt: lastSuccessAt ?? null,
-    lastError: lastError ?? null,
-    sampledPostCount: parseCount(lastFetchedPostCount),
+    lastSuccessAt,
+    lastError,
     posts,
+  };
+};
+
+export const readPostCountForTimeframe = async ({
+  subredditName,
+  startTime,
+  endTime,
+  excludedPostId,
+}: PostCacheReadOptions): Promise<PostCountReadResult> => {
+  const keys = getCacheKeys(subredditName);
+  const { lastSuccessAt, lastError } = await readCacheStatus(keys);
+
+  if (!lastSuccessAt) {
+    return {
+      lastSuccessAt: null,
+      lastError,
+      postCount: 0,
+    };
+  }
+
+  const postIds = await readIndexedPostIdsForTimeframe(
+    keys,
+    startTime,
+    endTime,
+    excludedPostId
+  );
+  const posts = await readCachedPosts(keys, postIds);
+
+  return {
+    lastSuccessAt,
+    lastError,
+    postCount: posts.length,
   };
 };
 
@@ -198,29 +233,45 @@ export const readCachedPostIdsForTimeframe = async ({
   excludedPostId = null,
 }: CachedPostIdReadOptions): Promise<CachedPostIdReadResult> => {
   const keys = getCacheKeys(subredditName);
-  const lastSuccessAt = await redis.hGet(keys.meta, 'lastSuccessAt');
-  const lastError = await redis.hGet(keys.meta, 'lastError');
+  const { lastSuccessAt, lastError } = await readCacheStatus(keys);
 
   if (!lastSuccessAt) {
     return {
       lastSuccessAt: null,
-      lastError: lastError ?? null,
+      lastError,
       postIds: [],
     };
   }
 
-  const indexedPosts = await redis.zRange(keys.index, startTime, endTime, { by: 'score' });
-  const postIds = indexedPosts
-    .map((post) => post.member)
-    .filter(
-      (postId): postId is `t3_${string}` => postId !== excludedPostId && isPostId(postId)
-    );
+  const postIds = (
+    await readIndexedPostIdsForTimeframe(keys, startTime, endTime, excludedPostId)
+  ).filter(isPostId);
 
   return {
     lastSuccessAt,
-    lastError: lastError ?? null,
+    lastError,
     postIds,
   };
+};
+
+const readCacheStatus = async (
+  keys: CacheKeys
+): Promise<Pick<PostCacheReadResult, 'lastSuccessAt' | 'lastError'>> => ({
+  lastSuccessAt: (await redis.hGet(keys.meta, 'lastSuccessAt')) ?? null,
+  lastError: (await redis.hGet(keys.meta, 'lastError')) ?? null,
+});
+
+const readIndexedPostIdsForTimeframe = async (
+  keys: CacheKeys,
+  startTime: number,
+  endTime: number,
+  excludedPostId: string | null
+): Promise<string[]> => {
+  const indexedPosts = await redis.zRange(keys.index, startTime, endTime, { by: 'score' });
+
+  return indexedPosts
+    .map((post) => post.member)
+    .filter((postId) => postId !== excludedPostId);
 };
 
 const toCachedPost = (post: Post): CachedPost => ({
@@ -513,12 +564,6 @@ const getSyntheticAuthorKarma = (): number =>
 
 const randomInteger = (min: number, max: number): number =>
   Math.floor(Math.random() * (max - min + 1)) + min;
-
-const parseCount = (value: string | undefined): number => {
-  const count = Number(value);
-
-  return Number.isInteger(count) && count >= 0 ? count : 0;
-};
 
 const parseCachedPost = (value: string | null): CachedPost | null => {
   if (value === null) {

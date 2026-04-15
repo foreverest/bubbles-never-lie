@@ -25,8 +25,13 @@ export type CommentCacheReadOptions = {
 export type CommentCacheReadResult = {
   lastSuccessAt: string | null;
   lastError: string | null;
-  sampledCommentCount: number;
   comments: ChartComment[];
+};
+
+export type CommentCountReadResult = {
+  lastSuccessAt: string | null;
+  lastError: string | null;
+  commentCount: number;
 };
 
 export type CommentCacheRefreshResult = {
@@ -70,34 +75,55 @@ export const readCommentsForTimeframe = async ({
   excludedPostId,
 }: CommentCacheReadOptions): Promise<CommentCacheReadResult> => {
   const keys = getCacheKeys(subredditName);
-  const lastSuccessAt = await redis.hGet(keys.meta, 'lastSuccessAt');
-  const lastError = await redis.hGet(keys.meta, 'lastError');
+  const { lastSuccessAt, lastError } = await readCacheStatus(keys);
 
   if (!lastSuccessAt) {
     return {
       lastSuccessAt: null,
-      lastError: lastError ?? null,
-      sampledCommentCount: 0,
+      lastError,
       comments: [],
     };
   }
 
-  const lastFetchedCommentCount = await redis.hGet(keys.meta, 'lastFetchedCommentCount');
-  const indexedComments = await redis.zRange(keys.index, startTime, endTime, { by: 'score' });
-  const commentIds = indexedComments.map((comment) => comment.member);
+  const commentIds = await readIndexedCommentIdsForTimeframe(keys, startTime, endTime);
   const cachedComments = await readCachedComments(keys, commentIds);
-  const visibleCachedComments = cachedComments.filter(
-    (comment) => comment.postId !== excludedPostId
-  );
+  const visibleCachedComments = filterVisibleComments(cachedComments, excludedPostId);
   const comments = visibleCachedComments
     .map(toChartComment)
     .sort((a, b) => Date.parse(a.createdAt) - Date.parse(b.createdAt));
 
   return {
-    lastSuccessAt: lastSuccessAt ?? null,
-    lastError: lastError ?? null,
-    sampledCommentCount: parseCount(lastFetchedCommentCount),
+    lastSuccessAt,
+    lastError,
     comments,
+  };
+};
+
+export const readCommentCountForTimeframe = async ({
+  subredditName,
+  startTime,
+  endTime,
+  excludedPostId,
+}: CommentCacheReadOptions): Promise<CommentCountReadResult> => {
+  const keys = getCacheKeys(subredditName);
+  const { lastSuccessAt, lastError } = await readCacheStatus(keys);
+
+  if (!lastSuccessAt) {
+    return {
+      lastSuccessAt: null,
+      lastError,
+      commentCount: 0,
+    };
+  }
+
+  const commentIds = await readIndexedCommentIdsForTimeframe(keys, startTime, endTime);
+  const cachedComments = await readCachedComments(keys, commentIds);
+  const visibleCachedComments = filterVisibleComments(cachedComments, excludedPostId);
+
+  return {
+    lastSuccessAt,
+    lastError,
+    commentCount: visibleCachedComments.length,
   };
 };
 
@@ -208,7 +234,7 @@ const refreshPostComments = async (
       postId,
       cachedComments
     );
-    console.log(`Removed ${removedStaleCommentCount} stale comments from cache for post ${postId}.`);
+    // console.log(`Removed ${removedStaleCommentCount} stale comments from cache for post ${postId}.`);
 
     return {
       fetchedCommentCount: comments.length,
@@ -339,6 +365,28 @@ const getCacheKeys = (subredditName: string): CacheKeys => {
   };
 };
 
+const readCacheStatus = async (
+  keys: CacheKeys
+): Promise<Pick<CommentCacheReadResult, 'lastSuccessAt' | 'lastError'>> => ({
+  lastSuccessAt: (await redis.hGet(keys.meta, 'lastSuccessAt')) ?? null,
+  lastError: (await redis.hGet(keys.meta, 'lastError')) ?? null,
+});
+
+const readIndexedCommentIdsForTimeframe = async (
+  keys: CacheKeys,
+  startTime: number,
+  endTime: number
+): Promise<string[]> => {
+  const indexedComments = await redis.zRange(keys.index, startTime, endTime, { by: 'score' });
+
+  return indexedComments.map((comment) => comment.member);
+};
+
+const filterVisibleComments = (
+  comments: CachedComment[],
+  excludedPostId: string | null
+): CachedComment[] => comments.filter((comment) => comment.postId !== excludedPostId);
+
 const toCachedComment = (comment: Comment): CachedComment => ({
   id: comment.id,
   postId: comment.postId,
@@ -415,12 +463,6 @@ const parseCachedCommentIds = (value: string | null): string[] => {
   } catch {
     return [];
   }
-};
-
-const parseCount = (value: string | undefined): number => {
-  const count = Number(value);
-
-  return Number.isInteger(count) && count >= 0 ? count : 0;
 };
 
 const parseJsonRecord = (value: string): Record<string, unknown> | null => {
