@@ -31,6 +31,7 @@ export type ChartComment = {
   id: string;
   postId: string;
   authorName: string;
+  authorAvatarUrl: string | null;
   score: number;
   bodyPreview: string;
   createdAt: string;

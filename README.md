@@ -46,7 +46,7 @@ Open the new Bubble Stats post and use the tabs at the top:
 
 On the chart, hover over or tap a bubble to see the post title, author, author avatar when available, approximate age, upvote score, and comment count. Select a bubble to open the original Reddit post.
 
-On the comments chart, hover over or tap a bubble to see the author, upvote score, and a short comment preview. Select a bubble to open the original Reddit comment.
+On the comments chart, hover over or tap a bubble to see the author, author avatar when available, approximate age, upvote score, and a short comment preview. Select a bubble to open the original Reddit comment.
 
 ## Data notes
 
@@ -56,4 +56,4 @@ If the app was just installed or upgraded, a chart may briefly say a cache is wa
 
 The app uses post information that appears in the chart, including title, author name, author avatar when available, creation time, score, comment count, permalink, and an author subreddit karma bucket when available.
 
-The app also caches comment information for the comments chart, including author name, creation time, score, permalink, and a short preview. Parent post IDs determine stable comment group colors.
+The app also caches comment information for the comments chart, including author name, author avatar when available, creation time, score, permalink, and a short preview. Parent post IDs determine stable comment group colors.

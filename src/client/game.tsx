@@ -56,6 +56,8 @@ type CommentBubbleDatum = {
   score: number;
   bodyPreview: string;
   authorName: string;
+  authorAvatarUrl: string | null;
+  createdAt: string;
   permalink: string;
   postId: string;
 };
@@ -973,10 +975,18 @@ function createCommentsOption(
           return '';
         }
 
+        const avatar = datum.authorAvatarUrl
+          ? `<img alt="" class="chart-tooltip__avatar" src="${escapeHtml(datum.authorAvatarUrl)}">`
+          : '<span aria-hidden="true" class="chart-tooltip__avatar chart-tooltip__avatar--fallback"></span>';
+        const createdAgo = formatRelativeAge(new Date(datum.createdAt));
+
         return [
           '<article class="chart-tooltip chart-tooltip--comment">',
           '<div class="chart-tooltip__meta">',
+          avatar,
           `<span class="chart-tooltip__username">u/${escapeHtml(datum.authorName)}</span>`,
+          '<span aria-hidden="true" class="chart-tooltip__separator">&middot;</span>',
+          `<span class="chart-tooltip__age">${escapeHtml(createdAgo)}</span>`,
           '</div>',
           `<strong class="chart-tooltip__title">${escapeHtml(datum.bodyPreview)}</strong>`,
           '<div class="chart-tooltip__stats">',
@@ -1167,6 +1177,8 @@ function toCommentBubbleDatum(comment: ChartComment): CommentBubbleDatum {
     score: comment.score,
     bodyPreview: comment.bodyPreview,
     authorName: comment.authorName,
+    authorAvatarUrl: comment.authorAvatarUrl,
+    createdAt: comment.createdAt,
     permalink: comment.permalink,
     postId: comment.postId,
   };
@@ -1230,6 +1242,8 @@ function getCommentBubbleDatum(value: unknown): CommentBubbleDatum | null {
     typeof datum.score !== 'number' ||
     typeof datum.bodyPreview !== 'string' ||
     typeof datum.authorName !== 'string' ||
+    (datum.authorAvatarUrl !== null && typeof datum.authorAvatarUrl !== 'string') ||
+    typeof datum.createdAt !== 'string' ||
     typeof datum.permalink !== 'string' ||
     typeof datum.postId !== 'string'
   ) {

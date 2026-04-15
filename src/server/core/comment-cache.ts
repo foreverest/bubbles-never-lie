@@ -5,15 +5,22 @@ import { readCachedPostIdsForTimeframe } from './post-cache';
 
 const COMMENT_INDEX_PREFIX = 'bubble-stats:comments:index';
 const COMMENT_DATA_PREFIX = 'bubble-stats:comments:data';
+const COMMENT_AUTHOR_DATA_PREFIX = 'bubble-stats:comments:authors:data';
+const COMMENT_META_PREFIX = 'bubble-stats:comments:meta';
 const REDIS_WRITE_CHUNK_SIZE = 100;
 const COMMENT_REFRESH_POST_CHUNK_SIZE = 50;
 const COMMENT_REFRESH_CHUNK_JOB_DELAY_MS = 60 * 1000;
 export const COMMENT_REFRESH_CHUNK_JOB_NAME = 'refreshCommentCacheChunk';
 const COMMENT_PRUNE_BATCH_SIZE = 500;
 const MAX_COMMENT_PRUNE_BATCHES_PER_RUN = 10;
+const COMMENT_AUTHOR_AVATAR_CONCURRENCY = 4;
+const MAX_COMMENT_AUTHORS_TO_REFRESH_PER_POST = 25;
+const COMMENT_AUTHOR_PRUNE_SCAN_COUNT = 200;
 const COMMENT_PREVIEW_LENGTH = 20;
 const DAY_MS = 24 * 60 * 60 * 1000;
 const COMMENT_RETENTION_MS = 90 * DAY_MS;
+const COMMENT_AUTHOR_AVATAR_STALE_MS = DAY_MS;
+const COMMENT_AUTHOR_AVATAR_RETENTION_MS = 90 * DAY_MS;
 const PARENT_POST_LOOKBACK_MS = 90 * DAY_MS;
 
 export type CommentCacheReadOptions = {
@@ -37,6 +44,7 @@ export type CommentCacheRefreshResult = {
   scheduledJobCount: number;
   scheduledJobIds: string[];
   prunedCommentCount: number;
+  prunedAuthorAvatarCount: number;
   generatedAt: string;
 };
 
@@ -50,18 +58,22 @@ export type CommentCacheChunkRefreshResult = {
   failedPostCount: number;
   fetchedCommentCount: number;
   cachedCommentCount: number;
+  refreshedAuthorAvatarCount: number;
   generatedAt: string;
 };
 
 type CacheKeys = {
   index: string;
   comments: string;
+  authors: string;
+  meta: string;
 };
 
 type CachedComment = {
   id: string;
   postId: string;
   authorName: string;
+  authorAvatarUrl: string | null;
   score: number;
   bodyPreview: string;
   createdAt: string;
@@ -71,7 +83,13 @@ type CachedComment = {
 type PostCommentsRefreshResult = {
   fetchedCommentCount: number;
   cachedCommentCount: number;
+  refreshedAuthorAvatarCount: number;
   failed: boolean;
+};
+
+type CachedCommentAuthorAvatar = {
+  avatarUrl: string | null;
+  fetchedAt: string;
 };
 
 export const readCommentsForTimeframe = async ({
@@ -138,12 +156,19 @@ export const refreshCommentCache = async (
     scheduledJobIds.push(jobId);
   }
 
+  const prunedCommentCount = await pruneOldComments(keys, fetchedAt.getTime());
+  const prunedAuthorAvatarCount = await pruneOldCommentAuthorAvatars(
+    keys,
+    fetchedAt.getTime()
+  );
+
   return {
     parentPostCount: parentPostIds.length,
     scheduledPostCount: postIdChunks.reduce((total, postIds) => total + postIds.length, 0),
     scheduledJobCount: scheduledJobIds.length,
     scheduledJobIds,
-    prunedCommentCount: await pruneOldComments(keys, fetchedAt.getTime()),
+    prunedCommentCount,
+    prunedAuthorAvatarCount,
     generatedAt: new Date().toISOString(),
   };
 };
@@ -173,6 +198,10 @@ export const refreshCommentCacheChunk = async ({
     cachedCommentCount: sumRefreshCount(
       refreshResults,
       (result) => result.cachedCommentCount
+    ),
+    refreshedAuthorAvatarCount: sumRefreshCount(
+      refreshResults,
+      (result) => result.refreshedAuthorAvatarCount
     ),
     generatedAt: new Date().toISOString(),
   };
@@ -209,12 +238,16 @@ const refreshPostComments = async (
       })
       .all();
     console.log(`Fetched ${comments.length} comments for post ${postId}. Caching...`);
-    const cachedComments = comments.map(toCachedComment);
+    const authorAvatars = await readCommentAuthorAvatarUrls(keys, comments, new Date());
+    const cachedComments = comments.map((comment) =>
+      toCachedComment(comment, authorAvatars.avatarUrls.get(comment.authorName) ?? null)
+    );
     await writeCachedComments(keys, cachedComments);
 
     return {
       fetchedCommentCount: comments.length,
       cachedCommentCount: cachedComments.length,
+      refreshedAuthorAvatarCount: authorAvatars.refreshedCount,
       failed: false,
     };
   } catch (error) {
@@ -223,6 +256,7 @@ const refreshPostComments = async (
     return {
       fetchedCommentCount: 0,
       cachedCommentCount: 0,
+      refreshedAuthorAvatarCount: 0,
       failed: true,
     };
   }
@@ -268,6 +302,94 @@ const readCachedComments = async (
   return comments;
 };
 
+const readCommentAuthorAvatarUrls = async (
+  keys: CacheKeys,
+  comments: Comment[],
+  fetchedAt: Date
+): Promise<{ avatarUrls: Map<string, string | null>; refreshedCount: number }> => {
+  const usernames = getUniqueRefreshableCommentAuthorNames(comments);
+  const cachedAvatars = await readCachedCommentAuthorAvatars(keys, usernames);
+  const usernamesToRefresh = selectStaleCommentAuthorAvatarNames(
+    usernames,
+    cachedAvatars,
+    fetchedAt
+  );
+  const refreshedAvatars = await mapWithConcurrency(
+    usernamesToRefresh,
+    COMMENT_AUTHOR_AVATAR_CONCURRENCY,
+    async (username) =>
+      [
+        username,
+        {
+          avatarUrl: await getAuthorAvatarUrl(username),
+          fetchedAt: fetchedAt.toISOString(),
+        },
+      ] as const
+  );
+  const avatarFields: Record<string, string> = {};
+
+  refreshedAvatars.forEach(([username, avatar]) => {
+    cachedAvatars.set(username, avatar);
+    avatarFields[username] = JSON.stringify(avatar);
+  });
+
+  if (Object.keys(avatarFields).length > 0) {
+    await redis.hSet(keys.authors, avatarFields);
+  }
+
+  return {
+    avatarUrls: new Map(
+      [...cachedAvatars.entries()].map(([username, avatar]) => [username, avatar.avatarUrl])
+    ),
+    refreshedCount: refreshedAvatars.length,
+  };
+};
+
+const readCachedCommentAuthorAvatars = async (
+  keys: CacheKeys,
+  usernames: string[]
+): Promise<Map<string, CachedCommentAuthorAvatar>> => {
+  const avatars = new Map<string, CachedCommentAuthorAvatar>();
+
+  for (const chunk of chunkItems(usernames, REDIS_WRITE_CHUNK_SIZE)) {
+    const values = await redis.hMGet(keys.authors, chunk);
+
+    values.forEach((value, index) => {
+      const username = chunk[index];
+      const avatar = parseCachedCommentAuthorAvatar(value);
+
+      if (username && avatar) {
+        avatars.set(username, avatar);
+      }
+    });
+  }
+
+  return avatars;
+};
+
+const selectStaleCommentAuthorAvatarNames = (
+  usernames: string[],
+  avatars: Map<string, CachedCommentAuthorAvatar>,
+  fetchedAt: Date
+): string[] => {
+  const staleCutoff = fetchedAt.getTime() - COMMENT_AUTHOR_AVATAR_STALE_MS;
+  const staleUsernames: string[] = [];
+
+  for (const username of usernames) {
+    const avatar = avatars.get(username);
+
+    if (!avatar || Date.parse(avatar.fetchedAt) < staleCutoff) {
+      staleUsernames.push(username);
+    }
+
+    if (staleUsernames.length >= MAX_COMMENT_AUTHORS_TO_REFRESH_PER_POST) {
+      break;
+    }
+  }
+
+  return staleUsernames;
+};
+
 const deleteCachedComments = async (
   keys: CacheKeys,
   commentIds: string[]
@@ -305,12 +427,51 @@ const pruneOldComments = async (keys: CacheKeys, now: number): Promise<number> =
   return prunedCommentCount;
 };
 
+const pruneOldCommentAuthorAvatars = async (
+  keys: CacheKeys,
+  now: number
+): Promise<number> => {
+  const cursor = await readCommentAuthorAvatarPruneCursor(keys);
+  const scan = await redis.hScan(
+    keys.authors,
+    cursor,
+    undefined,
+    COMMENT_AUTHOR_PRUNE_SCAN_COUNT
+  );
+  const cutoff = now - COMMENT_AUTHOR_AVATAR_RETENTION_MS;
+  const staleAuthors = scan.fieldValues
+    .filter((fieldValue) => {
+      const avatar = parseCachedCommentAuthorAvatar(fieldValue.value);
+      return !avatar || Date.parse(avatar.fetchedAt) < cutoff;
+    })
+    .map((fieldValue) => fieldValue.field);
+
+  await redis.hSet(keys.meta, {
+    authorAvatarPruneCursor: String(scan.cursor),
+  });
+
+  if (staleAuthors.length > 0) {
+    await redis.hDel(keys.authors, staleAuthors);
+  }
+
+  return staleAuthors.length;
+};
+
+const readCommentAuthorAvatarPruneCursor = async (keys: CacheKeys): Promise<number> => {
+  const cursorText = await redis.hGet(keys.meta, 'authorAvatarPruneCursor');
+  const cursor = Number(cursorText);
+
+  return Number.isInteger(cursor) && cursor >= 0 ? cursor : 0;
+};
+
 const getCacheKeys = (subredditName: string): CacheKeys => {
   const keySubreddit = subredditName.toLowerCase();
 
   return {
     index: `${COMMENT_INDEX_PREFIX}:${keySubreddit}`,
     comments: `${COMMENT_DATA_PREFIX}:${keySubreddit}`,
+    authors: `${COMMENT_AUTHOR_DATA_PREFIX}:${keySubreddit}`,
+    meta: `${COMMENT_META_PREFIX}:${keySubreddit}`,
   };
 };
 
@@ -329,10 +490,14 @@ const filterVisibleComments = (
   excludedPostId: string | null
 ): CachedComment[] => comments.filter((comment) => comment.postId !== excludedPostId);
 
-const toCachedComment = (comment: Comment): CachedComment => ({
+const toCachedComment = (
+  comment: Comment,
+  authorAvatarUrl: string | null
+): CachedComment => ({
   id: comment.id,
   postId: comment.postId,
   authorName: comment.authorName,
+  authorAvatarUrl,
   score: comment.score,
   bodyPreview: createCommentPreview(comment.body),
   createdAt: comment.createdAt.toISOString(),
@@ -343,11 +508,30 @@ const toChartComment = (comment: CachedComment): ChartComment => ({
   id: comment.id,
   postId: comment.postId,
   authorName: comment.authorName,
+  authorAvatarUrl: comment.authorAvatarUrl,
   score: comment.score,
   bodyPreview: comment.bodyPreview,
   createdAt: comment.createdAt,
   permalink: comment.permalink,
 });
+
+const getUniqueRefreshableCommentAuthorNames = (comments: Comment[]): string[] =>
+  Array.from(
+    new Set(
+      comments
+        .map((comment) => comment.authorName)
+        .filter((username) => username !== '[deleted]' && username.trim() !== '')
+    )
+  );
+
+const getAuthorAvatarUrl = async (username: string): Promise<string | null> => {
+  try {
+    return (await reddit.getSnoovatarUrl(username)) ?? null;
+  } catch (error) {
+    console.warn(`Unable to load avatar for u/${username}: ${getErrorMessage(error)}`);
+    return null;
+  }
+};
 
 const createCommentPreview = (body: string): string => {
   const normalized = body.replace(/\s+/g, ' ').trim();
@@ -372,6 +556,9 @@ const parseCachedComment = (value: string | null): CachedComment | null => {
     typeof parsed.id !== 'string' ||
     typeof parsed.postId !== 'string' ||
     typeof parsed.authorName !== 'string' ||
+    (parsed.authorAvatarUrl !== undefined &&
+      parsed.authorAvatarUrl !== null &&
+      typeof parsed.authorAvatarUrl !== 'string') ||
     !isFiniteNumber(parsed.score) ||
     typeof parsed.bodyPreview !== 'string' ||
     typeof parsed.createdAt !== 'string' ||
@@ -385,10 +572,36 @@ const parseCachedComment = (value: string | null): CachedComment | null => {
     id: parsed.id,
     postId: parsed.postId,
     authorName: parsed.authorName,
+    authorAvatarUrl:
+      typeof parsed.authorAvatarUrl === 'string' ? parsed.authorAvatarUrl : null,
     score: parsed.score,
     bodyPreview: parsed.bodyPreview,
     createdAt: parsed.createdAt,
     permalink: parsed.permalink,
+  };
+};
+
+const parseCachedCommentAuthorAvatar = (
+  value: string | null
+): CachedCommentAuthorAvatar | null => {
+  if (value === null) {
+    return null;
+  }
+
+  const parsed = parseJsonRecord(value);
+
+  if (
+    !parsed ||
+    (parsed.avatarUrl !== null && typeof parsed.avatarUrl !== 'string') ||
+    typeof parsed.fetchedAt !== 'string' ||
+    Number.isNaN(Date.parse(parsed.fetchedAt))
+  ) {
+    return null;
+  }
+
+  return {
+    avatarUrl: parsed.avatarUrl,
+    fetchedAt: parsed.fetchedAt,
   };
 };
 
@@ -410,6 +623,28 @@ const sumRefreshCount = (
   results: PostCommentsRefreshResult[],
   readCount: (result: PostCommentsRefreshResult) => number
 ): number => results.reduce((total, result) => total + readCount(result), 0);
+
+const mapWithConcurrency = async <Input, Output>(
+  items: Input[],
+  limit: number,
+  mapper: (item: Input) => Promise<Output>
+): Promise<Output[]> => {
+  const results = new Array<Output | undefined>(items.length);
+  let nextIndex = 0;
+  const workerCount = Math.min(limit, items.length);
+
+  await Promise.all(
+    Array.from({ length: workerCount }, async () => {
+      while (nextIndex < items.length) {
+        const index = nextIndex;
+        nextIndex += 1;
+        results[index] = await mapper(items[index]!);
+      }
+    })
+  );
+
+  return results.filter((result): result is Output => result !== undefined);
+};
 
 const chunkItems = <Item>(items: Item[], size: number): Item[][] => {
   const chunks: Item[][] = [];
