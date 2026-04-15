@@ -127,7 +127,7 @@ select {
   top: calc(100% + 8px);
   right: 0;
   display: grid;
-  width: 116px;
+  width: 132px;
   padding: 6px;
   border: 1px solid rgba(22, 51, 45, 0.14);
   border-radius: 8px;
@@ -334,13 +334,21 @@ select {
 }
 
 .stats-panel {
-  display: grid;
+  display: flex;
   height: 100%;
   min-height: 0;
-  place-content: center;
-  gap: 8px;
+  align-items: center;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 28px;
   overflow: hidden;
+  padding: 18px;
   text-align: center;
+}
+
+.stats-panel__item {
+  display: grid;
+  gap: 8px;
 }
 
 .stats-panel span {

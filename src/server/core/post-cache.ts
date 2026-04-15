@@ -44,6 +44,19 @@ export type PostCacheRefreshResult = {
   generatedAt: string;
 };
 
+export type CachedPostIdReadOptions = {
+  subredditName: string;
+  startTime: number;
+  endTime: number;
+  excludedPostId?: string | null;
+};
+
+export type CachedPostIdReadResult = {
+  lastSuccessAt: string | null;
+  lastError: string | null;
+  postIds: `t3_${string}`[];
+};
+
 type CacheKeys = {
   index: string;
   posts: string;
@@ -74,12 +87,20 @@ export const readPostsForTimeframe = async ({
   excludedPostId,
 }: PostCacheReadOptions): Promise<PostCacheReadResult> => {
   const keys = getCacheKeys(subredditName);
-  const [lastSuccessAt, lastError, lastFetchedPostCount, indexedPosts] = await Promise.all([
-    redis.hGet(keys.meta, 'lastSuccessAt'),
-    redis.hGet(keys.meta, 'lastError'),
-    redis.hGet(keys.meta, 'lastFetchedPostCount'),
-    redis.zRange(keys.index, startTime, endTime, { by: 'score' }),
-  ]);
+  const lastSuccessAt = await redis.hGet(keys.meta, 'lastSuccessAt');
+  const lastError = await redis.hGet(keys.meta, 'lastError');
+
+  if (!lastSuccessAt) {
+    return {
+      lastSuccessAt: null,
+      lastError: lastError ?? null,
+      sampledPostCount: 0,
+      posts: [],
+    };
+  }
+
+  const lastFetchedPostCount = await redis.hGet(keys.meta, 'lastFetchedPostCount');
+  const indexedPosts = await redis.zRange(keys.index, startTime, endTime, { by: 'score' });
   const postIds = indexedPosts
     .map((post) => post.member)
     .filter((postId) => postId !== excludedPostId);
@@ -167,6 +188,38 @@ const getCacheKeys = (subredditName: string): CacheKeys => {
     posts: `${POST_DATA_PREFIX}:${keySubreddit}`,
     authors: `${AUTHOR_DATA_PREFIX}:${keySubreddit}`,
     meta: `${CACHE_META_PREFIX}:${keySubreddit}`,
+  };
+};
+
+export const readCachedPostIdsForTimeframe = async ({
+  subredditName,
+  startTime,
+  endTime,
+  excludedPostId = null,
+}: CachedPostIdReadOptions): Promise<CachedPostIdReadResult> => {
+  const keys = getCacheKeys(subredditName);
+  const lastSuccessAt = await redis.hGet(keys.meta, 'lastSuccessAt');
+  const lastError = await redis.hGet(keys.meta, 'lastError');
+
+  if (!lastSuccessAt) {
+    return {
+      lastSuccessAt: null,
+      lastError: lastError ?? null,
+      postIds: [],
+    };
+  }
+
+  const indexedPosts = await redis.zRange(keys.index, startTime, endTime, { by: 'score' });
+  const postIds = indexedPosts
+    .map((post) => post.member)
+    .filter(
+      (postId): postId is `t3_${string}` => postId !== excludedPostId && isPostId(postId)
+    );
+
+  return {
+    lastSuccessAt,
+    lastError: lastError ?? null,
+    postIds,
   };
 };
 
@@ -525,6 +578,9 @@ const parseCachedAuthorMetadata = (value: string | null): CachedAuthorMetadata |
 
 const isNullableFiniteNumber = (value: unknown): value is number | null =>
   value === null || (typeof value === 'number' && Number.isFinite(value));
+
+const isPostId = (value: string): value is `t3_${string}` =>
+  value.startsWith('t3_') && value.length > 3;
 
 const parseJsonRecord = (value: string): Record<string, unknown> | null => {
   try {

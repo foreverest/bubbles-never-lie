@@ -15,6 +15,7 @@ import { createRoot } from 'react-dom/client';
 import { AUTHOR_SUBREDDIT_KARMA_BUCKET_COUNT } from '../shared/api';
 import type {
   AuthorSubredditKarmaBucket,
+  ChartComment,
   ChartDataResponse,
   ErrorResponse,
 } from '../shared/api';
@@ -32,7 +33,7 @@ type LoadState =
   | { status: 'ready'; data: ChartDataResponse }
   | { status: 'error'; message: string };
 
-type TabName = 'posts' | 'stats';
+type TabName = 'posts' | 'comments' | 'stats';
 
 type BubbleDatum = {
   value: [createdAtTime: number, score: number];
@@ -44,6 +45,20 @@ type BubbleDatum = {
   authorAvatarUrl: string | null;
   createdAt: string;
   permalink: string;
+};
+
+type CommentBubbleDatum = {
+  value: [createdAtTime: number, score: number];
+  score: number;
+  bodyPreview: string;
+  authorName: string;
+  permalink: string;
+  postId: string;
+};
+
+type CommentGroup = {
+  postId: string;
+  comments: CommentBubbleDatum[];
 };
 
 type TimeRange = {
@@ -72,6 +87,19 @@ const KARMA_BUCKET_COLORS = [
   '#e2d13f',
   '#ffb703',
 ];
+const COMMENT_BUBBLE_SIZE = 7;
+const COMMENT_GROUP_COLORS = [
+  '#2d6cdf',
+  '#0f8b8d',
+  '#5ca760',
+  '#f2b84b',
+  '#e85d75',
+  '#7b61ff',
+  '#00a676',
+  '#d96c06',
+  '#c44569',
+  '#607d3b',
+];
 
 function App() {
   const [state, setState] = useState<LoadState>({ status: 'loading' });
@@ -81,7 +109,7 @@ function App() {
   useEffect(() => {
     let cancelled = false;
 
-    async function loadPosts() {
+    async function loadChartData() {
       try {
         const response = await fetch('/api/posts');
         const body = (await response.json()) as ChartDataResponse | ErrorResponse;
@@ -91,9 +119,10 @@ function App() {
         }
 
         if (!response.ok || 'status' in body) {
+          console.error('Error response from /api/posts:', body);
           setState({
             status: 'error',
-            message: 'message' in body ? body.message : 'Unable to load posts.',
+            message: 'message' in body ? body.message : 'Unable to load chart data.',
           });
           return;
         }
@@ -101,15 +130,16 @@ function App() {
         setState({ status: 'ready', data: body });
       } catch (error) {
         if (!cancelled) {
+          console.error('Error loading chart data:', error);
           setState({
             status: 'error',
-            message: error instanceof Error ? error.message : 'Unable to load posts.',
+            message: error instanceof Error ? error.message : 'Unable to load chart data.',
           });
         }
       }
     }
 
-    void loadPosts();
+    void loadChartData();
 
     return () => {
       cancelled = true;
@@ -119,7 +149,7 @@ function App() {
   if (state.status === 'loading') {
     return (
       <main className="app-shell app-shell--centered">
-        <p className="status-text">Loading subreddit posts...</p>
+        <p className="status-text">Loading subreddit chart data...</p>
       </main>
     );
   }
@@ -129,7 +159,7 @@ function App() {
       <main className="app-shell app-shell--centered">
         <section className="message-panel" aria-live="polite">
           <p className="eyebrow">Bubble stats</p>
-          <h1>Posts could not be loaded.</h1>
+          <h1>Chart data could not be loaded.</h1>
           <p>{state.message}</p>
         </section>
       </main>
@@ -138,6 +168,7 @@ function App() {
 
   const { data } = state;
   const postCount = data.posts.length;
+  const commentCount = data.comments.length;
 
   return (
     <main className="app-shell">
@@ -161,10 +192,27 @@ function App() {
               </div>
             )}
           </section>
+        ) : activeTab === 'comments' ? (
+          <section className="chart-panel" id="comments-panel" aria-label="Comments">
+            {commentCount > 0 ? (
+              <CommentsChart data={data} zoomEnabled={zoomEnabled} />
+            ) : (
+              <div className="empty-state">
+                <p>No comments matched this timeframe.</p>
+                <span>Try a wider date range from the create-post menu.</span>
+              </div>
+            )}
+          </section>
         ) : (
           <section className="chart-panel stats-panel" id="stats-panel" aria-label="Stats">
-            <span>Posts</span>
-            <strong>{postCount.toLocaleString()}</strong>
+            <div className="stats-panel__item">
+              <span>Posts</span>
+              <strong>{postCount.toLocaleString()}</strong>
+            </div>
+            <div className="stats-panel__item">
+              <span>Comments</span>
+              <strong>{commentCount.toLocaleString()}</strong>
+            </div>
           </section>
         )}
       </section>
@@ -189,7 +237,7 @@ function ChartHeader({
   const [settingsOpen, setSettingsOpen] = useState(false);
   const sectionMenuRef = useRef<HTMLDivElement | null>(null);
   const settingsRef = useRef<HTMLDivElement | null>(null);
-  const activeTabLabel = activeTab === 'posts' ? 'Posts' : 'Stats';
+  const activeTabLabel = getTabLabel(activeTab);
 
   useEffect(() => {
     if (!sectionMenuOpen && !settingsOpen) {
@@ -305,6 +353,19 @@ function ChartHeader({
                 type="button"
               >
                 Posts
+              </button>
+              <button
+                aria-checked={activeTab === 'comments'}
+                className={
+                  activeTab === 'comments'
+                    ? 'chart-section-menu__item chart-section-menu__item--active'
+                    : 'chart-section-menu__item'
+                }
+                onClick={() => handleSectionSelect('comments')}
+                role="menuitemradio"
+                type="button"
+              >
+                Comments
               </button>
               <button
                 aria-checked={activeTab === 'stats'}
@@ -479,6 +540,92 @@ function BubbleChart({ data, zoomEnabled }: { data: ChartDataResponse; zoomEnabl
   );
 }
 
+function CommentsChart({
+  data,
+  zoomEnabled,
+}: {
+  data: ChartDataResponse;
+  zoomEnabled: boolean;
+}) {
+  const containerRef = useRef<HTMLDivElement | null>(null);
+  const chartRef = useRef<echarts.EChartsType | null>(null);
+  const chartData = useMemo<CommentBubbleDatum[]>(
+    () => data.comments.map(toCommentBubbleDatum),
+    [data.comments]
+  );
+
+  useEffect(() => {
+    if (!containerRef.current) {
+      return;
+    }
+
+    const container = containerRef.current;
+    const chart = echarts.init(container, undefined, { renderer: 'canvas' });
+    chartRef.current = chart;
+    let resizeFrame = 0;
+
+    const handleChartClick = (params: { data?: unknown }) => {
+      const datum = getCommentBubbleDatum(params.data);
+      if (!datum) {
+        return;
+      }
+
+      openPost(datum.permalink);
+    };
+
+    chart.on('click', handleChartClick);
+
+    const resizeChart = () => {
+      if (resizeFrame) {
+        return;
+      }
+
+      resizeFrame = window.requestAnimationFrame(() => {
+        resizeFrame = 0;
+        chart.resize();
+      });
+    };
+    const resizeObserver = new ResizeObserver(resizeChart);
+    resizeObserver.observe(container);
+    window.addEventListener('resize', resizeChart);
+    window.visualViewport?.addEventListener('resize', resizeChart);
+
+    return () => {
+      if (resizeFrame) {
+        window.cancelAnimationFrame(resizeFrame);
+      }
+
+      chart.off('click', handleChartClick);
+      resizeObserver.disconnect();
+      window.removeEventListener('resize', resizeChart);
+      window.visualViewport?.removeEventListener('resize', resizeChart);
+      chart.dispose();
+      chartRef.current = null;
+    };
+  }, []);
+
+  useEffect(() => {
+    const chart = chartRef.current;
+    if (!chart) {
+      return;
+    }
+
+    chart.setOption(
+      createCommentsOption(chartData, data, zoomEnabled, () => readVisibleTimeRange(chart)),
+      true
+    );
+  }, [chartData, data, zoomEnabled]);
+
+  return (
+    <div
+      className="chart-stage"
+      ref={containerRef}
+      role="img"
+      aria-label={`Comments in r/${data.subredditName} plotted by creation time and upvotes`}
+    />
+  );
+}
+
 function createBubbleOption(
   data: BubbleDatum[],
   chartData: ChartDataResponse,
@@ -631,6 +778,146 @@ function createBubbleOption(
   return option;
 }
 
+function createCommentsOption(
+  data: CommentBubbleDatum[],
+  chartData: ChartDataResponse,
+  zoomEnabled: boolean,
+  getVisibleTimeRange?: GetVisibleTimeRange
+): EChartsCoreOption {
+  const minScore = Math.min(0, ...data.map((datum) => datum.score));
+  const startTime = Date.parse(chartData.timeframe.startIso);
+  const endTime = Date.parse(chartData.timeframe.endIso);
+  const commentGroups = groupCommentsByPost(data);
+  const option: EChartsCoreOption = {
+    grid: {
+      top: 24,
+      right: 16,
+      bottom: 28,
+      left: 42,
+      containLabel: true,
+    },
+    tooltip: {
+      trigger: 'item',
+      confine: true,
+      borderWidth: 0,
+      backgroundColor: '#101010',
+      textStyle: {
+        color: '#ffffff',
+      },
+      extraCssText: 'border-radius:8px;box-shadow:0 12px 30px rgba(0,0,0,0.28);padding:0;',
+      formatter(params: { data?: unknown }) {
+        const datum = getCommentBubbleDatum(params.data);
+        if (!datum) {
+          return '';
+        }
+
+        return [
+          '<article class="chart-tooltip chart-tooltip--comment">',
+          '<div class="chart-tooltip__meta">',
+          `<span class="chart-tooltip__username">u/${escapeHtml(datum.authorName)}</span>`,
+          '</div>',
+          `<strong class="chart-tooltip__title">${escapeHtml(datum.bodyPreview)}</strong>`,
+          '<div class="chart-tooltip__stats">',
+          `<span class="chart-tooltip__stat">${UPVOTE_ICON}${datum.score.toLocaleString()} upvotes</span>`,
+          '</div>',
+          '</article>',
+        ].join('');
+      },
+    },
+    xAxis: {
+      type: 'time',
+      min: startTime,
+      max: endTime,
+      splitLine: {
+        show: true,
+        lineStyle: {
+          type: 'dashed',
+          color: '#e3ece8',
+        },
+      },
+      axisLine: {
+        show: true,
+        lineStyle: {
+          color: '#9ab0a8',
+        },
+      },
+      axisLabel: {
+        margin: 14,
+        formatter: (value: number, tickIndex: number) =>
+          formatXAxisLabel(
+            value,
+            tickIndex,
+            { start: startTime, end: endTime },
+            getVisibleTimeRange?.() ?? null
+          ),
+        showMinLabel: true,
+        alignMinLabel: 'center',
+        showMaxLabel: true,
+        alignMaxLabel: 'center',
+      },
+    },
+    yAxis: {
+      name: 'Upvotes',
+      nameLocation: 'middle',
+      nameGap: 40,
+      type: 'value',
+      min: minScore,
+      minInterval: 1,
+      splitLine: {
+        show: true,
+        lineStyle: {
+          type: 'dashed',
+          color: '#e3ece8',
+        },
+      },
+      axisLine: {
+        show: true,
+        lineStyle: {
+          color: '#9ab0a8',
+        },
+      },
+    },
+    series: commentGroups.map((group) => ({
+      name: group.postId,
+      type: 'scatter',
+      cursor: 'pointer',
+      data: group.comments,
+      symbolSize: COMMENT_BUBBLE_SIZE,
+      itemStyle: {
+        borderColor: '#ffffff',
+        borderWidth: 1,
+        color: getCommentGroupColor(group.postId),
+        opacity: 0.62,
+      },
+      emphasis: {
+        focus: 'series',
+        scale: 1.8,
+        itemStyle: {
+          borderWidth: 2,
+          opacity: 0.92,
+          shadowBlur: 10,
+          shadowColor: 'rgba(22, 51, 45, 0.25)',
+        },
+      },
+      blur: {
+        itemStyle: {
+          opacity: 0.12,
+        },
+      },
+    })),
+  };
+
+  if (zoomEnabled) {
+    option.dataZoom = {
+      type: 'inside',
+      filterMode: 'none',
+      minSpan: 10,
+    };
+  }
+
+  return option;
+}
+
 function readVisibleTimeRange(chart: echarts.EChartsType): TimeRange | null {
   const option = chart.getOption() as { dataZoom?: unknown };
   const dataZoomOptions = Array.isArray(option.dataZoom) ? option.dataZoom : [option.dataZoom];
@@ -701,6 +988,48 @@ function isMidnight(date: Date): boolean {
   );
 }
 
+function getTabLabel(tab: TabName): string {
+  switch (tab) {
+    case 'posts':
+      return 'Posts';
+    case 'comments':
+      return 'Comments';
+    case 'stats':
+      return 'Stats';
+  }
+}
+
+function toCommentBubbleDatum(comment: ChartComment): CommentBubbleDatum {
+  return {
+    value: [Date.parse(comment.createdAt), comment.score],
+    score: comment.score,
+    bodyPreview: comment.bodyPreview,
+    authorName: comment.authorName,
+    permalink: comment.permalink,
+    postId: comment.postId,
+  };
+}
+
+function groupCommentsByPost(data: CommentBubbleDatum[]): CommentGroup[] {
+  const groups = new Map<string, CommentGroup>();
+
+  data.forEach((datum) => {
+    const group = groups.get(datum.postId);
+
+    if (group) {
+      group.comments.push(datum);
+      return;
+    }
+
+    groups.set(datum.postId, {
+      postId: datum.postId,
+      comments: [datum],
+    });
+  });
+
+  return [...groups.values()].sort((a, b) => a.postId.localeCompare(b.postId));
+}
+
 function getBubbleDatum(value: unknown): BubbleDatum | null {
   if (!value || typeof value !== 'object') {
     return null;
@@ -726,6 +1055,28 @@ function getBubbleDatum(value: unknown): BubbleDatum | null {
   return value as BubbleDatum;
 }
 
+function getCommentBubbleDatum(value: unknown): CommentBubbleDatum | null {
+  if (!value || typeof value !== 'object') {
+    return null;
+  }
+
+  const datum = value as Partial<Record<keyof CommentBubbleDatum, unknown>>;
+  if (
+    !Array.isArray(datum.value) ||
+    typeof datum.value[0] !== 'number' ||
+    typeof datum.value[1] !== 'number' ||
+    typeof datum.score !== 'number' ||
+    typeof datum.bodyPreview !== 'string' ||
+    typeof datum.authorName !== 'string' ||
+    typeof datum.permalink !== 'string' ||
+    typeof datum.postId !== 'string'
+  ) {
+    return null;
+  }
+
+  return value as CommentBubbleDatum;
+}
+
 function isAuthorSubredditKarmaBucket(
   value: unknown
 ): value is AuthorSubredditKarmaBucket | null {
@@ -742,6 +1093,20 @@ function getKarmaBucketColor(bucket: AuthorSubredditKarmaBucket | null): string 
   return bucket === null
     ? UNKNOWN_KARMA_COLOR
     : KARMA_BUCKET_COLORS[bucket] ?? UNKNOWN_KARMA_COLOR;
+}
+
+function getCommentGroupColor(postId: string): string {
+  return COMMENT_GROUP_COLORS[hashString(postId) % COMMENT_GROUP_COLORS.length] ?? '#0f8b8d';
+}
+
+function hashString(value: string): number {
+  let hash = 0;
+
+  for (const symbol of value) {
+    hash = (hash * 31 + symbol.codePointAt(0)!) >>> 0;
+  }
+
+  return hash;
 }
 
 function formatRelativeAge(date: Date): string {

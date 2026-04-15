@@ -1,13 +1,14 @@
 import { context } from '@devvit/web/server';
 import { Hono } from 'hono';
 import type { ChartDataResponse, ErrorResponse } from '../../shared/api';
+import { readCommentsForTimeframe } from '../core/comment-cache';
 import { readPostsForTimeframe } from '../core/post-cache';
 import { readCachedSubredditIconUrl } from '../core/subreddit-icons';
 import { resolveChartDataSubredditName } from '../core/subreddits';
 import { readTimeframePostData } from '../core/timeframe';
 
 export const api = new Hono();
-const chartDataErrorMessage = 'Unable to load subreddit posts. Try again shortly.';
+const chartDataErrorMessage = 'Unable to load subreddit chart data. Try again shortly.';
 
 api.get('/posts', async (c) => {
   const timeframe = readTimeframePostData(context.postData);
@@ -30,15 +31,12 @@ api.get('/posts', async (c) => {
   const endTime = timeframe.end.getTime();
 
   try {
-    const [cachedPosts, subredditIconUrl] = await Promise.all([
-      readPostsForTimeframe({
-        subredditName,
-        startTime,
-        endTime,
-        excludedPostId: context.postId ?? null,
-      }),
-      readCachedSubredditIconUrl(subredditName),
-    ]);
+    const cachedPosts = await readPostsForTimeframe({
+      subredditName,
+      startTime,
+      endTime,
+      excludedPostId: context.postId ?? null,
+    });
 
     if (!cachedPosts.lastSuccessAt) {
       if (cachedPosts.lastError) {
@@ -54,6 +52,31 @@ api.get('/posts', async (c) => {
       );
     }
 
+    const cachedComments = await readCommentsForTimeframe({
+      subredditName,
+      startTime,
+      endTime,
+      excludedPostId: context.postId ?? null,
+    });
+
+    if (!cachedComments.lastSuccessAt) {
+      if (cachedComments.lastError) {
+        console.warn(
+          `Comment cache is not warm. Last refresh error: ${cachedComments.lastError}`
+        );
+      }
+
+      return c.json<ErrorResponse>(
+        {
+          status: 'error',
+          message: 'The comment cache is warming. Try again shortly.',
+        },
+        503
+      );
+    }
+
+    const subredditIconUrl = await readCachedSubredditIconUrl(subredditName);
+
     return c.json<ChartDataResponse>(
       {
         type: 'chart-data',
@@ -62,7 +85,9 @@ api.get('/posts', async (c) => {
         timeframe: timeframe.postData,
         generatedAt: new Date().toISOString(),
         sampledPostCount: cachedPosts.sampledPostCount,
+        sampledCommentCount: cachedComments.sampledCommentCount,
         posts: cachedPosts.posts,
+        comments: cachedComments.comments,
       },
       200
     );
@@ -80,4 +105,4 @@ api.get('/posts', async (c) => {
 });
 
 const getErrorMessage = (error: unknown): string =>
-  error instanceof Error ? error.message : String(error) || 'Unable to load subreddit posts.';
+  error instanceof Error ? error.message : String(error) || chartDataErrorMessage;

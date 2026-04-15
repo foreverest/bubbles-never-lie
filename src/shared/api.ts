@@ -27,6 +27,16 @@ export type ChartPost = {
   permalink: string;
 };
 
+export type ChartComment = {
+  id: string;
+  postId: string;
+  authorName: string;
+  score: number;
+  bodyPreview: string;
+  createdAt: string;
+  permalink: string;
+};
+
 export type ChartDataResponse = {
   type: 'chart-data';
   subredditName: string;
@@ -34,7 +44,9 @@ export type ChartDataResponse = {
   timeframe: TimeframePostData;
   generatedAt: string;
   sampledPostCount: number;
+  sampledCommentCount: number;
   posts: ChartPost[];
+  comments: ChartComment[];
 };
 
 export type ErrorResponse = {

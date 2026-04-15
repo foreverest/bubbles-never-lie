@@ -26,7 +26,7 @@
     "items": [
       {
         "label": "Create bubble stats post",
-        "description": "Chart subreddit posts by comments and upvotes",
+        "description": "Chart subreddit posts and comments by activity",
         "location": "subreddit",
         "forUserType": "user",
         "endpoint": "/internal/menu/create-chart"
@@ -45,6 +45,10 @@
       "refreshPostCache": {
         "endpoint": "/internal/cache/refresh-post-cache",
         "cron": "* * * * *"
+      },
+      "refreshCommentCache": {
+        "endpoint": "/internal/cache/refresh-comment-cache",
+        "cron": "0 * * * *"
       },
       "refreshSubredditIcons": {
         "endpoint": "/internal/cache/refresh-subreddit-icons",
