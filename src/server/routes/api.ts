@@ -38,20 +38,7 @@ api.get('/posts', async (c) => {
       subredditName: chartContext.subredditName,
       startTime: chartContext.startTime,
       endTime: chartContext.endTime,
-      excludedPostId: chartContext.excludedPostId,
     });
-
-    if (!cachedPosts.lastSuccessAt) {
-      logCacheWarming('Post', cachedPosts.lastError);
-
-      return c.json<ErrorResponse>(
-        {
-          status: 'error',
-          message: 'The post cache is warming. Try again shortly.',
-        },
-        503
-      );
-    }
 
     return c.json<PostsChartDataResponse>(
       {
@@ -92,7 +79,6 @@ api.get('/comments', async (c) => {
       subredditName: chartContext.subredditName,
       startTime: chartContext.startTime,
       endTime: chartContext.endTime,
-      excludedPostId: chartContext.excludedPostId,
     });
 
     return c.json<CommentsChartDataResponse>(
@@ -135,27 +121,13 @@ api.get('/stats', async (c) => {
         subredditName: chartContext.subredditName,
         startTime: chartContext.startTime,
         endTime: chartContext.endTime,
-        excludedPostId: chartContext.excludedPostId,
       }),
       readCommentCountForTimeframe({
         subredditName: chartContext.subredditName,
         startTime: chartContext.startTime,
         endTime: chartContext.endTime,
-        excludedPostId: chartContext.excludedPostId,
       }),
     ]);
-
-    if (!posts.lastSuccessAt) {
-      logCacheWarming('Post', posts.lastError);
-
-      return c.json<ErrorResponse>(
-        {
-          status: 'error',
-          message: 'The post cache is warming. Try again shortly.',
-        },
-        503
-      );
-    }
 
     return c.json<StatsDataResponse>(
       {
@@ -183,7 +155,6 @@ type ChartContext = {
   timeframe: ValidatedTimeframePostData;
   startTime: number;
   endTime: number;
-  excludedPostId: string | null;
 };
 
 const readChartContext = (): ChartContext | null => {
@@ -201,7 +172,6 @@ const readChartContext = (): ChartContext | null => {
     timeframe,
     startTime: timeframe.start.getTime(),
     endTime: timeframe.end.getTime(),
-    excludedPostId: context.postId ?? null,
   };
 };
 
@@ -214,14 +184,6 @@ const createChartMetadata = async ({
   timeframe: timeframe.postData,
   generatedAt: new Date().toISOString(),
 });
-
-const logCacheWarming = (cacheName: 'Post', lastError: string | null): void => {
-  if (!lastError) {
-    return;
-  }
-
-  console.warn(`${cacheName} cache is not warm. Last refresh error: ${lastError}`);
-};
 
 const getErrorMessage = (error: unknown, fallback: string): string =>
   error instanceof Error ? error.message : String(error) || fallback;
