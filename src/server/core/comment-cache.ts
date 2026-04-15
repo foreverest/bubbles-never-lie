@@ -5,7 +5,6 @@ import { readCachedPostIdsForTimeframe } from './post-cache';
 
 const COMMENT_INDEX_PREFIX = 'bubble-stats:comments:index';
 const COMMENT_DATA_PREFIX = 'bubble-stats:comments:data';
-const COMMENT_POST_INDEX_PREFIX = 'bubble-stats:comments:post-index';
 const CACHE_META_PREFIX = 'bubble-stats:comments:meta';
 const REDIS_WRITE_CHUNK_SIZE = 100;
 const COMMENT_PRUNE_BATCH_SIZE = 500;
@@ -39,7 +38,6 @@ export type CommentCacheRefreshResult = {
   failedPostCount: number;
   fetchedCommentCount: number;
   cachedCommentCount: number;
-  removedStaleCommentCount: number;
   prunedCommentCount: number;
   generatedAt: string;
 };
@@ -47,7 +45,6 @@ export type CommentCacheRefreshResult = {
 type CacheKeys = {
   index: string;
   comments: string;
-  postComments: string;
   meta: string;
 };
 
@@ -64,7 +61,6 @@ type CachedComment = {
 type PostCommentsRefreshResult = {
   fetchedCommentCount: number;
   cachedCommentCount: number;
-  removedStaleCommentCount: number;
   failed: boolean;
 };
 
@@ -151,10 +147,6 @@ export const refreshCommentCache = async (
       refreshResults,
       (result) => result.cachedCommentCount
     );
-    const removedStaleCommentCount = sumRefreshCount(
-      refreshResults,
-      (result) => result.removedStaleCommentCount
-    );
     const prunedCommentCount = await pruneOldComments(keys, fetchedAt.getTime());
     const generatedAt = new Date().toISOString();
     const metaFields: Record<string, string> = {
@@ -163,7 +155,6 @@ export const refreshCommentCache = async (
       lastFailedPostCount: String(failedPostCount),
       lastFetchedCommentCount: String(fetchedCommentCount),
       lastCachedCommentCount: String(cachedCommentCount),
-      lastRemovedStaleCommentCount: String(removedStaleCommentCount),
       lastPrunedCommentCount: String(prunedCommentCount),
     };
 
@@ -183,7 +174,6 @@ export const refreshCommentCache = async (
       failedPostCount,
       fetchedCommentCount,
       cachedCommentCount,
-      removedStaleCommentCount,
       prunedCommentCount,
       generatedAt,
     };
@@ -223,23 +213,17 @@ const refreshPostComments = async (
     const comments = await reddit
       .getComments({
         postId,
-        limit: 1000,
-        pageSize: 100,
+        limit: 10,
+        pageSize: 10,
       })
       .all();
     console.log(`Fetched ${comments.length} comments for post ${postId}. Caching...`);
     const cachedComments = comments.map(toCachedComment);
-    const removedStaleCommentCount = await replaceCachedPostComments(
-      keys,
-      postId,
-      cachedComments
-    );
-    // console.log(`Removed ${removedStaleCommentCount} stale comments from cache for post ${postId}.`);
+    await writeCachedComments(keys, cachedComments);
 
     return {
       fetchedCommentCount: comments.length,
       cachedCommentCount: cachedComments.length,
-      removedStaleCommentCount,
       failed: false,
     };
   } catch (error) {
@@ -248,33 +232,9 @@ const refreshPostComments = async (
     return {
       fetchedCommentCount: 0,
       cachedCommentCount: 0,
-      removedStaleCommentCount: 0,
       failed: true,
     };
   }
-};
-
-const replaceCachedPostComments = async (
-  keys: CacheKeys,
-  postId: string,
-  comments: CachedComment[]
-): Promise<number> => {
-  const previousCommentIds = parseCachedCommentIds(
-    (await redis.hGet(keys.postComments, postId)) ?? null
-  );
-  const currentCommentIds = comments.map((comment) => comment.id);
-  const currentCommentIdSet = new Set(currentCommentIds);
-  const staleCommentIds = previousCommentIds.filter(
-    (commentId) => !currentCommentIdSet.has(commentId)
-  );
-
-  await writeCachedComments(keys, comments);
-  await redis.hSet(keys.postComments, {
-    [postId]: JSON.stringify(currentCommentIds),
-  });
-  await deleteCachedComments(keys, staleCommentIds);
-
-  return staleCommentIds.length;
 };
 
 const writeCachedComments = async (
@@ -360,7 +320,6 @@ const getCacheKeys = (subredditName: string): CacheKeys => {
   return {
     index: `${COMMENT_INDEX_PREFIX}:${keySubreddit}`,
     comments: `${COMMENT_DATA_PREFIX}:${keySubreddit}`,
-    postComments: `${COMMENT_POST_INDEX_PREFIX}:${keySubreddit}`,
     meta: `${CACHE_META_PREFIX}:${keySubreddit}`,
   };
 };
@@ -448,21 +407,6 @@ const parseCachedComment = (value: string | null): CachedComment | null => {
     createdAt: parsed.createdAt,
     permalink: parsed.permalink,
   };
-};
-
-const parseCachedCommentIds = (value: string | null): string[] => {
-  if (value === null) {
-    return [];
-  }
-
-  try {
-    const parsed = JSON.parse(value) as unknown;
-    return Array.isArray(parsed)
-      ? parsed.filter((commentId): commentId is string => typeof commentId === 'string')
-      : [];
-  } catch {
-    return [];
-  }
 };
 
 const parseJsonRecord = (value: string): Record<string, unknown> | null => {
