@@ -435,79 +435,95 @@ select {
   font-weight: 800;
 }
 
-.chart-tooltip__stat {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-}
-
-.chart-tooltip__stat-icon {
-  width: 14px;
-  height: 14px;
-  flex: 0 0 auto;
-}
-
-.chart-tooltip--post {
+.chart-tooltip--light {
   color: #0f1419;
 }
 
-.chart-tooltip--post .chart-tooltip__meta {
+.chart-tooltip--light .chart-tooltip__meta {
   color: #57616a;
 }
 
-.chart-tooltip--post .chart-tooltip__avatar {
+.chart-tooltip--light .chart-tooltip__avatar {
   border-color: #d7dadc;
   background: rgb(235, 237, 239);
 }
 
-.chart-tooltip--post .chart-tooltip__username,
-.chart-tooltip--post .chart-tooltip__title {
+.chart-tooltip--light .chart-tooltip__username,
+.chart-tooltip--light .chart-tooltip__title {
   color: #0f1419;
 }
 
-.chart-tooltip--post .chart-tooltip__separator {
+.chart-tooltip--light .chart-tooltip__separator {
   font-size: 0.95rem;
   color: black;
   line-height: 1;
 }
 
-.chart-tooltip--post .chart-tooltip__age {
+.chart-tooltip--light .chart-tooltip__age {
   color: #57616a;
   font-weight: 400;
 }
 
-.chart-tooltip--post .chart-tooltip__stats {
+.chart-tooltip--light .chart-tooltip__stats {
   gap: 12px;
   color: #0f1419;
   font-size: 0.95rem;
 }
 
-.chart-tooltip__post-counter {
+.chart-tooltip__metric {
   display: inline-flex;
   min-width: 0;
-  height: 32px;
   align-items: center;
   justify-content: center;
   gap: 8px;
-  padding: 0 10px;
-  border-radius: 999px;
-  background: rgb(235, 237, 239);
   color: #0f1419;
   font-weight: 700;
   line-height: 1;
   white-space: nowrap;
 }
 
-.chart-tooltip__post-counter-value {
+.chart-tooltip__metric--pill {
+  height: 32px;
+  padding: 0 10px;
+  border-radius: 999px;
+  background: rgb(235, 237, 239);
+}
+
+.chart-tooltip__metric--inline-vote {
+  height: 20px;
+}
+
+.chart-tooltip__metric--inline-labeled {
+  height: 20px;
+  gap: 4px;
+}
+
+.chart-tooltip__metric-value {
   font-size: 12px;
   font-weight: 600;
   overflow-wrap: normal;
 }
 
-.chart-tooltip__post-stat-icon {
+.chart-tooltip__metric-label {
+  font-size: 12px;
+  font-weight: 600;
+  overflow-wrap: normal;
+}
+
+.chart-tooltip__metric-icon {
   width: 16px;
   height: 16px;
   flex: 0 0 auto;
+}
+
+.chart-tooltip__author-line {
+  gap: 10px;
+}
+
+.chart-tooltip--author .chart-tooltip__metric,
+.chart-tooltip--author .chart-tooltip__metric-value,
+.chart-tooltip--author .chart-tooltip__metric-label {
+  font-weight: 400;
 }
 
 .empty-state,
