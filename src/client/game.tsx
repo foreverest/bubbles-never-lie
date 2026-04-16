@@ -23,6 +23,7 @@ import type {
   ErrorResponse,
   PostsChartDataResponse,
   StatsDataResponse,
+  TimeframePostData,
 } from '../shared/api';
 
 echarts.use([
@@ -126,6 +127,13 @@ const COMMENT_GROUP_COLORS = [
   '#c44569',
   '#607d3b',
 ];
+const DATE_ONLY_PATTERN = /^(\d{4})-(\d{2})-(\d{2})$/;
+const DATE_ONLY_FORMATTER = new Intl.DateTimeFormat('en-US', {
+  month: 'short',
+  day: 'numeric',
+  year: 'numeric',
+  timeZone: 'UTC',
+});
 
 function App() {
   const isMountedRef = useRef(true);
@@ -331,7 +339,11 @@ function PostsPanel({
       {data.posts.length > 0 ? (
         <BubbleChart data={data} zoomEnabled={zoomEnabled} />
       ) : (
-        <EmptyState message="No posts matched this timeframe." />
+        <EmptyState
+          contentLabel="posts"
+          subredditName={data.subredditName}
+          timeframe={data.timeframe}
+        />
       )}
     </section>
   );
@@ -350,7 +362,11 @@ function CommentsPanel({
         state.data.comments.length > 0 ? (
           <CommentsChart data={state.data} zoomEnabled={zoomEnabled} />
         ) : (
-          <EmptyState message="No comments matched this timeframe." />
+          <EmptyState
+            contentLabel="comments"
+            subredditName={state.data.subredditName}
+            timeframe={state.data.timeframe}
+          />
         )
       ) : (
         <PanelState state={state} loadingMessage="Loading comment chart data..." />
@@ -372,7 +388,11 @@ function AuthorsPanel({
         state.data.authors.length > 0 ? (
           <AuthorsChart data={state.data} zoomEnabled={zoomEnabled} />
         ) : (
-          <EmptyState message="No authors matched this timeframe." />
+          <EmptyState
+            contentLabel="active authors"
+            subredditName={state.data.subredditName}
+            timeframe={state.data.timeframe}
+          />
         )
       ) : (
         <PanelState state={state} loadingMessage="Loading author chart data..." />
@@ -431,11 +451,23 @@ function PanelState<Data>({
   );
 }
 
-function EmptyState({ message }: { message: string }) {
+function EmptyState({
+  contentLabel,
+  subredditName,
+  timeframe,
+}: {
+  contentLabel: string;
+  subredditName: string;
+  timeframe: TimeframePostData;
+}) {
+  const datePhrase = formatTimeframeDatePhrase(timeframe);
+
   return (
     <div className="empty-state">
-      <p>{message}</p>
-      <span>Try a wider date range from the create-post menu.</span>
+      <p>{`No ${contentLabel} found ${datePhrase}.`}</p>
+      <span>
+        {`Try choosing dates when r/${subredditName} had activity.`}
+      </span>
     </div>
   );
 }
@@ -1317,7 +1349,7 @@ function createAuthorsOption(
       },
     },
     xAxis: {
-      name: 'Total comment upvotes',
+      name: 'Comment Upvotes',
       nameLocation: 'middle',
       nameGap: 30,
       type: 'value',
@@ -1339,7 +1371,7 @@ function createAuthorsOption(
       },
     },
     yAxis: {
-      name: 'Total post upvotes',
+      name: 'Post Upvotes',
       nameLocation: 'middle',
       nameGap: 40,
       type: 'value',
@@ -1659,6 +1691,38 @@ function getKarmaBucketColor(bucket: AuthorSubredditKarmaBucket | null): string 
 
 function getCommentGroupColor(postId: string): string {
   return COMMENT_GROUP_COLORS[hashString(postId) % COMMENT_GROUP_COLORS.length] ?? '#0f8b8d';
+}
+
+function formatTimeframeDatePhrase(timeframe: TimeframePostData): string {
+  const startDate = formatDateOnly(timeframe.startDate);
+  const endDate = formatDateOnly(timeframe.endDate);
+
+  return timeframe.startDate === timeframe.endDate
+    ? `on ${startDate}`
+    : `from ${startDate} through ${endDate}`;
+}
+
+function formatDateOnly(value: string): string {
+  const match = DATE_ONLY_PATTERN.exec(value);
+  if (!match) {
+    return value;
+  }
+
+  const [, rawYear, rawMonth, rawDay] = match;
+  const year = Number(rawYear);
+  const month = Number(rawMonth);
+  const day = Number(rawDay);
+  const date = new Date(Date.UTC(year, month - 1, day));
+
+  if (
+    date.getUTCFullYear() !== year ||
+    date.getUTCMonth() !== month - 1 ||
+    date.getUTCDate() !== day
+  ) {
+    return value;
+  }
+
+  return DATE_ONLY_FORMATTER.format(date);
 }
 
 function renderTooltipAvatar(authorAvatarUrl: string | null): string {
