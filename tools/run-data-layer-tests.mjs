@@ -6,6 +6,7 @@ import { build } from 'esbuild';
 const testEntryPoints = [
   'src/server/data/data-layer.test.ts',
   'src/server/core/author-chart.test.ts',
+  'src/server/routes/chart-response-cache.test.ts',
 ];
 const outdir = resolve('dist/test');
 

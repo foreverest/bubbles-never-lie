@@ -1,4 +1,4 @@
-import { context } from '@devvit/web/server';
+import { cache as devvitCache, context } from '@devvit/web/server';
 import { Hono } from 'hono';
 import type {
   AuthorsChartDataResponse,
@@ -15,8 +15,13 @@ import { readCachedSubredditIconUrl } from '../core/subreddit-icons';
 import { resolveChartDataSubredditName } from '../core/subreddits';
 import type { ValidatedTimeframePostData } from '../core/timeframe';
 import { readTimeframePostData } from '../core/timeframe';
+import {
+  createChartDataCacheKey,
+  type ChartDataCacheEndpoint,
+} from './chart-response-cache';
 
 export const api = new Hono();
+const chartDataCacheTtlSeconds = 30;
 const missingTimeframeMessage = 'This post is missing a bubble stats date range.';
 const postsErrorMessage = 'Unable to load subreddit post chart data. Try again shortly.';
 const commentsErrorMessage = 'Unable to load subreddit comment chart data. Try again shortly.';
@@ -37,20 +42,21 @@ api.get('/posts', async (c) => {
   }
 
   try {
-    const cachedPosts = await readPostsForTimeframe({
-      subredditName: chartContext.subredditName,
-      startTime: chartContext.startTime,
-      endTime: chartContext.endTime,
-    });
+    const response = await readCachedChartDataResponse('posts', chartContext, async () => {
+      const cachedPosts = await readPostsForTimeframe({
+        subredditName: chartContext.subredditName,
+        startTime: chartContext.startTime,
+        endTime: chartContext.endTime,
+      });
 
-    return c.json<PostsChartDataResponse>(
-      {
+      return {
         ...(await createChartMetadata(chartContext)),
         type: 'posts-chart-data',
         posts: cachedPosts.posts,
-      },
-      200
-    );
+      };
+    });
+
+    return c.json<PostsChartDataResponse>(response, 200);
   } catch (error) {
     console.error(`Post chart data error: ${getErrorMessage(error, postsErrorMessage)}`);
 
@@ -78,20 +84,21 @@ api.get('/comments', async (c) => {
   }
 
   try {
-    const cachedComments = await readCommentsForTimeframe({
-      subredditName: chartContext.subredditName,
-      startTime: chartContext.startTime,
-      endTime: chartContext.endTime,
-    });
+    const response = await readCachedChartDataResponse('comments', chartContext, async () => {
+      const cachedComments = await readCommentsForTimeframe({
+        subredditName: chartContext.subredditName,
+        startTime: chartContext.startTime,
+        endTime: chartContext.endTime,
+      });
 
-    return c.json<CommentsChartDataResponse>(
-      {
+      return {
         ...(await createChartMetadata(chartContext)),
         type: 'comments-chart-data',
         comments: cachedComments.comments,
-      },
-      200
-    );
+      };
+    });
+
+    return c.json<CommentsChartDataResponse>(response, 200);
   } catch (error) {
     console.error(`Comment chart data error: ${getErrorMessage(error, commentsErrorMessage)}`);
 
@@ -119,20 +126,21 @@ api.get('/authors', async (c) => {
   }
 
   try {
-    const cachedAuthors = await readAuthorsForTimeframe({
-      subredditName: chartContext.subredditName,
-      startTime: chartContext.startTime,
-      endTime: chartContext.endTime,
-    });
+    const response = await readCachedChartDataResponse('authors', chartContext, async () => {
+      const cachedAuthors = await readAuthorsForTimeframe({
+        subredditName: chartContext.subredditName,
+        startTime: chartContext.startTime,
+        endTime: chartContext.endTime,
+      });
 
-    return c.json<AuthorsChartDataResponse>(
-      {
+      return {
         ...(await createChartMetadata(chartContext)),
         type: 'authors-chart-data',
         authors: cachedAuthors.authors,
-      },
-      200
-    );
+      };
+    });
+
+    return c.json<AuthorsChartDataResponse>(response, 200);
   } catch (error) {
     console.error(`Author chart data error: ${getErrorMessage(error, authorsErrorMessage)}`);
 
@@ -160,33 +168,34 @@ api.get('/stats', async (c) => {
   }
 
   try {
-    const [posts, comments, authors] = await Promise.all([
-      readPostCountForTimeframe({
-        subredditName: chartContext.subredditName,
-        startTime: chartContext.startTime,
-        endTime: chartContext.endTime,
-      }),
-      readCommentCountForTimeframe({
-        subredditName: chartContext.subredditName,
-        startTime: chartContext.startTime,
-        endTime: chartContext.endTime,
-      }),
-      readAuthorCountForTimeframe({
-        subredditName: chartContext.subredditName,
-        startTime: chartContext.startTime,
-        endTime: chartContext.endTime,
-      }),
-    ]);
+    const response = await readCachedChartDataResponse('stats', chartContext, async () => {
+      const [posts, comments, authors] = await Promise.all([
+        readPostCountForTimeframe({
+          subredditName: chartContext.subredditName,
+          startTime: chartContext.startTime,
+          endTime: chartContext.endTime,
+        }),
+        readCommentCountForTimeframe({
+          subredditName: chartContext.subredditName,
+          startTime: chartContext.startTime,
+          endTime: chartContext.endTime,
+        }),
+        readAuthorCountForTimeframe({
+          subredditName: chartContext.subredditName,
+          startTime: chartContext.startTime,
+          endTime: chartContext.endTime,
+        }),
+      ]);
 
-    return c.json<StatsDataResponse>(
-      {
+      return {
         type: 'stats-data',
         postCount: posts.postCount,
         commentCount: comments.commentCount,
         authorCount: authors.authorCount,
-      },
-      200
-    );
+      };
+    });
+
+    return c.json<StatsDataResponse>(response, 200);
   } catch (error) {
     console.error(`Stats data error: ${getErrorMessage(error, statsErrorMessage)}`);
 
@@ -206,6 +215,39 @@ type ChartContext = {
   startTime: number;
   endTime: number;
 };
+
+type CacheableChartDataResponse =
+  | PostsChartDataResponse
+  | CommentsChartDataResponse
+  | AuthorsChartDataResponse
+  | StatsDataResponse;
+type CacheableJsonValue =
+  | boolean
+  | null
+  | number
+  | string
+  | CacheableJsonValue[]
+  | { [key: string]: CacheableJsonValue };
+
+const readCachedChartDataResponse = async <Response extends CacheableChartDataResponse>(
+  endpoint: ChartDataCacheEndpoint,
+  chartContext: ChartContext,
+  createResponse: () => Promise<Response>,
+  ttl = chartDataCacheTtlSeconds
+): Promise<Response> =>
+  (await devvitCache(
+    async () => (await createResponse()) as unknown as CacheableJsonValue,
+    {
+      key: createChartDataCacheKey({
+        endpoint,
+        postId: context.postId,
+        subredditName: chartContext.subredditName,
+        startTime: chartContext.startTime,
+        endTime: chartContext.endTime,
+      }),
+      ttl,
+    }
+  )) as unknown as Response;
 
 const readChartContext = (): ChartContext | null => {
   const timeframe = readTimeframePostData(context.postData);
