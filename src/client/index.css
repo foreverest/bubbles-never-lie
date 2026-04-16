@@ -451,6 +451,64 @@ select {
   flex: 0 0 auto;
 }
 
+.chart-tooltip--post {
+  color: #0f1419;
+}
+
+.chart-tooltip--post .chart-tooltip__meta {
+  color: #57616a;
+}
+
+.chart-tooltip--post .chart-tooltip__avatar {
+  border-color: #d7dadc;
+  background: rgb(235, 237, 239);
+}
+
+.chart-tooltip--post .chart-tooltip__username,
+.chart-tooltip--post .chart-tooltip__title {
+  color: #0f1419;
+}
+
+.chart-tooltip--post .chart-tooltip__separator,
+.chart-tooltip--post .chart-tooltip__age {
+  color: #57616a;
+  font-weight: 400;
+}
+
+.chart-tooltip--post .chart-tooltip__stats {
+  gap: 12px;
+  color: #0f1419;
+  font-size: 0.95rem;
+}
+
+.chart-tooltip__post-counter {
+  display: inline-flex;
+  min-width: 0;
+  height: 32px;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 0 10px;
+  border-radius: 999px;
+  background: rgb(235, 237, 239);
+  color: #0f1419;
+  font-weight: 700;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.chart-tooltip__post-counter-value {
+  font-size: 12px;
+  font-weight: 600;
+  overflow-wrap: normal;
+}
+
+.chart-tooltip__post-stat-icon {
+  width: 16px;
+  height: 16px;
+  flex: 0 0 auto;
+}
+
 .empty-state,
 .message-panel,
 .status-text {

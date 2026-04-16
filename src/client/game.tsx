@@ -95,8 +95,12 @@ const TIME_EDGE_TOLERANCE_MS = 1_000;
 
 const UPVOTE_ICON =
   '<svg aria-hidden="true" class="chart-tooltip__stat-icon" viewBox="0 0 20 20"><path d="M10 3 3.5 10H7v6h6v-6h3.5L10 3Z" fill="none" stroke="currentColor" stroke-linejoin="round" stroke-width="2"/></svg>';
-const COMMENT_ICON =
-  '<svg aria-hidden="true" class="chart-tooltip__stat-icon" viewBox="0 0 20 20"><path d="M4 5.5h12v8H8.4L4 16.5v-11Z" fill="none" stroke="currentColor" stroke-linejoin="round" stroke-width="2"/></svg>';
+const POST_UPVOTE_ICON =
+  '<svg aria-hidden="true" class="chart-tooltip__post-stat-icon" fill="currentColor" height="16" viewBox="0 0 20 20" width="16" xmlns="http://www.w3.org/2000/svg"><path d="M10 19a3.966 3.966 0 01-3.96-3.962V10.98H2.838a1.731 1.731 0 01-1.605-1.073 1.734 1.734 0 01.377-1.895L9.364.254a.925.925 0 011.272 0l7.754 7.759c.498.499.646 1.242.376 1.894-.27.652-.9 1.073-1.605 1.073h-3.202v4.058A3.965 3.965 0 019.999 19H10zM2.989 9.179H7.84v5.731c0 1.13.81 2.163 1.934 2.278a2.163 2.163 0 002.386-2.15V9.179h4.851L10 2.163 2.989 9.179z"></path></svg>';
+const POST_DOWNVOTE_ICON =
+  '<svg aria-hidden="true" class="chart-tooltip__post-stat-icon" fill="currentColor" height="16" viewBox="0 0 20 20" width="16" xmlns="http://www.w3.org/2000/svg"><path d="M10 1a3.966 3.966 0 013.96 3.962V9.02h3.202c.706 0 1.335.42 1.605 1.073.27.652.122 1.396-.377 1.895l-7.754 7.759a.925.925 0 01-1.272 0l-7.754-7.76a1.734 1.734 0 01-.376-1.894c.27-.652.9-1.073 1.605-1.073h3.202V4.962A3.965 3.965 0 0110 1zm7.01 9.82h-4.85V5.09c0-1.13-.81-2.163-1.934-2.278a2.163 2.163 0 00-2.386 2.15v5.859H2.989l7.01 7.016 7.012-7.016z"></path></svg>';
+const POST_COMMENT_ICON =
+  '<svg aria-hidden="true" class="chart-tooltip__post-stat-icon" fill="currentColor" height="16" viewBox="0 0 20 20" width="16" xmlns="http://www.w3.org/2000/svg"><path d="M10 1a9 9 0 00-9 9c0 1.947.79 3.58 1.935 4.957L.231 17.661A.784.784 0 00.785 19H10a9 9 0 009-9 9 9 0 00-9-9zm0 16.2H6.162c-.994.004-1.907.053-3.045.144l-.076-.188a36.981 36.981 0 002.328-2.087l-1.05-1.263C3.297 12.576 2.8 11.331 2.8 10c0-3.97 3.23-7.2 7.2-7.2s7.2 3.23 7.2 7.2-3.23 7.2-7.2 7.2z"></path></svg>';
 const TOOLTIP_AVATAR_FALLBACK =
   '<span aria-hidden="true" class="chart-tooltip__avatar chart-tooltip__avatar--fallback"></span>';
 const UNKNOWN_KARMA_COLOR = '#8b9b95';
@@ -1113,21 +1117,23 @@ function createBubbleOption(
       trigger: 'item',
       confine: true,
       borderWidth: 0,
-      backgroundColor: '#101010',
+      backgroundColor: 'rgb(243, 244, 245)',
       textStyle: {
-        color: '#ffffff',
+        color: '#0f1419',
       },
-      extraCssText: 'border-radius:8px;box-shadow:0 12px 30px rgba(0,0,0,0.28);padding:0;',
+      extraCssText: 'border-radius:8px;box-shadow:0 12px 30px rgba(15,23,42,0.14);padding:0;',
       formatter(params: { data?: unknown }) {
         const datum = getBubbleDatum(params.data);
         if (!datum) {
           return '';
         }
 
-        const createdAgo = formatRelativeAge(new Date(datum.createdAt));
+        const createdAgo = formatRelativeAge(new Date(datum.createdAt), { labelStyle: 'long' });
+        const scoreLabel = datum.score.toLocaleString();
+        const commentsLabel = datum.comments.toLocaleString();
 
         return [
-          '<article class="chart-tooltip">',
+          '<article class="chart-tooltip chart-tooltip--post">',
           '<div class="chart-tooltip__meta">',
           renderTooltipAvatar(datum.authorAvatarUrl),
           `<span class="chart-tooltip__username">u/${escapeHtml(datum.authorName)}</span>`,
@@ -1136,8 +1142,8 @@ function createBubbleOption(
           '</div>',
           `<strong class="chart-tooltip__title">${escapeHtml(datum.title)}</strong>`,
           '<div class="chart-tooltip__stats">',
-          `<span class="chart-tooltip__stat">${UPVOTE_ICON}${datum.score.toLocaleString()} upvotes</span>`,
-          `<span class="chart-tooltip__stat">${COMMENT_ICON}${datum.comments.toLocaleString()} comments</span>`,
+          `<span class="chart-tooltip__post-counter" aria-label="${escapeHtml(`${scoreLabel} upvotes`)}">${POST_UPVOTE_ICON}<span class="chart-tooltip__post-counter-value">${scoreLabel}</span>${POST_DOWNVOTE_ICON}</span>`,
+          `<span class="chart-tooltip__post-counter" aria-label="${escapeHtml(`${commentsLabel} comments`)}">${POST_COMMENT_ICON}<span class="chart-tooltip__post-counter-value">${commentsLabel}</span></span>`,
           '</div>',
           '</article>',
         ].join('');
@@ -1895,20 +1901,33 @@ function hashString(value: string): number {
   return hash;
 }
 
-function formatRelativeAge(date: Date): string {
+type RelativeAgeLabelStyle = 'short' | 'long';
+
+function formatRelativeAge(
+  date: Date,
+  options: { labelStyle?: RelativeAgeLabelStyle } = {},
+): string {
   const secondsAgo = Math.max(0, Math.floor((Date.now() - date.getTime()) / 1000));
+  const useLongLabels = options.labelStyle === 'long';
   const units = [
-    { seconds: 31_536_000, label: 'yr.' },
-    { seconds: 2_592_000, label: 'mo.' },
-    { seconds: 604_800, label: 'wk.' },
-    { seconds: 86_400, label: 'd.' },
-    { seconds: 3_600, label: 'hr.' },
-    { seconds: 60, label: 'min.' },
+    { seconds: 31_536_000, shortLabel: 'yr.', singularLabel: 'year', pluralLabel: 'years' },
+    { seconds: 2_592_000, shortLabel: 'mo.', singularLabel: 'month', pluralLabel: 'months' },
+    { seconds: 604_800, shortLabel: 'wk.', singularLabel: 'week', pluralLabel: 'weeks' },
+    { seconds: 86_400, shortLabel: 'd.', singularLabel: 'day', pluralLabel: 'days' },
+    { seconds: 3_600, shortLabel: 'hr.', singularLabel: 'hour', pluralLabel: 'hours' },
+    { seconds: 60, shortLabel: 'min.', singularLabel: 'minute', pluralLabel: 'minutes' },
   ];
 
   for (const unit of units) {
     if (secondsAgo >= unit.seconds) {
-      return `${Math.floor(secondsAgo / unit.seconds)} ${unit.label} ago`;
+      const value = Math.floor(secondsAgo / unit.seconds);
+      const label = useLongLabels
+        ? value === 1
+          ? unit.singularLabel
+          : unit.pluralLabel
+        : unit.shortLabel;
+
+      return `${value} ${label} ago`;
     }
   }
 
