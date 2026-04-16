@@ -4,9 +4,7 @@ import type { AuthorEntity, CommentEntity, PostEntity } from '../data';
 import { shouldUseSyntheticAuthorKarma } from './subreddits';
 
 const AUTHOR_METADATA_CONCURRENCY = 4;
-const MAX_AUTHORS_TO_REFRESH_PER_RUN = 25;
 const DAY_MS = 24 * 60 * 60 * 1000;
-const AUTHOR_METADATA_STALE_MS = DAY_MS;
 const AUTHOR_LOOKBACK_MS = 90 * DAY_MS;
 const SYNTHETIC_KARMA_MIN = -100;
 const SYNTHETIC_KARMA_MAX = 50_000;
@@ -33,10 +31,8 @@ export const refreshAuthorCache = async (
     }),
   ]);
   const usernames = getUniqueRefreshableAuthorNames(posts, comments);
-  const cachedAuthors = await dataLayer.authors.getByIds(usernames);
-  const usernamesToRefresh = selectStaleAuthorNames(usernames, cachedAuthors, fetchedAt);
   const refreshedAuthors = await mapWithConcurrency(
-    usernamesToRefresh,
+    usernames,
     AUTHOR_METADATA_CONCURRENCY,
     async (username) =>
       await getAuthorEntity(
@@ -53,30 +49,6 @@ export const refreshAuthorCache = async (
     refreshedAuthorCount: refreshedAuthors.length,
     generatedAt: new Date().toISOString(),
   };
-};
-
-const selectStaleAuthorNames = (
-  usernames: string[],
-  cachedAuthors: AuthorEntity[],
-  fetchedAt: Date
-): string[] => {
-  const staleCutoff = fetchedAt.getTime() - AUTHOR_METADATA_STALE_MS;
-  const authorsByName = new Map(cachedAuthors.map((author) => [author.id, author]));
-  const usernamesToRefresh: string[] = [];
-
-  for (const username of usernames) {
-    const author = authorsByName.get(username);
-
-    if (!author || Date.parse(author.fetchedAt) < staleCutoff) {
-      usernamesToRefresh.push(username);
-    }
-
-    if (usernamesToRefresh.length >= MAX_AUTHORS_TO_REFRESH_PER_RUN) {
-      break;
-    }
-  }
-
-  return usernamesToRefresh;
 };
 
 const getAuthorEntity = async (
