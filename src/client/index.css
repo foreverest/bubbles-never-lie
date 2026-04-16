@@ -90,6 +90,7 @@ select {
 .chart-section-menu {
   position: relative;
   flex: 0 0 auto;
+  --section-menu-width: 132px;
 }
 
 .section-menu-button {
@@ -97,7 +98,8 @@ select {
   align-items: center;
   justify-content: space-between;
   gap: 6px;
-  min-width: 90px;
+  width: var(--section-menu-width);
+  min-width: var(--section-menu-width);
   height: 32px;
   padding: 0 10px 0 12px;
   border: 1px solid rgba(22, 51, 45, 0.18);
@@ -127,7 +129,7 @@ select {
   top: calc(100% + 8px);
   right: 0;
   display: grid;
-  width: 132px;
+  width: var(--section-menu-width);
   padding: 6px;
   border: 1px solid rgba(22, 51, 45, 0.14);
   border-radius: 8px;
@@ -600,7 +602,6 @@ select {
   }
 
   .section-menu-button {
-    min-width: 82px;
     height: 30px;
     padding: 0 9px 0 10px;
   }
