@@ -100,6 +100,11 @@ const COMMENT_ICON =
 const TOOLTIP_AVATAR_FALLBACK =
   '<span aria-hidden="true" class="chart-tooltip__avatar chart-tooltip__avatar--fallback"></span>';
 const UNKNOWN_KARMA_COLOR = '#8b9b95';
+const SOAP_BUBBLE_BORDER_COLOR = 'rgba(255, 255, 255, 0.76)';
+const SOAP_BUBBLE_EMPHASIS_BORDER_COLOR = 'rgba(255, 255, 255, 0.94)';
+const SOAP_BUBBLE_EMPHASIS_SHADOW_COLOR = 'rgba(22, 51, 45, 0.18)';
+const SOAP_BUBBLE_FILL_ALPHA = 0.84;
+const COMMENT_BUBBLE_FILL_ALPHA = 0.92;
 const KARMA_BUCKET_COLORS = [
   '#667085',
   '#5f7488',
@@ -134,6 +139,7 @@ const DATE_ONLY_FORMATTER = new Intl.DateTimeFormat('en-US', {
   year: 'numeric',
   timeZone: 'UTC',
 });
+const bubbleFillColorCache = new Map<string, string>();
 
 function App() {
   const isMountedRef = useRef(true);
@@ -1119,20 +1125,25 @@ function createBubbleOption(
           return getPostBubbleSize(comments, maxComments);
         },
         itemStyle: {
-          borderColor: '#ffffff',
-          borderWidth: 2,
+          borderColor: SOAP_BUBBLE_BORDER_COLOR,
+          borderWidth: 1.5,
           color(params: { data?: unknown }) {
             const datum = getBubbleDatum(params.data);
-            return getKarmaBucketColor(datum?.authorSubredditKarmaBucket ?? null);
+            return getBubbleFillColor(
+              getKarmaBucketColor(datum?.authorSubredditKarmaBucket ?? null),
+              SOAP_BUBBLE_FILL_ALPHA
+            );
           },
-          opacity: 0.5,
+          opacity: 0.6,
         },
         emphasis: {
           scale: 1.35,
           itemStyle: {
-            opacity: 0.75,
-            shadowBlur: 10,
-            shadowColor: 'rgba(22, 51, 45, 0.25)',
+            borderColor: SOAP_BUBBLE_EMPHASIS_BORDER_COLOR,
+            borderWidth: 1.5,
+            opacity: 0.9,
+            shadowBlur: 8,
+            shadowColor: SOAP_BUBBLE_EMPHASIS_SHADOW_COLOR,
           },
         },
       },
@@ -1261,19 +1272,20 @@ function createCommentsOption(
       data: group.comments,
       symbolSize: COMMENT_BUBBLE_SIZE,
       itemStyle: {
-        borderColor: '#ffffff',
+        borderColor: SOAP_BUBBLE_BORDER_COLOR,
         borderWidth: 1,
-        color: getCommentGroupColor(group.postId),
-        opacity: 0.62,
+        color: getBubbleFillColor(getCommentGroupColor(group.postId), COMMENT_BUBBLE_FILL_ALPHA),
+        opacity: 0.6,
       },
       emphasis: {
         focus: 'series',
         scale: 1.8,
         itemStyle: {
-          borderWidth: 2,
-          opacity: 0.92,
-          shadowBlur: 10,
-          shadowColor: 'rgba(22, 51, 45, 0.25)',
+          borderColor: SOAP_BUBBLE_EMPHASIS_BORDER_COLOR,
+          borderWidth: 1.5,
+          opacity: 0.9,
+          shadowBlur: 8,
+          shadowColor: SOAP_BUBBLE_EMPHASIS_SHADOW_COLOR,
         },
       },
       blur: {
@@ -1407,20 +1419,25 @@ function createAuthorsOption(
           return getAuthorBubbleSize(datum?.contributionCount ?? 0, maxContributionCount);
         },
         itemStyle: {
-          borderColor: '#ffffff',
-          borderWidth: 2,
+          borderColor: SOAP_BUBBLE_BORDER_COLOR,
+          borderWidth: 1.5,
           color(params: { data?: unknown }) {
             const datum = getAuthorBubbleDatum(params.data);
-            return getKarmaBucketColor(datum?.authorSubredditKarmaBucket ?? null);
+            return getBubbleFillColor(
+              getKarmaBucketColor(datum?.authorSubredditKarmaBucket ?? null),
+              SOAP_BUBBLE_FILL_ALPHA
+            );
           },
-          opacity: 0.5,
+          opacity: 0.6,
         },
         emphasis: {
           scale: 1.35,
           itemStyle: {
-            opacity: 0.75,
-            shadowBlur: 10,
-            shadowColor: 'rgba(22, 51, 45, 0.25)',
+            borderColor: SOAP_BUBBLE_EMPHASIS_BORDER_COLOR,
+            borderWidth: 2,
+            opacity: 0.9,
+            shadowBlur: 8,
+            shadowColor: SOAP_BUBBLE_EMPHASIS_SHADOW_COLOR,
           },
         },
       },
@@ -1704,6 +1721,42 @@ function getKarmaBucketColor(bucket: AuthorSubredditKarmaBucket | null): string 
 
 function getCommentGroupColor(postId: string): string {
   return COMMENT_GROUP_COLORS[hashString(postId) % COMMENT_GROUP_COLORS.length] ?? '#0f8b8d';
+}
+
+function getBubbleFillColor(baseColor: string, alpha: number): string {
+  const cacheKey = `${baseColor}:${alpha}`;
+  const cachedColor = bubbleFillColorCache.get(cacheKey);
+  if (cachedColor) {
+    return cachedColor;
+  }
+
+  const rgb = hexToRgb(baseColor) ?? hexToRgb('#0f8b8d');
+  const color = rgb ? toRgba(rgb, alpha) : `rgba(15, 139, 141, ${alpha})`;
+
+  bubbleFillColorCache.set(cacheKey, color);
+  return color;
+}
+
+function hexToRgb(color: string): { red: number; green: number; blue: number } | null {
+  const hex = color.startsWith('#') ? color.slice(1) : color;
+
+  if (!/^[\da-f]{6}$/i.test(hex)) {
+    return null;
+  }
+
+  const colorValue = Number.parseInt(hex, 16);
+  return {
+    red: (colorValue >> 16) & 255,
+    green: (colorValue >> 8) & 255,
+    blue: colorValue & 255,
+  };
+}
+
+function toRgba(
+  { red, green, blue }: { red: number; green: number; blue: number },
+  alpha: number
+): string {
+  return `rgba(${red}, ${green}, ${blue}, ${alpha})`;
 }
 
 function formatTimeframeDatePhrase(timeframe: TimeframePostData): string {
