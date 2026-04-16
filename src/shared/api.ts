@@ -38,6 +38,17 @@ export type ChartComment = {
   permalink: string;
 };
 
+export type ChartAuthor = {
+  authorName: string;
+  authorAvatarUrl: string | null;
+  postCount: number;
+  commentCount: number;
+  postScore: number;
+  commentScore: number;
+  totalScore: number;
+  profileUrl: string;
+};
+
 export type ChartResponseMetadata = {
   subredditName: string;
   subredditIconUrl: string | null;
@@ -53,6 +64,11 @@ export type PostsChartDataResponse = ChartResponseMetadata & {
 export type CommentsChartDataResponse = ChartResponseMetadata & {
   type: 'comments-chart-data';
   comments: ChartComment[];
+};
+
+export type AuthorsChartDataResponse = ChartResponseMetadata & {
+  type: 'authors-chart-data';
+  authors: ChartAuthor[];
 };
 
 export type StatsDataResponse = {

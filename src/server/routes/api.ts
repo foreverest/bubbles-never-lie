@@ -1,12 +1,14 @@
 import { context } from '@devvit/web/server';
 import { Hono } from 'hono';
 import type {
+  AuthorsChartDataResponse,
   ChartResponseMetadata,
   CommentsChartDataResponse,
   ErrorResponse,
   PostsChartDataResponse,
   StatsDataResponse,
 } from '../../shared/api';
+import { readAuthorsForTimeframe } from '../core/author-chart';
 import { readCommentCountForTimeframe, readCommentsForTimeframe } from '../core/comment-cache';
 import { readPostCountForTimeframe, readPostsForTimeframe } from '../core/post-cache';
 import { readCachedSubredditIconUrl } from '../core/subreddit-icons';
@@ -18,6 +20,7 @@ export const api = new Hono();
 const missingTimeframeMessage = 'This post is missing a bubble stats date range.';
 const postsErrorMessage = 'Unable to load subreddit post chart data. Try again shortly.';
 const commentsErrorMessage = 'Unable to load subreddit comment chart data. Try again shortly.';
+const authorsErrorMessage = 'Unable to load subreddit author chart data. Try again shortly.';
 const statsErrorMessage = 'Unable to load subreddit stats data. Try again shortly.';
 
 api.get('/posts', async (c) => {
@@ -96,6 +99,47 @@ api.get('/comments', async (c) => {
       {
         status: 'error',
         message: commentsErrorMessage,
+      },
+      500
+    );
+  }
+});
+
+api.get('/authors', async (c) => {
+  const chartContext = readChartContext();
+
+  if (!chartContext) {
+    return c.json<ErrorResponse>(
+      {
+        status: 'error',
+        message: missingTimeframeMessage,
+      },
+      400
+    );
+  }
+
+  try {
+    const cachedAuthors = await readAuthorsForTimeframe({
+      subredditName: chartContext.subredditName,
+      startTime: chartContext.startTime,
+      endTime: chartContext.endTime,
+    });
+
+    return c.json<AuthorsChartDataResponse>(
+      {
+        ...(await createChartMetadata(chartContext)),
+        type: 'authors-chart-data',
+        authors: cachedAuthors.authors,
+      },
+      200
+    );
+  } catch (error) {
+    console.error(`Author chart data error: ${getErrorMessage(error, authorsErrorMessage)}`);
+
+    return c.json<ErrorResponse>(
+      {
+        status: 'error',
+        message: authorsErrorMessage,
       },
       500
     );

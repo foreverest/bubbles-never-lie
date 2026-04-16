@@ -1,21 +1,32 @@
 import { spawn } from 'node:child_process';
 import { mkdir } from 'node:fs/promises';
-import { dirname, resolve } from 'node:path';
+import { resolve } from 'node:path';
 import { build } from 'esbuild';
 
-const outfile = resolve('dist/test/data-layer.test.mjs');
+const testEntryPoints = [
+  'src/server/data/data-layer.test.ts',
+  'src/server/core/author-chart.test.ts',
+];
+const outdir = resolve('dist/test');
 
-await mkdir(dirname(outfile), { recursive: true });
+await mkdir(outdir, { recursive: true });
 await build({
-  entryPoints: ['src/server/data/data-layer.test.ts'],
-  outfile,
+  entryPoints: testEntryPoints,
+  outdir,
   bundle: true,
   format: 'esm',
+  outExtension: {
+    '.js': '.mjs',
+  },
   packages: 'external',
   platform: 'node',
 });
 
-const child = spawn(process.execPath, ['--test', outfile], {
+const outfiles = testEntryPoints.map((entryPoint) =>
+  resolve(outdir, entryPoint.replace(/^src\/server\//, '').replace(/\.ts$/, '.mjs'))
+);
+
+const child = spawn(process.execPath, ['--test', ...outfiles], {
   stdio: 'inherit',
 });
 

@@ -8,13 +8,15 @@ import {
 } from 'echarts/components';
 import * as echarts from 'echarts/core';
 import type { EChartsCoreOption } from 'echarts/core';
-import { ScatterChart } from 'echarts/charts';
+import { CustomChart, ScatterChart } from 'echarts/charts';
 import { CanvasRenderer } from 'echarts/renderers';
 import { StrictMode, useEffect, useMemo, useRef, useState } from 'react';
 import { createRoot } from 'react-dom/client';
 import { AUTHOR_SUBREDDIT_KARMA_BUCKET_COUNT } from '../shared/api';
 import type {
   AuthorSubredditKarmaBucket,
+  AuthorsChartDataResponse,
+  ChartAuthor,
   ChartComment,
   ChartResponseMetadata,
   CommentsChartDataResponse,
@@ -25,6 +27,7 @@ import type {
 
 echarts.use([
   CanvasRenderer,
+  CustomChart,
   DataZoomComponent,
   GridComponent,
   ScatterChart,
@@ -37,7 +40,7 @@ type DataState<Data> =
   | { status: 'ready'; data: Data }
   | { status: 'error'; message: string };
 
-type TabName = 'posts' | 'comments' | 'stats';
+type TabName = 'posts' | 'comments' | 'authors' | 'stats';
 
 type BubbleDatum = {
   value: [createdAtTime: number, score: number];
@@ -62,6 +65,19 @@ type CommentBubbleDatum = {
   postId: string;
 };
 
+type AuthorBubbleDatum = {
+  value: [commentCount: number, postCount: number, totalScore: number];
+  authorName: string;
+  authorAvatarUrl: string | null;
+  avatarImageUrl: string;
+  postCount: number;
+  commentCount: number;
+  postScore: number;
+  commentScore: number;
+  totalScore: number;
+  profileUrl: string;
+};
+
 type CommentGroup = {
   postId: string;
   comments: CommentBubbleDatum[];
@@ -73,6 +89,14 @@ type TimeRange = {
 };
 
 type GetVisibleTimeRange = () => TimeRange | null;
+
+type AuthorRenderItemParams = {
+  dataIndex: number;
+};
+
+type AuthorRenderItemApi = {
+  coord(value: [number, number]): [number, number];
+};
 
 const TIME_EDGE_TOLERANCE_MS = 1_000;
 
@@ -94,6 +118,8 @@ const KARMA_BUCKET_COLORS = [
   '#ffb703',
 ];
 const COMMENT_BUBBLE_SIZE = 7;
+const AUTHOR_BUBBLE_MIN_SIZE = 26;
+const AUTHOR_BUBBLE_MAX_SIZE = 64;
 const COMMENT_GROUP_COLORS = [
   '#2d6cdf',
   '#0f8b8d',
@@ -113,6 +139,9 @@ function App() {
     status: 'loading',
   });
   const [commentsState, setCommentsState] = useState<DataState<CommentsChartDataResponse>>({
+    status: 'idle',
+  });
+  const [authorsState, setAuthorsState] = useState<DataState<AuthorsChartDataResponse>>({
     status: 'idle',
   });
   const [statsState, setStatsState] = useState<DataState<StatsDataResponse>>({
@@ -187,6 +216,38 @@ function App() {
   }, [activeTab, commentsState.status]);
 
   useEffect(() => {
+    if (activeTab !== 'authors' || authorsState.status !== 'idle') {
+      return;
+    }
+
+    setAuthorsState({ status: 'loading' });
+
+    async function loadAuthorsData() {
+      try {
+        const data = await fetchApiData<AuthorsChartDataResponse>(
+          '/api/authors',
+          'Unable to load author chart data.'
+        );
+
+        if (isMountedRef.current) {
+          setAuthorsState({ status: 'ready', data });
+        }
+      } catch (error) {
+        if (isMountedRef.current) {
+          console.error('Error loading author chart data:', error);
+          setAuthorsState({
+            status: 'error',
+            message:
+              error instanceof Error ? error.message : 'Unable to load author chart data.',
+          });
+        }
+      }
+    }
+
+    void loadAuthorsData();
+  }, [activeTab, authorsState.status]);
+
+  useEffect(() => {
     if (activeTab !== 'stats' || statsState.status !== 'idle') {
       return;
     }
@@ -254,6 +315,8 @@ function App() {
           <PostsPanel data={postsData} zoomEnabled={zoomEnabled} />
         ) : activeTab === 'comments' ? (
           <CommentsPanel state={commentsState} zoomEnabled={zoomEnabled} />
+        ) : activeTab === 'authors' ? (
+          <AuthorsPanel state={authorsState} zoomEnabled={zoomEnabled} />
         ) : (
           <StatsPanel state={statsState} />
         )}
@@ -297,6 +360,28 @@ function CommentsPanel({
         )
       ) : (
         <PanelState state={state} loadingMessage="Loading comment chart data..." />
+      )}
+    </section>
+  );
+}
+
+function AuthorsPanel({
+  state,
+  zoomEnabled,
+}: {
+  state: DataState<AuthorsChartDataResponse>;
+  zoomEnabled: boolean;
+}) {
+  return (
+    <section className="chart-panel" id="authors-panel" aria-label="Authors">
+      {state.status === 'ready' ? (
+        state.data.authors.length > 0 ? (
+          <AuthorsChart data={state.data} zoomEnabled={zoomEnabled} />
+        ) : (
+          <EmptyState message="No authors matched this timeframe." />
+        )
+      ) : (
+        <PanelState state={state} loadingMessage="Loading author chart data..." />
       )}
     </section>
   );
@@ -524,6 +609,19 @@ function ChartHeader({
                 type="button"
               >
                 Comments
+              </button>
+              <button
+                aria-checked={activeTab === 'authors'}
+                className={
+                  activeTab === 'authors'
+                    ? 'chart-section-menu__item chart-section-menu__item--active'
+                    : 'chart-section-menu__item'
+                }
+                onClick={() => handleSectionSelect('authors')}
+                role="menuitemradio"
+                type="button"
+              >
+                Authors
               </button>
               <button
                 aria-checked={activeTab === 'stats'}
@@ -786,6 +884,89 @@ function CommentsChart({
       ref={containerRef}
       role="img"
       aria-label={`Comments in r/${data.subredditName} plotted by creation time and upvotes`}
+    />
+  );
+}
+
+function AuthorsChart({
+  data,
+  zoomEnabled,
+}: {
+  data: AuthorsChartDataResponse;
+  zoomEnabled: boolean;
+}) {
+  const containerRef = useRef<HTMLDivElement | null>(null);
+  const chartRef = useRef<echarts.EChartsType | null>(null);
+  const chartData = useMemo<AuthorBubbleDatum[]>(
+    () => data.authors.map(toAuthorBubbleDatum),
+    [data.authors]
+  );
+
+  useEffect(() => {
+    if (!containerRef.current) {
+      return;
+    }
+
+    const container = containerRef.current;
+    const chart = echarts.init(container, undefined, { renderer: 'canvas' });
+    chartRef.current = chart;
+    let resizeFrame = 0;
+
+    const handleChartClick = (params: { data?: unknown }) => {
+      const datum = getAuthorBubbleDatum(params.data);
+      if (!datum) {
+        return;
+      }
+
+      openPost(datum.profileUrl);
+    };
+
+    chart.on('click', handleChartClick);
+
+    const resizeChart = () => {
+      if (resizeFrame) {
+        return;
+      }
+
+      resizeFrame = window.requestAnimationFrame(() => {
+        resizeFrame = 0;
+        chart.resize();
+      });
+    };
+    const resizeObserver = new ResizeObserver(resizeChart);
+    resizeObserver.observe(container);
+    window.addEventListener('resize', resizeChart);
+    window.visualViewport?.addEventListener('resize', resizeChart);
+
+    return () => {
+      if (resizeFrame) {
+        window.cancelAnimationFrame(resizeFrame);
+      }
+
+      chart.off('click', handleChartClick);
+      resizeObserver.disconnect();
+      window.removeEventListener('resize', resizeChart);
+      window.visualViewport?.removeEventListener('resize', resizeChart);
+      chart.dispose();
+      chartRef.current = null;
+    };
+  }, []);
+
+  useEffect(() => {
+    const chart = chartRef.current;
+    if (!chart) {
+      return;
+    }
+
+    chart.setOption(createAuthorsOption(chartData, zoomEnabled), true);
+  }, [chartData, zoomEnabled]);
+
+  return (
+    <div
+      className="chart-stage"
+      ref={containerRef}
+      role="img"
+      aria-label={`Authors in r/${data.subredditName} plotted by comments and posts`}
     />
   );
 }
@@ -1090,6 +1271,216 @@ function createCommentsOption(
   return option;
 }
 
+function createAuthorsOption(
+  data: AuthorBubbleDatum[],
+  zoomEnabled: boolean
+): EChartsCoreOption {
+  const maxBubbleScore = Math.max(0, ...data.map((datum) => datum.totalScore));
+  const option: EChartsCoreOption = {
+    grid: {
+      top: 24,
+      right: 16,
+      bottom: 32,
+      left: 42,
+      containLabel: true,
+    },
+    tooltip: {
+      trigger: 'item',
+      confine: true,
+      borderWidth: 0,
+      backgroundColor: '#101010',
+      textStyle: {
+        color: '#ffffff',
+      },
+      extraCssText: 'border-radius:8px;box-shadow:0 12px 30px rgba(0,0,0,0.28);padding:0;',
+      formatter(params: { data?: unknown }) {
+        const datum = getAuthorBubbleDatum(params.data);
+        if (!datum) {
+          return '';
+        }
+
+        const avatar = `<img alt="" class="chart-tooltip__avatar" src="${escapeHtml(
+          datum.avatarImageUrl
+        )}">`;
+
+        return [
+          '<article class="chart-tooltip">',
+          '<div class="chart-tooltip__meta">',
+          avatar,
+          `<span class="chart-tooltip__username">u/${escapeHtml(datum.authorName)}</span>`,
+          '</div>',
+          '<div class="chart-tooltip__stats">',
+          `<span class="chart-tooltip__stat">${datum.postCount.toLocaleString()} posts</span>`,
+          `<span class="chart-tooltip__stat">${datum.commentCount.toLocaleString()} comments</span>`,
+          '</div>',
+          '<div class="chart-tooltip__stats">',
+          `<span class="chart-tooltip__stat">${UPVOTE_ICON}${datum.postScore.toLocaleString()} post upvotes</span>`,
+          `<span class="chart-tooltip__stat">${UPVOTE_ICON}${datum.commentScore.toLocaleString()} comment upvotes</span>`,
+          '</div>',
+          '<div class="chart-tooltip__stats">',
+          `<span class="chart-tooltip__stat">${UPVOTE_ICON}${datum.totalScore.toLocaleString()} total upvotes</span>`,
+          '</div>',
+          '</article>',
+        ].join('');
+      },
+    },
+    xAxis: {
+      name: 'Comments',
+      nameLocation: 'middle',
+      nameGap: 30,
+      type: 'value',
+      min: 0,
+      minInterval: 1,
+      splitLine: {
+        show: true,
+        lineStyle: {
+          type: 'dashed',
+          color: '#e3ece8',
+        },
+      },
+      axisLine: {
+        show: true,
+        lineStyle: {
+          color: '#9ab0a8',
+        },
+      },
+    },
+    yAxis: {
+      name: 'Posts',
+      nameLocation: 'middle',
+      nameGap: 40,
+      type: 'value',
+      min: 0,
+      minInterval: 1,
+      splitLine: {
+        show: true,
+        lineStyle: {
+          type: 'dashed',
+          color: '#e3ece8',
+        },
+      },
+      axisLine: {
+        show: true,
+        lineStyle: {
+          color: '#9ab0a8',
+        },
+      },
+    },
+    series: [
+      {
+        name: 'Authors',
+        type: 'custom',
+        cursor: 'pointer',
+        data,
+        encode: {
+          x: 0,
+          y: 1,
+        },
+        renderItem(params: AuthorRenderItemParams, api: AuthorRenderItemApi) {
+          return renderAuthorBubble(params, api, data, maxBubbleScore);
+        },
+      },
+    ],
+  };
+
+  if (zoomEnabled) {
+    option.dataZoom = [
+      {
+        type: 'inside',
+        xAxisIndex: 0,
+        filterMode: 'none',
+        minSpan: 1,
+      },
+      {
+        type: 'inside',
+        yAxisIndex: 0,
+        filterMode: 'none',
+        minSpan: 1,
+      },
+    ];
+  }
+
+  return option;
+}
+
+function renderAuthorBubble(
+  params: AuthorRenderItemParams,
+  api: AuthorRenderItemApi,
+  data: AuthorBubbleDatum[],
+  maxBubbleScore: number
+): unknown {
+  const datum = data[params.dataIndex];
+
+  if (!datum) {
+    return {
+      type: 'group',
+      children: [],
+    };
+  }
+
+  const [x, y] = api.coord([datum.commentCount, datum.postCount]);
+  const size = getAuthorBubbleSize(datum.totalScore, maxBubbleScore);
+  const radius = Math.min(8, size / 3);
+  const shape = {
+    x: x - size / 2,
+    y: y - size / 2,
+    width: size,
+    height: size,
+    r: radius,
+  };
+
+  return {
+    type: 'group',
+    children: [
+      {
+        type: 'rect',
+        shape,
+        style: {
+          fill: '#eef7f3',
+          shadowBlur: 8,
+          shadowColor: 'rgba(22, 51, 45, 0.18)',
+        },
+      },
+      {
+        type: 'image',
+        clipPath: {
+          type: 'rect',
+          shape,
+        },
+        style: {
+          image: datum.avatarImageUrl,
+          x: shape.x,
+          y: shape.y,
+          width: shape.width,
+          height: shape.height,
+        },
+      },
+      {
+        type: 'rect',
+        shape,
+        style: {
+          fill: 'transparent',
+          stroke: '#ffffff',
+          lineWidth: 2,
+        },
+      },
+    ],
+  };
+}
+
+function getAuthorBubbleSize(totalScore: number, maxScore: number): number {
+  const score = Math.max(0, totalScore);
+
+  if (maxScore <= 0) {
+    return AUTHOR_BUBBLE_MIN_SIZE;
+  }
+
+  return (
+    AUTHOR_BUBBLE_MIN_SIZE +
+    Math.sqrt(score / maxScore) * (AUTHOR_BUBBLE_MAX_SIZE - AUTHOR_BUBBLE_MIN_SIZE)
+  );
+}
+
 function readVisibleTimeRange(chart: echarts.EChartsType): TimeRange | null {
   const option = chart.getOption() as { dataZoom?: unknown };
   const dataZoomOptions = Array.isArray(option.dataZoom) ? option.dataZoom : [option.dataZoom];
@@ -1166,6 +1557,8 @@ function getTabLabel(tab: TabName): string {
       return 'Posts';
     case 'comments':
       return 'Comments';
+    case 'authors':
+      return 'Authors';
     case 'stats':
       return 'Stats';
   }
@@ -1181,6 +1574,21 @@ function toCommentBubbleDatum(comment: ChartComment): CommentBubbleDatum {
     createdAt: comment.createdAt,
     permalink: comment.permalink,
     postId: comment.postId,
+  };
+}
+
+function toAuthorBubbleDatum(author: ChartAuthor): AuthorBubbleDatum {
+  return {
+    value: [author.commentCount, author.postCount, author.totalScore],
+    authorName: author.authorName,
+    authorAvatarUrl: author.authorAvatarUrl,
+    avatarImageUrl: author.authorAvatarUrl ?? createAuthorFallbackAvatarUrl(author.authorName),
+    postCount: author.postCount,
+    commentCount: author.commentCount,
+    postScore: author.postScore,
+    commentScore: author.commentScore,
+    totalScore: author.totalScore,
+    profileUrl: author.profileUrl,
   };
 }
 
@@ -1253,6 +1661,33 @@ function getCommentBubbleDatum(value: unknown): CommentBubbleDatum | null {
   return value as CommentBubbleDatum;
 }
 
+function getAuthorBubbleDatum(value: unknown): AuthorBubbleDatum | null {
+  if (!value || typeof value !== 'object') {
+    return null;
+  }
+
+  const datum = value as Partial<Record<keyof AuthorBubbleDatum, unknown>>;
+  if (
+    !Array.isArray(datum.value) ||
+    typeof datum.value[0] !== 'number' ||
+    typeof datum.value[1] !== 'number' ||
+    typeof datum.value[2] !== 'number' ||
+    typeof datum.authorName !== 'string' ||
+    (datum.authorAvatarUrl !== null && typeof datum.authorAvatarUrl !== 'string') ||
+    typeof datum.avatarImageUrl !== 'string' ||
+    typeof datum.postCount !== 'number' ||
+    typeof datum.commentCount !== 'number' ||
+    typeof datum.postScore !== 'number' ||
+    typeof datum.commentScore !== 'number' ||
+    typeof datum.totalScore !== 'number' ||
+    typeof datum.profileUrl !== 'string'
+  ) {
+    return null;
+  }
+
+  return value as AuthorBubbleDatum;
+}
+
 function isAuthorSubredditKarmaBucket(
   value: unknown
 ): value is AuthorSubredditKarmaBucket | null {
@@ -1273,6 +1708,40 @@ function getKarmaBucketColor(bucket: AuthorSubredditKarmaBucket | null): string 
 
 function getCommentGroupColor(postId: string): string {
   return COMMENT_GROUP_COLORS[hashString(postId) % COMMENT_GROUP_COLORS.length] ?? '#0f8b8d';
+}
+
+function createAuthorFallbackAvatarUrl(authorName: string): string {
+  const color = getAuthorFallbackColor(authorName);
+  const initial = getAuthorInitial(authorName);
+  const svg = [
+    '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 80 80">',
+    `<rect width="80" height="80" rx="16" fill="${color}"/>`,
+    '<circle cx="40" cy="30" r="14" fill="rgba(255,255,255,0.82)"/>',
+    '<path d="M18 70c4-16 16-24 22-24s18 8 22 24" fill="rgba(255,255,255,0.82)"/>',
+    `<text x="40" y="50" text-anchor="middle" fill="${color}" font-family="Arial,sans-serif" font-size="20" font-weight="700">${escapeHtml(initial)}</text>`,
+    '</svg>',
+  ].join('');
+
+  return `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(svg)}`;
+}
+
+function getAuthorFallbackColor(authorName: string): string {
+  const colors = [
+    '#0f8b8d',
+    '#2d6cdf',
+    '#5ca760',
+    '#e85d75',
+    '#7b61ff',
+    '#607d3b',
+  ];
+
+  return colors[hashString(authorName) % colors.length] ?? '#0f8b8d';
+}
+
+function getAuthorInitial(authorName: string): string {
+  const [initial = '?'] = Array.from(authorName.trim());
+
+  return initial.toLocaleUpperCase();
 }
 
 function hashString(value: string): number {
