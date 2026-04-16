@@ -113,8 +113,8 @@ const KARMA_BUCKET_COLORS = [
   '#ffb703',
 ];
 const COMMENT_BUBBLE_SIZE = 7;
-const AUTHOR_BUBBLE_MIN_SIZE = 10;
-const AUTHOR_BUBBLE_MAX_SIZE = 72;
+const BUBBLE_MIN_SIZE = 10;
+const BUBBLE_MAX_SIZE = 72;
 const COMMENT_GROUP_COLORS = [
   '#2d6cdf',
   '#0f8b8d',
@@ -1116,7 +1116,7 @@ function createBubbleOption(
         symbolSize(_value: unknown, params?: { data?: unknown }) {
           const datum = getBubbleDatum(params?.data);
           const comments = datum ? Math.max(0, datum.comments) : 0;
-          return 10 + Math.sqrt(comments / maxComments) * 34;
+          return getPostBubbleSize(comments, maxComments);
         },
         itemStyle: {
           borderColor: '#ffffff',
@@ -1451,13 +1451,26 @@ function getAuthorBubbleSize(contributionCount: number, maxContributionCount: nu
   const count = Math.max(0, contributionCount);
 
   if (maxContributionCount <= 0) {
-    return AUTHOR_BUBBLE_MIN_SIZE;
+    return BUBBLE_MIN_SIZE;
   }
 
-  return (
-    AUTHOR_BUBBLE_MIN_SIZE +
-    (count / maxContributionCount) * (AUTHOR_BUBBLE_MAX_SIZE - AUTHOR_BUBBLE_MIN_SIZE)
-  );
+  return getScaledBubbleSize(count / maxContributionCount);
+}
+
+function getPostBubbleSize(commentCount: number, maxCommentCount: number): number {
+  const count = Math.max(0, commentCount);
+
+  if (maxCommentCount <= 0) {
+    return BUBBLE_MIN_SIZE;
+  }
+
+  return getScaledBubbleSize(Math.sqrt(count / maxCommentCount));
+}
+
+function getScaledBubbleSize(ratio: number): number {
+  const clampedRatio = Math.min(Math.max(ratio, 0), 1);
+
+  return BUBBLE_MIN_SIZE + clampedRatio * (BUBBLE_MAX_SIZE - BUBBLE_MIN_SIZE);
 }
 
 function readVisibleTimeRange(chart: echarts.EChartsType): TimeRange | null {
