@@ -117,7 +117,8 @@ const KARMA_BUCKET_COLORS = [
   '#e2d13f',
   '#ffb703',
 ];
-const COMMENT_BUBBLE_SIZE = 7;
+const COMMENT_BUBBLE_SIZE = 10;
+const COMMENT_GROUP_EMPHASIZED_BUBBLE_SIZE = 26;
 const BUBBLE_MIN_SIZE = 10;
 const BUBBLE_MAX_SIZE = 72;
 const COMMENT_GROUP_COLORS = [
@@ -847,6 +848,7 @@ function CommentsChart({
 }) {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const chartRef = useRef<echarts.EChartsType | null>(null);
+  const emphasizedCommentGroupRef = useRef<string | null>(null);
   const chartData = useMemo<CommentBubbleDatum[]>(
     () => data.comments.map(toCommentBubbleDatum),
     [data.comments]
@@ -861,6 +863,48 @@ function CommentsChart({
     const chart = echarts.init(container, undefined, { renderer: 'canvas' });
     chartRef.current = chart;
     let resizeFrame = 0;
+    let clearCommentGroupEmphasisFrame = 0;
+
+    const setEmphasizedCommentGroup = (nextPostId: string | null) => {
+      const previousPostId = emphasizedCommentGroupRef.current;
+      if (previousPostId === nextPostId) {
+        return;
+      }
+
+      const series = [
+        ...(previousPostId
+          ? [
+              {
+                id: getCommentGroupSeriesId(previousPostId),
+                symbolSize: COMMENT_BUBBLE_SIZE,
+              },
+            ]
+          : []),
+        ...(nextPostId
+          ? [
+              {
+                id: getCommentGroupSeriesId(nextPostId),
+                symbolSize: COMMENT_GROUP_EMPHASIZED_BUBBLE_SIZE,
+              },
+            ]
+          : []),
+      ];
+
+      emphasizedCommentGroupRef.current = nextPostId;
+
+      if (series.length > 0) {
+        chart.setOption({ series });
+      }
+    };
+
+    const cancelPendingCommentGroupClear = () => {
+      if (!clearCommentGroupEmphasisFrame) {
+        return;
+      }
+
+      window.cancelAnimationFrame(clearCommentGroupEmphasisFrame);
+      clearCommentGroupEmphasisFrame = 0;
+    };
 
     const handleChartClick = (params: { data?: unknown }) => {
       const datum = getCommentBubbleDatum(params.data);
@@ -871,7 +915,41 @@ function CommentsChart({
       openPost(datum.permalink);
     };
 
+    const handleCommentMouseOver = (params: { data?: unknown }) => {
+      const datum = getCommentBubbleDatum(params.data);
+      if (!datum) {
+        return;
+      }
+
+      cancelPendingCommentGroupClear();
+      setEmphasizedCommentGroup(datum.postId);
+    };
+
+    const handleCommentMouseOut = (params: { data?: unknown }) => {
+      const datum = getCommentBubbleDatum(params.data);
+      if (!datum) {
+        return;
+      }
+
+      cancelPendingCommentGroupClear();
+      clearCommentGroupEmphasisFrame = window.requestAnimationFrame(() => {
+        clearCommentGroupEmphasisFrame = 0;
+
+        if (emphasizedCommentGroupRef.current === datum.postId) {
+          setEmphasizedCommentGroup(null);
+        }
+      });
+    };
+
+    const handleCommentGlobalOut = () => {
+      cancelPendingCommentGroupClear();
+      setEmphasizedCommentGroup(null);
+    };
+
     chart.on('click', handleChartClick);
+    chart.on('mouseover', handleCommentMouseOver);
+    chart.on('mouseout', handleCommentMouseOut);
+    chart.on('globalout', handleCommentGlobalOut);
 
     const resizeChart = () => {
       if (resizeFrame) {
@@ -892,8 +970,12 @@ function CommentsChart({
       if (resizeFrame) {
         window.cancelAnimationFrame(resizeFrame);
       }
+      cancelPendingCommentGroupClear();
 
       chart.off('click', handleChartClick);
+      chart.off('mouseover', handleCommentMouseOver);
+      chart.off('mouseout', handleCommentMouseOut);
+      chart.off('globalout', handleCommentGlobalOut);
       resizeObserver.disconnect();
       window.removeEventListener('resize', resizeChart);
       window.visualViewport?.removeEventListener('resize', resizeChart);
@@ -908,6 +990,7 @@ function CommentsChart({
       return;
     }
 
+    emphasizedCommentGroupRef.current = null;
     chart.setOption(
       createCommentsOption(chartData, data, zoomEnabled, () => readVisibleTimeRange(chart)),
       true
@@ -1266,6 +1349,7 @@ function createCommentsOption(
       },
     },
     series: commentGroups.map((group) => ({
+      id: getCommentGroupSeriesId(group.postId),
       name: group.postId,
       type: 'scatter',
       cursor: 'pointer',
@@ -1721,6 +1805,10 @@ function getKarmaBucketColor(bucket: AuthorSubredditKarmaBucket | null): string 
 
 function getCommentGroupColor(postId: string): string {
   return COMMENT_GROUP_COLORS[hashString(postId) % COMMENT_GROUP_COLORS.length] ?? '#0f8b8d';
+}
+
+function getCommentGroupSeriesId(postId: string): string {
+  return `comment-group-${postId}`;
 }
 
 function getBubbleFillColor(baseColor: string, alpha: number): string {
