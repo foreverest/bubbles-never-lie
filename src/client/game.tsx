@@ -8,7 +8,7 @@ import {
 } from 'echarts/components';
 import * as echarts from 'echarts/core';
 import type { EChartsCoreOption } from 'echarts/core';
-import { CustomChart, ScatterChart } from 'echarts/charts';
+import { ScatterChart } from 'echarts/charts';
 import { CanvasRenderer } from 'echarts/renderers';
 import { StrictMode, useEffect, useMemo, useRef, useState } from 'react';
 import { createRoot } from 'react-dom/client';
@@ -27,7 +27,6 @@ import type {
 
 echarts.use([
   CanvasRenderer,
-  CustomChart,
   DataZoomComponent,
   GridComponent,
   ScatterChart,
@@ -69,6 +68,7 @@ type AuthorBubbleDatum = {
   value: [commentScore: number, postScore: number, contributionCount: number];
   authorName: string;
   authorAvatarUrl: string | null;
+  authorSubredditKarmaBucket: AuthorSubredditKarmaBucket | null;
   postCount: number;
   commentCount: number;
   contributionCount: number;
@@ -89,14 +89,6 @@ type TimeRange = {
 };
 
 type GetVisibleTimeRange = () => TimeRange | null;
-
-type AuthorRenderItemParams = {
-  dataIndex: number;
-};
-
-type AuthorRenderItemApi = {
-  coord(value: [number, number]): [number, number];
-};
 
 const TIME_EDGE_TOLERANCE_MS = 1_000;
 
@@ -122,8 +114,6 @@ const KARMA_BUCKET_COLORS = [
 const COMMENT_BUBBLE_SIZE = 7;
 const AUTHOR_BUBBLE_MIN_SIZE = 10;
 const AUTHOR_BUBBLE_MAX_SIZE = 72;
-const AUTHOR_AVATAR_FALLBACK_START_COLOR = '#0f8b8d';
-const AUTHOR_AVATAR_FALLBACK_END_COLOR = '#e85d75';
 const COMMENT_GROUP_COLORS = [
   '#2d6cdf',
   '#0f8b8d',
@@ -1373,15 +1363,33 @@ function createAuthorsOption(
     series: [
       {
         name: 'Authors',
-        type: 'custom',
+        type: 'scatter',
         cursor: 'pointer',
         data,
         encode: {
           x: 0,
           y: 1,
         },
-        renderItem(params: AuthorRenderItemParams, api: AuthorRenderItemApi) {
-          return renderAuthorBubble(params, api, data, maxContributionCount);
+        symbolSize(_value: unknown, params?: { data?: unknown }) {
+          const datum = getAuthorBubbleDatum(params?.data);
+          return getAuthorBubbleSize(datum?.contributionCount ?? 0, maxContributionCount);
+        },
+        itemStyle: {
+          borderColor: '#ffffff',
+          borderWidth: 2,
+          color(params: { data?: unknown }) {
+            const datum = getAuthorBubbleDatum(params.data);
+            return getKarmaBucketColor(datum?.authorSubredditKarmaBucket ?? null);
+          },
+          opacity: 0.5,
+        },
+        emphasis: {
+          scale: 1.35,
+          itemStyle: {
+            opacity: 0.75,
+            shadowBlur: 10,
+            shadowColor: 'rgba(22, 51, 45, 0.25)',
+          },
         },
       },
     ],
@@ -1405,92 +1413,6 @@ function createAuthorsOption(
   }
 
   return option;
-}
-
-function renderAuthorBubble(
-  params: AuthorRenderItemParams,
-  api: AuthorRenderItemApi,
-  data: AuthorBubbleDatum[],
-  maxContributionCount: number
-): unknown {
-  const datum = data[params.dataIndex];
-
-  if (!datum) {
-    return {
-      type: 'group',
-      children: [],
-    };
-  }
-
-  const [x, y] = api.coord([datum.commentScore, datum.postScore]);
-  const size = getAuthorBubbleSize(datum.contributionCount, maxContributionCount);
-  const circleShape = {
-    cx: x,
-    cy: y,
-    r: size / 2,
-  };
-  const imageShape = {
-    x: x - size / 2,
-    y: y - size / 2,
-    width: size,
-    height: size,
-  };
-
-  return {
-    type: 'group',
-    children: [
-      {
-        type: 'circle',
-        shape: circleShape,
-        style: {
-          fill: '#eef7f3',
-          shadowBlur: 8,
-          shadowColor: 'rgba(22, 51, 45, 0.18)',
-        },
-      },
-      createAuthorBubbleAvatar(datum, circleShape, imageShape),
-      {
-        type: 'circle',
-        shape: circleShape,
-        style: {
-          fill: 'transparent',
-          stroke: '#ffffff',
-          lineWidth: 2,
-        },
-      },
-    ],
-  };
-}
-
-function createAuthorBubbleAvatar(
-  datum: AuthorBubbleDatum,
-  circleShape: { cx: number; cy: number; r: number },
-  imageShape: { x: number; y: number; width: number; height: number }
-): unknown {
-  if (!datum.authorAvatarUrl) {
-    return {
-      type: 'circle',
-      shape: circleShape,
-      style: {
-        fill: createAvatarFallbackGradient(),
-      },
-    };
-  }
-
-  return {
-    type: 'image',
-    clipPath: {
-      type: 'circle',
-      shape: circleShape,
-    },
-    style: {
-      image: datum.authorAvatarUrl,
-      x: imageShape.x,
-      y: imageShape.y,
-      width: imageShape.width,
-      height: imageShape.height,
-    },
-  };
 }
 
 function getAuthorBubbleSize(contributionCount: number, maxContributionCount: number): number {
@@ -1609,6 +1531,7 @@ function toAuthorBubbleDatum(author: ChartAuthor): AuthorBubbleDatum {
     value: [author.commentScore, author.postScore, contributionCount],
     authorName: author.authorName,
     authorAvatarUrl: author.authorAvatarUrl,
+    authorSubredditKarmaBucket: author.authorSubredditKarmaBucket,
     postCount: author.postCount,
     commentCount: author.commentCount,
     contributionCount,
@@ -1701,6 +1624,7 @@ function getAuthorBubbleDatum(value: unknown): AuthorBubbleDatum | null {
     typeof datum.value[2] !== 'number' ||
     typeof datum.authorName !== 'string' ||
     (datum.authorAvatarUrl !== null && typeof datum.authorAvatarUrl !== 'string') ||
+    !isAuthorSubredditKarmaBucket(datum.authorSubredditKarmaBucket) ||
     typeof datum.postCount !== 'number' ||
     typeof datum.commentCount !== 'number' ||
     typeof datum.contributionCount !== 'number' ||
@@ -1741,20 +1665,6 @@ function renderTooltipAvatar(authorAvatarUrl: string | null): string {
   return authorAvatarUrl
     ? `<img alt="" class="chart-tooltip__avatar" src="${escapeHtml(authorAvatarUrl)}">`
     : TOOLTIP_AVATAR_FALLBACK;
-}
-
-function createAvatarFallbackGradient() {
-  return {
-    type: 'linear',
-    x: 0,
-    y: 0,
-    x2: 1,
-    y2: 1,
-    colorStops: [
-      { offset: 0, color: AUTHOR_AVATAR_FALLBACK_START_COLOR },
-      { offset: 1, color: AUTHOR_AVATAR_FALLBACK_END_COLOR },
-    ],
-  };
 }
 
 function hashString(value: string): number {

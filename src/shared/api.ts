@@ -41,6 +41,7 @@ export type ChartComment = {
 export type ChartAuthor = {
   authorName: string;
   authorAvatarUrl: string | null;
+  authorSubredditKarmaBucket: AuthorSubredditKarmaBucket | null;
   postCount: number;
   commentCount: number;
   postScore: number;

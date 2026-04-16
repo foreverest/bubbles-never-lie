@@ -1,6 +1,7 @@
-import type { ChartAuthor } from '../../shared/api';
+import type { AuthorSubredditKarmaBucket, ChartAuthor } from '../../shared/api';
 import { createBubbleStatsDataLayer } from '../data';
 import type { AuthorEntity, CommentEntity, PostEntity } from '../data';
+import { createAuthorKarmaBuckets } from './author-karma';
 
 export type AuthorChartReadOptions = {
   subredditName: string;
@@ -95,20 +96,36 @@ export const createAuthorActivities = (
 export const createChartAuthors = (
   activities: Map<string, AuthorActivity>,
   cachedAuthorsByName: Map<string, AuthorEntity> = new Map()
-): ChartAuthor[] =>
-  [...activities.values()]
-    .map((activity) => toChartAuthor(activity, cachedAuthorsByName.get(activity.authorName)))
+): ChartAuthor[] => {
+  const authorKarmaBuckets = createAuthorKarmaBuckets(
+    [...activities.keys()].flatMap((authorName) => {
+      const author = cachedAuthorsByName.get(authorName);
+      return author ? [author] : [];
+    })
+  );
+
+  return [...activities.values()]
+    .map((activity) =>
+      toChartAuthor(
+        activity,
+        cachedAuthorsByName.get(activity.authorName),
+        authorKarmaBuckets.get(activity.authorName) ?? null
+      )
+    )
     .sort(sortChartAuthors);
+};
 
 const toChartAuthor = (
   activity: AuthorActivity,
-  author: AuthorEntity | null | undefined
+  author: AuthorEntity | null | undefined,
+  authorSubredditKarmaBucket: AuthorSubredditKarmaBucket | null
 ): ChartAuthor => {
   const totalScore = activity.postScore + activity.commentScore;
 
   return {
     authorName: activity.authorName,
     authorAvatarUrl: author?.avatarUrl ?? null,
+    authorSubredditKarmaBucket,
     postCount: activity.postCount,
     commentCount: activity.commentCount,
     postScore: activity.postScore,

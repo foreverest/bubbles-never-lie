@@ -66,6 +66,7 @@ test('author chart aggregation includes post-only, comment-only, and mixed autho
     {
       authorName: 'alice',
       authorAvatarUrl: 'https://example.com/alice.png',
+      authorSubredditKarmaBucket: 0,
       postCount: 2,
       commentCount: 1,
       postScore: 18,
@@ -76,6 +77,7 @@ test('author chart aggregation includes post-only, comment-only, and mixed autho
     {
       authorName: 'carol',
       authorAvatarUrl: 'https://example.com/carol.png',
+      authorSubredditKarmaBucket: 9,
       postCount: 0,
       commentCount: 2,
       postScore: 0,
@@ -86,6 +88,7 @@ test('author chart aggregation includes post-only, comment-only, and mixed autho
     {
       authorName: 'bob',
       authorAvatarUrl: null,
+      authorSubredditKarmaBucket: null,
       postCount: 1,
       commentCount: 0,
       postScore: 5,
@@ -116,6 +119,7 @@ test('author chart aggregation excludes blank and deleted authors', () => {
     {
       authorName: 'alice',
       authorAvatarUrl: null,
+      authorSubredditKarmaBucket: null,
       postCount: 1,
       commentCount: 1,
       postScore: 7,

@@ -1,9 +1,9 @@
 import { reddit } from '@devvit/web/server';
 import type { Post } from '@devvit/web/server';
-import { AUTHOR_SUBREDDIT_KARMA_BUCKET_COUNT } from '../../shared/api';
 import type { AuthorSubredditKarmaBucket, ChartPost } from '../../shared/api';
 import { createBubbleStatsDataLayer } from '../data';
 import type { AuthorEntity, HydratedPost, PostEntity } from '../data';
+import { createAuthorKarmaBuckets } from './author-karma';
 
 export type PostCacheReadOptions = {
   subredditName: string;
@@ -144,37 +144,6 @@ const getUniqueAuthors = (posts: PostWithAuthor[]): AuthorEntity[] => {
   });
 
   return [...authorsByName.values()];
-};
-
-const createAuthorKarmaBuckets = (
-  authors: AuthorEntity[]
-): Map<string, AuthorSubredditKarmaBucket> => {
-  const knownAuthors = authors
-    .flatMap((author) =>
-      typeof author.subredditKarma === 'number' &&
-      Number.isFinite(author.subredditKarma)
-        ? [{ authorName: author.id, subredditKarma: author.subredditKarma }]
-        : []
-    )
-    .sort(
-      (a, b) =>
-        a.subredditKarma - b.subredditKarma || a.authorName.localeCompare(b.authorName)
-    );
-  const authorKarmaBuckets = new Map<string, AuthorSubredditKarmaBucket>();
-  const maxAuthorIndex = knownAuthors.length - 1;
-
-  knownAuthors.forEach((author, index) => {
-    const bucket =
-      maxAuthorIndex === 0
-        ? AUTHOR_SUBREDDIT_KARMA_BUCKET_COUNT - 1
-        : Math.round(
-            (index / maxAuthorIndex) * (AUTHOR_SUBREDDIT_KARMA_BUCKET_COUNT - 1)
-          );
-
-    authorKarmaBuckets.set(author.authorName, bucket as AuthorSubredditKarmaBucket);
-  });
-
-  return authorKarmaBuckets;
 };
 
 const isPostId = (value: string): value is `t3_${string}` =>
