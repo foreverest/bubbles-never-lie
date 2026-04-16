@@ -69,7 +69,6 @@ type AuthorBubbleDatum = {
   value: [commentCount: number, postCount: number, totalScore: number];
   authorName: string;
   authorAvatarUrl: string | null;
-  avatarImageUrl: string;
   postCount: number;
   commentCount: number;
   postScore: number;
@@ -104,6 +103,8 @@ const UPVOTE_ICON =
   '<svg aria-hidden="true" class="chart-tooltip__stat-icon" viewBox="0 0 20 20"><path d="M10 3 3.5 10H7v6h6v-6h3.5L10 3Z" fill="none" stroke="currentColor" stroke-linejoin="round" stroke-width="2"/></svg>';
 const COMMENT_ICON =
   '<svg aria-hidden="true" class="chart-tooltip__stat-icon" viewBox="0 0 20 20"><path d="M4 5.5h12v8H8.4L4 16.5v-11Z" fill="none" stroke="currentColor" stroke-linejoin="round" stroke-width="2"/></svg>';
+const TOOLTIP_AVATAR_FALLBACK =
+  '<span aria-hidden="true" class="chart-tooltip__avatar chart-tooltip__avatar--fallback"></span>';
 const UNKNOWN_KARMA_COLOR = '#8b9b95';
 const KARMA_BUCKET_COLORS = [
   '#667085',
@@ -120,6 +121,8 @@ const KARMA_BUCKET_COLORS = [
 const COMMENT_BUBBLE_SIZE = 7;
 const AUTHOR_BUBBLE_MIN_SIZE = 10;
 const AUTHOR_BUBBLE_MAX_SIZE = 72;
+const AUTHOR_AVATAR_FALLBACK_START_COLOR = '#0f8b8d';
+const AUTHOR_AVATAR_FALLBACK_END_COLOR = '#e85d75';
 const COMMENT_GROUP_COLORS = [
   '#2d6cdf',
   '#0f8b8d',
@@ -1009,15 +1012,12 @@ function createBubbleOption(
           return '';
         }
 
-        const avatar = datum.authorAvatarUrl
-          ? `<img alt="" class="chart-tooltip__avatar" src="${escapeHtml(datum.authorAvatarUrl)}">`
-          : '<span aria-hidden="true" class="chart-tooltip__avatar chart-tooltip__avatar--fallback"></span>';
         const createdAgo = formatRelativeAge(new Date(datum.createdAt));
 
         return [
           '<article class="chart-tooltip">',
           '<div class="chart-tooltip__meta">',
-          avatar,
+          renderTooltipAvatar(datum.authorAvatarUrl),
           `<span class="chart-tooltip__username">u/${escapeHtml(datum.authorName)}</span>`,
           '<span aria-hidden="true" class="chart-tooltip__separator">&middot;</span>',
           `<span class="chart-tooltip__age">${escapeHtml(createdAgo)}</span>`,
@@ -1160,15 +1160,12 @@ function createCommentsOption(
           return '';
         }
 
-        const avatar = datum.authorAvatarUrl
-          ? `<img alt="" class="chart-tooltip__avatar" src="${escapeHtml(datum.authorAvatarUrl)}">`
-          : '<span aria-hidden="true" class="chart-tooltip__avatar chart-tooltip__avatar--fallback"></span>';
         const createdAgo = formatRelativeAge(new Date(datum.createdAt));
 
         return [
           '<article class="chart-tooltip chart-tooltip--comment">',
           '<div class="chart-tooltip__meta">',
-          avatar,
+          renderTooltipAvatar(datum.authorAvatarUrl),
           `<span class="chart-tooltip__username">u/${escapeHtml(datum.authorName)}</span>`,
           '<span aria-hidden="true" class="chart-tooltip__separator">&middot;</span>',
           `<span class="chart-tooltip__age">${escapeHtml(createdAgo)}</span>`,
@@ -1303,14 +1300,10 @@ function createAuthorsOption(
           return '';
         }
 
-        const avatar = `<img alt="" class="chart-tooltip__avatar" src="${escapeHtml(
-          datum.avatarImageUrl
-        )}">`;
-
         return [
           '<article class="chart-tooltip">',
           '<div class="chart-tooltip__meta">',
-          avatar,
+          renderTooltipAvatar(datum.authorAvatarUrl),
           `<span class="chart-tooltip__username">u/${escapeHtml(datum.authorName)}</span>`,
           '</div>',
           '<div class="chart-tooltip__stats">',
@@ -1448,20 +1441,7 @@ function renderAuthorBubble(
           shadowColor: 'rgba(22, 51, 45, 0.18)',
         },
       },
-      {
-        type: 'image',
-        clipPath: {
-          type: 'circle',
-          shape: circleShape,
-        },
-        style: {
-          image: datum.avatarImageUrl,
-          x: imageShape.x,
-          y: imageShape.y,
-          width: imageShape.width,
-          height: imageShape.height,
-        },
-      },
+      createAuthorBubbleAvatar(datum, circleShape, imageShape),
       {
         type: 'circle',
         shape: circleShape,
@@ -1472,6 +1452,37 @@ function renderAuthorBubble(
         },
       },
     ],
+  };
+}
+
+function createAuthorBubbleAvatar(
+  datum: AuthorBubbleDatum,
+  circleShape: { cx: number; cy: number; r: number },
+  imageShape: { x: number; y: number; width: number; height: number }
+): unknown {
+  if (!datum.authorAvatarUrl) {
+    return {
+      type: 'circle',
+      shape: circleShape,
+      style: {
+        fill: createAvatarFallbackGradient(),
+      },
+    };
+  }
+
+  return {
+    type: 'image',
+    clipPath: {
+      type: 'circle',
+      shape: circleShape,
+    },
+    style: {
+      image: datum.authorAvatarUrl,
+      x: imageShape.x,
+      y: imageShape.y,
+      width: imageShape.width,
+      height: imageShape.height,
+    },
   };
 }
 
@@ -1589,7 +1600,6 @@ function toAuthorBubbleDatum(author: ChartAuthor): AuthorBubbleDatum {
     value: [author.commentCount, author.postCount, author.totalScore],
     authorName: author.authorName,
     authorAvatarUrl: author.authorAvatarUrl,
-    avatarImageUrl: author.authorAvatarUrl ?? createAuthorFallbackAvatarUrl(author.authorName),
     postCount: author.postCount,
     commentCount: author.commentCount,
     postScore: author.postScore,
@@ -1681,7 +1691,6 @@ function getAuthorBubbleDatum(value: unknown): AuthorBubbleDatum | null {
     typeof datum.value[2] !== 'number' ||
     typeof datum.authorName !== 'string' ||
     (datum.authorAvatarUrl !== null && typeof datum.authorAvatarUrl !== 'string') ||
-    typeof datum.avatarImageUrl !== 'string' ||
     typeof datum.postCount !== 'number' ||
     typeof datum.commentCount !== 'number' ||
     typeof datum.postScore !== 'number' ||
@@ -1717,38 +1726,24 @@ function getCommentGroupColor(postId: string): string {
   return COMMENT_GROUP_COLORS[hashString(postId) % COMMENT_GROUP_COLORS.length] ?? '#0f8b8d';
 }
 
-function createAuthorFallbackAvatarUrl(authorName: string): string {
-  const color = getAuthorFallbackColor(authorName);
-  const initial = getAuthorInitial(authorName);
-  const svg = [
-    '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 80 80">',
-    `<rect width="80" height="80" rx="16" fill="${color}"/>`,
-    '<circle cx="40" cy="30" r="14" fill="rgba(255,255,255,0.82)"/>',
-    '<path d="M18 70c4-16 16-24 22-24s18 8 22 24" fill="rgba(255,255,255,0.82)"/>',
-    `<text x="40" y="50" text-anchor="middle" fill="${color}" font-family="Arial,sans-serif" font-size="20" font-weight="700">${escapeHtml(initial)}</text>`,
-    '</svg>',
-  ].join('');
-
-  return `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(svg)}`;
+function renderTooltipAvatar(authorAvatarUrl: string | null): string {
+  return authorAvatarUrl
+    ? `<img alt="" class="chart-tooltip__avatar" src="${escapeHtml(authorAvatarUrl)}">`
+    : TOOLTIP_AVATAR_FALLBACK;
 }
 
-function getAuthorFallbackColor(authorName: string): string {
-  const colors = [
-    '#0f8b8d',
-    '#2d6cdf',
-    '#5ca760',
-    '#e85d75',
-    '#7b61ff',
-    '#607d3b',
-  ];
-
-  return colors[hashString(authorName) % colors.length] ?? '#0f8b8d';
-}
-
-function getAuthorInitial(authorName: string): string {
-  const [initial = '?'] = Array.from(authorName.trim());
-
-  return initial.toLocaleUpperCase();
+function createAvatarFallbackGradient() {
+  return {
+    type: 'linear',
+    x: 0,
+    y: 0,
+    x2: 1,
+    y2: 1,
+    colorStops: [
+      { offset: 0, color: AUTHOR_AVATAR_FALLBACK_START_COLOR },
+      { offset: 1, color: AUTHOR_AVATAR_FALLBACK_END_COLOR },
+    ],
+  };
 }
 
 function hashString(value: string): number {
