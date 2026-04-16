@@ -66,11 +66,12 @@ type CommentBubbleDatum = {
 };
 
 type AuthorBubbleDatum = {
-  value: [commentCount: number, postCount: number, totalScore: number];
+  value: [commentScore: number, postScore: number, contributionCount: number];
   authorName: string;
   authorAvatarUrl: string | null;
   postCount: number;
   commentCount: number;
+  contributionCount: number;
   postScore: number;
   commentScore: number;
   totalScore: number;
@@ -973,7 +974,7 @@ function AuthorsChart({
       className="chart-stage"
       ref={containerRef}
       role="img"
-      aria-label={`Authors in r/${data.subredditName} plotted by comments and posts`}
+      aria-label={`Authors in r/${data.subredditName} plotted by total comment upvotes and total post upvotes`}
     />
   );
 }
@@ -1276,7 +1277,11 @@ function createAuthorsOption(
   data: AuthorBubbleDatum[],
   zoomEnabled: boolean
 ): EChartsCoreOption {
-  const maxBubbleScore = Math.max(0, ...data.map((datum) => datum.totalScore));
+  const minCommentScore = Math.min(0, ...data.map((datum) => datum.commentScore));
+  const maxCommentScore = Math.max(0, ...data.map((datum) => datum.commentScore));
+  const minPostScore = Math.min(0, ...data.map((datum) => datum.postScore));
+  const maxPostScore = Math.max(0, ...data.map((datum) => datum.postScore));
+  const maxContributionCount = Math.max(0, ...data.map((datum) => datum.contributionCount));
   const option: EChartsCoreOption = {
     grid: {
       top: 24,
@@ -1322,11 +1327,12 @@ function createAuthorsOption(
       },
     },
     xAxis: {
-      name: 'Comments',
+      name: 'Total comment upvotes',
       nameLocation: 'middle',
       nameGap: 30,
       type: 'value',
-      min: 0,
+      min: minCommentScore,
+      max: maxCommentScore,
       minInterval: 1,
       splitLine: {
         show: true,
@@ -1343,11 +1349,12 @@ function createAuthorsOption(
       },
     },
     yAxis: {
-      name: 'Posts',
+      name: 'Total post upvotes',
       nameLocation: 'middle',
       nameGap: 40,
       type: 'value',
-      min: 0,
+      min: minPostScore,
+      max: maxPostScore,
       minInterval: 1,
       splitLine: {
         show: true,
@@ -1374,7 +1381,7 @@ function createAuthorsOption(
           y: 1,
         },
         renderItem(params: AuthorRenderItemParams, api: AuthorRenderItemApi) {
-          return renderAuthorBubble(params, api, data, maxBubbleScore);
+          return renderAuthorBubble(params, api, data, maxContributionCount);
         },
       },
     ],
@@ -1404,7 +1411,7 @@ function renderAuthorBubble(
   params: AuthorRenderItemParams,
   api: AuthorRenderItemApi,
   data: AuthorBubbleDatum[],
-  maxBubbleScore: number
+  maxContributionCount: number
 ): unknown {
   const datum = data[params.dataIndex];
 
@@ -1415,8 +1422,8 @@ function renderAuthorBubble(
     };
   }
 
-  const [x, y] = api.coord([datum.commentCount, datum.postCount]);
-  const size = getAuthorBubbleSize(datum.totalScore, maxBubbleScore);
+  const [x, y] = api.coord([datum.commentScore, datum.postScore]);
+  const size = getAuthorBubbleSize(datum.contributionCount, maxContributionCount);
   const circleShape = {
     cx: x,
     cy: y,
@@ -1486,16 +1493,16 @@ function createAuthorBubbleAvatar(
   };
 }
 
-function getAuthorBubbleSize(totalScore: number, maxScore: number): number {
-  const score = Math.max(0, totalScore);
+function getAuthorBubbleSize(contributionCount: number, maxContributionCount: number): number {
+  const count = Math.max(0, contributionCount);
 
-  if (maxScore <= 0) {
+  if (maxContributionCount <= 0) {
     return AUTHOR_BUBBLE_MIN_SIZE;
   }
 
   return (
     AUTHOR_BUBBLE_MIN_SIZE +
-    (score / maxScore) * (AUTHOR_BUBBLE_MAX_SIZE - AUTHOR_BUBBLE_MIN_SIZE)
+    (count / maxContributionCount) * (AUTHOR_BUBBLE_MAX_SIZE - AUTHOR_BUBBLE_MIN_SIZE)
   );
 }
 
@@ -1596,12 +1603,15 @@ function toCommentBubbleDatum(comment: ChartComment): CommentBubbleDatum {
 }
 
 function toAuthorBubbleDatum(author: ChartAuthor): AuthorBubbleDatum {
+  const contributionCount = author.postCount + author.commentCount;
+
   return {
-    value: [author.commentCount, author.postCount, author.totalScore],
+    value: [author.commentScore, author.postScore, contributionCount],
     authorName: author.authorName,
     authorAvatarUrl: author.authorAvatarUrl,
     postCount: author.postCount,
     commentCount: author.commentCount,
+    contributionCount,
     postScore: author.postScore,
     commentScore: author.commentScore,
     totalScore: author.totalScore,
@@ -1693,6 +1703,7 @@ function getAuthorBubbleDatum(value: unknown): AuthorBubbleDatum | null {
     (datum.authorAvatarUrl !== null && typeof datum.authorAvatarUrl !== 'string') ||
     typeof datum.postCount !== 'number' ||
     typeof datum.commentCount !== 'number' ||
+    typeof datum.contributionCount !== 'number' ||
     typeof datum.postScore !== 'number' ||
     typeof datum.commentScore !== 'number' ||
     typeof datum.totalScore !== 'number' ||
