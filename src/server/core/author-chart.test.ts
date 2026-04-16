@@ -5,6 +5,7 @@ import {
   createChartAuthors,
 } from './author-chart';
 import type { AuthorEntity, CommentEntity, PostEntity } from '../data';
+import { USER_AVATAR_FALLBACK_URL } from '../../shared/api';
 
 const createPost = (
   id: string,
@@ -87,7 +88,7 @@ test('author chart aggregation includes post-only, comment-only, and mixed autho
     },
     {
       authorName: 'bob',
-      authorAvatarUrl: null,
+      authorAvatarUrl: USER_AVATAR_FALLBACK_URL,
       authorSubredditKarmaBucket: null,
       postCount: 1,
       commentCount: 0,
@@ -118,7 +119,7 @@ test('author chart aggregation excludes blank and deleted authors', () => {
   assert.deepEqual(authors, [
     {
       authorName: 'alice',
-      authorAvatarUrl: null,
+      authorAvatarUrl: USER_AVATAR_FALLBACK_URL,
       authorSubredditKarmaBucket: null,
       postCount: 1,
       commentCount: 1,

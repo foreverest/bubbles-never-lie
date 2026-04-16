@@ -1,6 +1,10 @@
 import { reddit } from '@devvit/web/server';
 import type { Post } from '@devvit/web/server';
-import type { AuthorSubredditKarmaBucket, ChartPost } from '../../shared/api';
+import {
+  resolveUserAvatarUrl,
+  type AuthorSubredditKarmaBucket,
+  type ChartPost,
+} from '../../shared/api';
 import { createBubbleStatsDataLayer } from '../data';
 import type { AuthorEntity, HydratedPost, PostEntity } from '../data';
 import { createAuthorKarmaBuckets } from './author-karma';
@@ -126,7 +130,7 @@ const toChartPost = (
   id: post.id,
   title: post.title,
   authorName: post.authorName,
-  authorAvatarUrl: post.author?.avatarUrl ?? null,
+  authorAvatarUrl: resolveUserAvatarUrl(post.author?.avatarUrl),
   comments: post.comments,
   score: post.score,
   authorSubredditKarmaBucket,

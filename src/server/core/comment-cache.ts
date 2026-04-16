@@ -1,6 +1,6 @@
 import { reddit, scheduler } from '@devvit/web/server';
 import type { Comment } from '@devvit/web/server';
-import type { ChartComment } from '../../shared/api';
+import { resolveUserAvatarUrl, type ChartComment } from '../../shared/api';
 import { createBubbleStatsDataLayer } from '../data';
 import type { CommentEntity, HydratedComment } from '../data';
 import { readCachedPostIdsForTimeframe } from './post-cache';
@@ -213,7 +213,7 @@ const toChartComment = (comment: CommentWithAuthor): ChartComment => ({
   id: comment.id,
   postId: comment.postId,
   authorName: comment.authorName,
-  authorAvatarUrl: comment.author?.avatarUrl ?? null,
+  authorAvatarUrl: resolveUserAvatarUrl(comment.author?.avatarUrl),
   score: comment.score,
   bodyPreview: comment.bodyPreview,
   createdAt: comment.createdAt,

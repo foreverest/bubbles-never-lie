@@ -12,7 +12,11 @@ import { ScatterChart } from 'echarts/charts';
 import { CanvasRenderer } from 'echarts/renderers';
 import { StrictMode, useEffect, useMemo, useRef, useState } from 'react';
 import { createRoot } from 'react-dom/client';
-import { AUTHOR_SUBREDDIT_KARMA_BUCKET_COUNT } from '../shared/api';
+import {
+  AUTHOR_SUBREDDIT_KARMA_BUCKET_COUNT,
+  USER_AVATAR_FALLBACK_URL,
+  resolveUserAvatarUrl,
+} from '../shared/api';
 import type {
   AuthorSubredditKarmaBucket,
   AuthorsChartDataResponse,
@@ -101,8 +105,6 @@ const POST_DOWNVOTE_ICON =
   '<svg aria-hidden="true" class="chart-tooltip__post-stat-icon" fill="currentColor" height="16" viewBox="0 0 20 20" width="16" xmlns="http://www.w3.org/2000/svg"><path d="M10 1a3.966 3.966 0 013.96 3.962V9.02h3.202c.706 0 1.335.42 1.605 1.073.27.652.122 1.396-.377 1.895l-7.754 7.759a.925.925 0 01-1.272 0l-7.754-7.76a1.734 1.734 0 01-.376-1.894c.27-.652.9-1.073 1.605-1.073h3.202V4.962A3.965 3.965 0 0110 1zm7.01 9.82h-4.85V5.09c0-1.13-.81-2.163-1.934-2.278a2.163 2.163 0 00-2.386 2.15v5.859H2.989l7.01 7.016 7.012-7.016z"></path></svg>';
 const POST_COMMENT_ICON =
   '<svg aria-hidden="true" class="chart-tooltip__post-stat-icon" fill="currentColor" height="16" viewBox="0 0 20 20" width="16" xmlns="http://www.w3.org/2000/svg"><path d="M10 1a9 9 0 00-9 9c0 1.947.79 3.58 1.935 4.957L.231 17.661A.784.784 0 00.785 19H10a9 9 0 009-9 9 9 0 00-9-9zm0 16.2H6.162c-.994.004-1.907.053-3.045.144l-.076-.188a36.981 36.981 0 002.328-2.087l-1.05-1.263C3.297 12.576 2.8 11.331 2.8 10c0-3.97 3.23-7.2 7.2-7.2s7.2 3.23 7.2 7.2-3.23 7.2-7.2 7.2z"></path></svg>';
-const TOOLTIP_AVATAR_FALLBACK =
-  '<span aria-hidden="true" class="chart-tooltip__avatar chart-tooltip__avatar--fallback"></span>';
 const UNKNOWN_KARMA_COLOR = '#8b9b95';
 const SOAP_BUBBLE_BORDER_COLOR = 'rgba(255, 255, 255, 0.76)';
 const SOAP_BUBBLE_EMPHASIS_BORDER_COLOR = 'rgba(255, 255, 255, 0.94)';
@@ -166,6 +168,28 @@ function App() {
   useEffect(() => {
     return () => {
       isMountedRef.current = false;
+    };
+  }, []);
+
+  useEffect(() => {
+    const handleAvatarLoadError = (event: Event) => {
+      const target = event.target;
+
+      if (
+        !(target instanceof HTMLImageElement) ||
+        !target.classList.contains('chart-tooltip__avatar') ||
+        target.src === USER_AVATAR_FALLBACK_URL
+      ) {
+        return;
+      }
+
+      target.src = USER_AVATAR_FALLBACK_URL;
+    };
+
+    document.addEventListener('error', handleAvatarLoadError, true);
+
+    return () => {
+      document.removeEventListener('error', handleAvatarLoadError, true);
     };
   }, []);
 
@@ -1886,9 +1910,9 @@ function formatDateOnly(value: string): string {
 }
 
 function renderTooltipAvatar(authorAvatarUrl: string | null): string {
-  return authorAvatarUrl
-    ? `<img alt="" class="chart-tooltip__avatar" src="${escapeHtml(authorAvatarUrl)}">`
-    : TOOLTIP_AVATAR_FALLBACK;
+  const avatarUrl = escapeHtml(resolveUserAvatarUrl(authorAvatarUrl));
+
+  return `<img alt="" class="chart-tooltip__avatar" src="${avatarUrl}">`;
 }
 
 function hashString(value: string): number {

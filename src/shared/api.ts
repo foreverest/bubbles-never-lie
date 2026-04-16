@@ -1,4 +1,9 @@
 export const AUTHOR_SUBREDDIT_KARMA_BUCKET_COUNT = 10;
+export const USER_AVATAR_FALLBACK_URL =
+  'https://www.redditstatic.com/avatars/defaults/v2/avatar_default_4.png';
+
+export const resolveUserAvatarUrl = (avatarUrl: string | null | undefined): string =>
+  avatarUrl?.trim() ? avatarUrl : USER_AVATAR_FALLBACK_URL;
 
 export type AuthorSubredditKarmaBucket = 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9;
 

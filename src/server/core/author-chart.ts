@@ -1,4 +1,8 @@
-import type { AuthorSubredditKarmaBucket, ChartAuthor } from '../../shared/api';
+import {
+  resolveUserAvatarUrl,
+  type AuthorSubredditKarmaBucket,
+  type ChartAuthor,
+} from '../../shared/api';
 import { createBubbleStatsDataLayer } from '../data';
 import type { AuthorEntity, CommentEntity, PostEntity } from '../data';
 import { createAuthorKarmaBuckets } from './author-karma';
@@ -124,7 +128,7 @@ const toChartAuthor = (
 
   return {
     authorName: activity.authorName,
-    authorAvatarUrl: author?.avatarUrl ?? null,
+    authorAvatarUrl: resolveUserAvatarUrl(author?.avatarUrl),
     authorSubredditKarmaBucket,
     postCount: activity.postCount,
     commentCount: activity.commentCount,

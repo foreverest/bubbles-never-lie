@@ -1,4 +1,5 @@
 import { reddit } from '@devvit/web/server';
+import { resolveUserAvatarUrl } from '../../shared/api';
 import { createBubbleStatsDataLayer } from '../data';
 import type { AuthorEntity, CommentEntity, PostEntity } from '../data';
 import { shouldUseSyntheticAuthorKarma } from './subreddits';
@@ -86,12 +87,12 @@ const getAuthorKarma = async (
   }
 };
 
-const getAuthorAvatarUrl = async (username: string): Promise<string | null> => {
+const getAuthorAvatarUrl = async (username: string): Promise<string> => {
   try {
-    return (await reddit.getSnoovatarUrl(username)) ?? null;
+    return resolveUserAvatarUrl(await reddit.getSnoovatarUrl(username));
   } catch (error) {
     console.warn(`Unable to load avatar for u/${username}: ${getErrorMessage(error)}`);
-    return null;
+    return resolveUserAvatarUrl(null);
   }
 };
 
