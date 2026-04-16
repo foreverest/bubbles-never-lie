@@ -455,7 +455,7 @@ select {
 
 .chart-tooltip--light .chart-tooltip__separator {
   font-size: 0.95rem;
-  color: black;
+  color: rgb(87, 111, 118);
   line-height: 1;
 }
 
