@@ -1,5 +1,5 @@
 import {
-  createAuthorRepository,
+  createContributorRepository,
   createCommentRepository,
   createPostRepository,
 } from './repositories';
@@ -9,14 +9,14 @@ import {
 } from './relations';
 import type { RedisDataClient } from './redis-repository';
 import type {
-  AuthorRepository,
+  ContributorRepository,
   CommentRepository,
   PostRepository,
 } from './types';
 
 export type {
-  AuthorEntity,
-  AuthorRepository,
+  ContributorEntity,
+  ContributorRepository,
   CommentEntity,
   CommentRepository,
   EntityRepository,
@@ -35,7 +35,7 @@ export type {
 export type { RedisDataClient } from './redis-repository';
 
 export {
-  createAuthorRepository,
+  createContributorRepository,
   createCommentRepository,
   createPostRepository,
 } from './repositories';
@@ -45,7 +45,7 @@ export { getDataKeys } from './keys';
 export type BubbleStatsDataLayer = RelationHydrators & {
   posts: PostRepository;
   comments: CommentRepository;
-  authors: AuthorRepository;
+  contributors: ContributorRepository;
 };
 
 export const createBubbleStatsDataLayer = (
@@ -54,13 +54,13 @@ export const createBubbleStatsDataLayer = (
 ): BubbleStatsDataLayer => {
   const posts = createPostRepository(subredditName, redisClient);
   const comments = createCommentRepository(subredditName, redisClient);
-  const authors = createAuthorRepository(subredditName, redisClient);
-  const hydrators = createRelationHydrators({ posts, authors });
+  const contributors = createContributorRepository(subredditName, redisClient);
+  const hydrators = createRelationHydrators({ posts, contributors });
 
   return {
     posts,
     comments,
-    authors,
+    contributors,
     ...hydrators,
   };
 };

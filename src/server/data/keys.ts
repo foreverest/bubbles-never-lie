@@ -7,7 +7,7 @@ export type DataKeys = {
   postCreatedAtIndex: string;
   comments: string;
   commentCreatedAtIndex: string;
-  authors: string;
+  contributors: string;
 };
 
 export const getDataKeys = (subredditName: string): DataKeys => {
@@ -18,6 +18,6 @@ export const getDataKeys = (subredditName: string): DataKeys => {
     postCreatedAtIndex: `${baseKey}:posts:createdAt`,
     comments: `${baseKey}:comments`,
     commentCreatedAtIndex: `${baseKey}:comments:createdAt`,
-    authors: `${baseKey}:authors`,
+    contributors: `${baseKey}:contributors`,
   };
 };

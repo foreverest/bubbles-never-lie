@@ -1,6 +1,6 @@
 const CHART_DATA_CACHE_KEY_VERSION = 'v1';
 
-export type ChartDataCacheEndpoint = 'posts' | 'comments' | 'authors' | 'stats';
+export type ChartDataCacheEndpoint = 'posts' | 'comments' | 'contributors' | 'stats';
 
 export type ChartDataCacheKeyOptions = {
   endpoint: ChartDataCacheEndpoint;

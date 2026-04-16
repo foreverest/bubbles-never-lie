@@ -1,6 +1,6 @@
 # Bubble Stats
 
-Bubble Stats creates an interactive subreddit post that helps people understand recent post activity at a glance. Pick a date range, publish a chart, and use the bubbles to compare when posts were created, how many upvotes they received, how much conversation they generated, and whether the author's subreddit karma bucket is known.
+Bubble Stats creates an interactive subreddit post that helps people understand recent post activity at a glance. Pick a date range, publish a chart, and use the bubbles to compare when posts were created, how many upvotes they received, how much conversation they generated, and whether the post author's subreddit karma bucket is known.
 
 ## What the app does
 
@@ -10,8 +10,8 @@ Bubble Stats turns subreddit posts into a bubble chart:
 - The left-to-right position shows when the post was created.
 - The up-and-down position shows the post's upvote score.
 - The bubble size shows how many comments the post received.
-- The bubble color reflects the author's relative subreddit karma bucket among authors in the chart when that information is available.
-- Gray bubbles mean the author's subreddit karma bucket was not available.
+- The bubble color reflects the post author's relative subreddit karma bucket among contributors in the chart when that information is available.
+- Gray bubbles mean the post author's subreddit karma bucket was not available.
 
 Bubble Stats also includes a comments chart:
 
@@ -42,7 +42,8 @@ Open the new Bubble Stats post and use the tabs at the top:
 
 - Posts: Shows the interactive bubble chart.
 - Comments: Shows comments by creation time and upvote score.
-- Stats: Shows how many posts matched the selected date range.
+- Contributors: Shows active contributors by total post upvotes and total comment upvotes.
+- Stats: Shows how many posts, comments, and contributors matched the selected date range.
 
 On the chart, hover over or tap a bubble to see the post title, author, author avatar when available, approximate age, upvote score, and comment count. Select a bubble to open the original Reddit post.
 
@@ -50,7 +51,7 @@ On the comments chart, hover over or tap a bubble to see the author, author avat
 
 ## Data notes
 
-Bubble Stats is designed for recent subreddit activity. It samples the newest subreddit posts, keeps a rolling cache of recent post and author details, and filters that data to the date range you chose. Very old date ranges may not include every historical post.
+Bubble Stats is designed for recent subreddit activity. It samples the newest subreddit posts, keeps a rolling cache of recent post and contributor details, and filters that data to the date range you chose. Very old date ranges may not include every historical post.
 
 If the app was just installed or upgraded, a chart may briefly say a cache is warming. Try again shortly. If no posts or comments match the selected range, the chart shows an empty state and suggests trying a wider date range.
 

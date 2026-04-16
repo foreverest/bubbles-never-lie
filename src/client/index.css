@@ -531,13 +531,13 @@ select {
   flex: 0 0 auto;
 }
 
-.chart-tooltip__author-line {
+.chart-tooltip__contributor-line {
   gap: 10px;
 }
 
-.chart-tooltip--author .chart-tooltip__metric,
-.chart-tooltip--author .chart-tooltip__metric-value,
-.chart-tooltip--author .chart-tooltip__metric-label {
+.chart-tooltip--contributor .chart-tooltip__metric,
+.chart-tooltip--contributor .chart-tooltip__metric-value,
+.chart-tooltip--contributor .chart-tooltip__metric-label {
   font-weight: 400;
 }
 

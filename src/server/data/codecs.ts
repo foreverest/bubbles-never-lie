@@ -1,4 +1,4 @@
-import type { AuthorEntity, CommentEntity, PostEntity } from './types';
+import type { ContributorEntity, CommentEntity, PostEntity } from './types';
 
 export type EntityCodec<Entity> = {
   parse(value: string | null | undefined): Entity | null;
@@ -65,7 +65,7 @@ export const commentEntityCodec: EntityCodec<CommentEntity> = {
   serialize: JSON.stringify,
 };
 
-export const authorEntityCodec: EntityCodec<AuthorEntity> = {
+export const contributorEntityCodec: EntityCodec<ContributorEntity> = {
   parse(value) {
     const parsed = parseJsonRecord(value);
 

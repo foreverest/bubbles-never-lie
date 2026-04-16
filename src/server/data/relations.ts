@@ -1,26 +1,26 @@
 import type {
-  AuthorEntity,
-  AuthorRepository,
+  ContributorEntity,
+  ContributorRepository,
   CommentEntity,
   PostEntity,
   PostRepository,
 } from './types';
 
 export type PostRelationOptions = {
-  authors?: true;
+  author?: true;
 };
 
 export type CommentRelationOptions = {
   posts?: true;
-  authors?: true;
+  author?: true;
 };
 
 export type HydratedPost<Options extends PostRelationOptions> = PostEntity &
-  (Options extends { authors: true } ? { author: AuthorEntity | null } : {});
+  (Options extends { author: true } ? { author: ContributorEntity | null } : {});
 
 export type HydratedComment<Options extends CommentRelationOptions> = CommentEntity &
   (Options extends { posts: true } ? { post: PostEntity | null } : {}) &
-  (Options extends { authors: true } ? { author: AuthorEntity | null } : {});
+  (Options extends { author: true } ? { author: ContributorEntity | null } : {});
 
 export type RelationHydrators = {
   hydratePostRelations<Options extends PostRelationOptions>(
@@ -35,26 +35,26 @@ export type RelationHydrators = {
 
 type RelationHydratorRepositories = {
   posts: PostRepository;
-  authors: AuthorRepository;
+  contributors: ContributorRepository;
 };
 
 export const createRelationHydrators = ({
   posts: postRepository,
-  authors: authorRepository,
+  contributors: contributorRepository,
 }: RelationHydratorRepositories): RelationHydrators => ({
   async hydratePostRelations(posts, options) {
-    const authorsByName = options.authors
+    const contributorsByName = options.author
       ? await loadEntitiesById(
           uniqueItems(posts.map((post) => post.authorName)),
-          authorRepository
+          contributorRepository
         )
       : null;
 
     return posts.map((post) => {
-      const hydrated: PostEntity & { author?: AuthorEntity | null } = { ...post };
+      const hydrated: PostEntity & { author?: ContributorEntity | null } = { ...post };
 
-      if (options.authors) {
-        hydrated.author = authorsByName?.get(post.authorName) ?? null;
+      if (options.author) {
+        hydrated.author = contributorsByName?.get(post.authorName) ?? null;
       }
 
       return hydrated as HydratedPost<typeof options>;
@@ -62,17 +62,17 @@ export const createRelationHydrators = ({
   },
 
   async hydrateCommentRelations(comments, options) {
-    const [postsById, authorsByName] = await Promise.all([
+    const [postsById, contributorsByName] = await Promise.all([
       options.posts
         ? loadEntitiesById(
             uniqueItems(comments.map((comment) => comment.postId)),
             postRepository
           )
         : Promise.resolve(null),
-      options.authors
+      options.author
         ? loadEntitiesById(
             uniqueItems(comments.map((comment) => comment.authorName)),
-            authorRepository
+            contributorRepository
           )
         : Promise.resolve(null),
     ]);
@@ -80,15 +80,15 @@ export const createRelationHydrators = ({
     return comments.map((comment) => {
       const hydrated: CommentEntity & {
         post?: PostEntity | null;
-        author?: AuthorEntity | null;
+        author?: ContributorEntity | null;
       } = { ...comment };
 
       if (options.posts) {
         hydrated.post = postsById?.get(comment.postId) ?? null;
       }
 
-      if (options.authors) {
-        hydrated.author = authorsByName?.get(comment.authorName) ?? null;
+      if (options.author) {
+        hydrated.author = contributorsByName?.get(comment.authorName) ?? null;
       }
 
       return hydrated as HydratedComment<typeof options>;

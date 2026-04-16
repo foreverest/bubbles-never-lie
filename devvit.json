@@ -53,8 +53,8 @@
       "refreshCommentCacheChunk": {
         "endpoint": "/internal/cache/refresh-comment-cache-chunk"
       },
-      "refreshAuthorCache": {
-        "endpoint": "/internal/cache/refresh-author-cache",
+      "refreshContributorCache": {
+        "endpoint": "/internal/cache/refresh-contributor-cache",
         "cron": "*/30 * * * *"
       },
       "refreshSubredditIcons": {

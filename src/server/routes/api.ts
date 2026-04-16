@@ -1,14 +1,17 @@
 import { cache as devvitCache, context } from '@devvit/web/server';
 import { Hono } from 'hono';
 import type {
-  AuthorsChartDataResponse,
+  ContributorsChartDataResponse,
   ChartResponseMetadata,
   CommentsChartDataResponse,
   ErrorResponse,
   PostsChartDataResponse,
   StatsDataResponse,
 } from '../../shared/api';
-import { readAuthorCountForTimeframe, readAuthorsForTimeframe } from '../core/author-chart';
+import {
+  readContributorCountForTimeframe,
+  readContributorsForTimeframe,
+} from '../core/contributor-chart';
 import { readCommentCountForTimeframe, readCommentsForTimeframe } from '../core/comment-cache';
 import { readPostCountForTimeframe, readPostsForTimeframe } from '../core/post-cache';
 import { readCachedSubredditIconUrl } from '../core/subreddit-icons';
@@ -25,7 +28,8 @@ const chartDataCacheTtlSeconds = 30;
 const missingTimeframeMessage = 'This post is missing a bubble stats date range.';
 const postsErrorMessage = 'Unable to load subreddit post chart data. Try again shortly.';
 const commentsErrorMessage = 'Unable to load subreddit comment chart data. Try again shortly.';
-const authorsErrorMessage = 'Unable to load subreddit author chart data. Try again shortly.';
+const contributorsErrorMessage =
+  'Unable to load subreddit contributor chart data. Try again shortly.';
 const statsErrorMessage = 'Unable to load subreddit stats data. Try again shortly.';
 
 api.get('/posts', async (c) => {
@@ -112,7 +116,7 @@ api.get('/comments', async (c) => {
   }
 });
 
-api.get('/authors', async (c) => {
+api.get('/contributors', async (c) => {
   const chartContext = readChartContext();
 
   if (!chartContext) {
@@ -126,8 +130,8 @@ api.get('/authors', async (c) => {
   }
 
   try {
-    const response = await readCachedChartDataResponse('authors', chartContext, async () => {
-      const cachedAuthors = await readAuthorsForTimeframe({
+    const response = await readCachedChartDataResponse('contributors', chartContext, async () => {
+      const cachedContributors = await readContributorsForTimeframe({
         subredditName: chartContext.subredditName,
         startTime: chartContext.startTime,
         endTime: chartContext.endTime,
@@ -135,19 +139,21 @@ api.get('/authors', async (c) => {
 
       return {
         ...(await createChartMetadata(chartContext)),
-        type: 'authors-chart-data',
-        authors: cachedAuthors.authors,
+        type: 'contributors-chart-data',
+        contributors: cachedContributors.contributors,
       };
     });
 
-    return c.json<AuthorsChartDataResponse>(response, 200);
+    return c.json<ContributorsChartDataResponse>(response, 200);
   } catch (error) {
-    console.error(`Author chart data error: ${getErrorMessage(error, authorsErrorMessage)}`);
+    console.error(
+      `Contributor chart data error: ${getErrorMessage(error, contributorsErrorMessage)}`
+    );
 
     return c.json<ErrorResponse>(
       {
         status: 'error',
-        message: authorsErrorMessage,
+        message: contributorsErrorMessage,
       },
       500
     );
@@ -169,7 +175,7 @@ api.get('/stats', async (c) => {
 
   try {
     const response = await readCachedChartDataResponse('stats', chartContext, async () => {
-      const [posts, comments, authors] = await Promise.all([
+      const [posts, comments, contributors] = await Promise.all([
         readPostCountForTimeframe({
           subredditName: chartContext.subredditName,
           startTime: chartContext.startTime,
@@ -180,7 +186,7 @@ api.get('/stats', async (c) => {
           startTime: chartContext.startTime,
           endTime: chartContext.endTime,
         }),
-        readAuthorCountForTimeframe({
+        readContributorCountForTimeframe({
           subredditName: chartContext.subredditName,
           startTime: chartContext.startTime,
           endTime: chartContext.endTime,
@@ -191,7 +197,7 @@ api.get('/stats', async (c) => {
         type: 'stats-data',
         postCount: posts.postCount,
         commentCount: comments.commentCount,
-        authorCount: authors.authorCount,
+        contributorCount: contributors.contributorCount,
       };
     });
 
@@ -219,7 +225,7 @@ type ChartContext = {
 type CacheableChartDataResponse =
   | PostsChartDataResponse
   | CommentsChartDataResponse
-  | AuthorsChartDataResponse
+  | ContributorsChartDataResponse
   | StatsDataResponse;
 type CacheableJsonValue =
   | boolean

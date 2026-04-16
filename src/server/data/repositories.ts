@@ -1,4 +1,4 @@
-import { authorEntityCodec, commentEntityCodec, postEntityCodec } from './codecs';
+import { contributorEntityCodec, commentEntityCodec, postEntityCodec } from './codecs';
 import { getDataKeys } from './keys';
 import {
   createRedisHashRepository,
@@ -6,7 +6,7 @@ import {
   type RedisDataClient,
 } from './redis-repository';
 import type {
-  AuthorRepository,
+  ContributorRepository,
   CommentRepository,
   PostRepository,
 } from './types';
@@ -43,16 +43,16 @@ export const createCommentRepository = (
   });
 };
 
-export const createAuthorRepository = (
+export const createContributorRepository = (
   subredditName: string,
   redisClient?: RedisDataClient
-): AuthorRepository => {
+): ContributorRepository => {
   const keys = getDataKeys(subredditName);
 
   return createRedisHashRepository({
     redisClient,
-    hashKey: keys.authors,
-    codec: authorEntityCodec,
-    getId: (author) => author.id,
+    hashKey: keys.contributors,
+    codec: contributorEntityCodec,
+    getId: (contributor) => contributor.id,
   });
 };

@@ -2,12 +2,12 @@ import { reddit } from '@devvit/web/server';
 import type { Post } from '@devvit/web/server';
 import {
   resolveUserAvatarUrl,
-  type AuthorSubredditKarmaBucket,
   type ChartPost,
+  type SubredditKarmaBucket,
 } from '../../shared/api';
 import { createBubbleStatsDataLayer } from '../data';
-import type { AuthorEntity, HydratedPost, PostEntity } from '../data';
-import { createAuthorKarmaBuckets } from './author-karma';
+import type { ContributorEntity, HydratedPost, PostEntity } from '../data';
+import { createContributorKarmaBuckets } from './contributor-karma';
 
 export type PostCacheReadOptions = {
   subredditName: string;
@@ -39,7 +39,7 @@ export type CachedPostIdReadResult = {
   postIds: `t3_${string}`[];
 };
 
-type PostWithAuthor = HydratedPost<{ authors: true }>;
+type PostWithAuthor = HydratedPost<{ author: true }>;
 
 export const readPostsForTimeframe = async ({
   subredditName,
@@ -48,9 +48,9 @@ export const readPostsForTimeframe = async ({
 }: PostCacheReadOptions): Promise<PostCacheReadResult> => {
   const dataLayer = createBubbleStatsDataLayer(subredditName);
   const posts = await dataLayer.posts.getInTimeRange({ startTime, endTime });
-  const hydratedPosts = await dataLayer.hydratePostRelations(posts, { authors: true });
-  const authorKarmaBuckets = createAuthorKarmaBuckets(
-    getUniqueAuthors(hydratedPosts)
+  const hydratedPosts = await dataLayer.hydratePostRelations(posts, { author: true });
+  const authorKarmaBuckets = createContributorKarmaBuckets(
+    getUniquePostAuthors(hydratedPosts)
   );
 
   return {
@@ -125,7 +125,7 @@ const toPostEntity = (post: Post): PostEntity => ({
 
 const toChartPost = (
   post: PostWithAuthor,
-  authorSubredditKarmaBucket: AuthorSubredditKarmaBucket | null
+  authorSubredditKarmaBucket: SubredditKarmaBucket | null
 ): ChartPost => ({
   id: post.id,
   title: post.title,
@@ -138,16 +138,16 @@ const toChartPost = (
   permalink: post.permalink,
 });
 
-const getUniqueAuthors = (posts: PostWithAuthor[]): AuthorEntity[] => {
-  const authorsByName = new Map<string, AuthorEntity>();
+const getUniquePostAuthors = (posts: PostWithAuthor[]): ContributorEntity[] => {
+  const postAuthorsByName = new Map<string, ContributorEntity>();
 
   posts.forEach((post) => {
     if (post.author) {
-      authorsByName.set(post.authorName, post.author);
+      postAuthorsByName.set(post.authorName, post.author);
     }
   });
 
-  return [...authorsByName.values()];
+  return [...postAuthorsByName.values()];
 };
 
 const isPostId = (value: string): value is `t3_${string}` =>

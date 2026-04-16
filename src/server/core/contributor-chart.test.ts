@@ -1,10 +1,10 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import {
-  createAuthorActivities,
-  createChartAuthors,
-} from './author-chart';
-import type { AuthorEntity, CommentEntity, PostEntity } from '../data';
+  createContributorActivities,
+  createChartContributors,
+} from './contributor-chart';
+import type { ContributorEntity, CommentEntity, PostEntity } from '../data';
 import { USER_AVATAR_FALLBACK_URL } from '../../shared/api';
 
 const createPost = (
@@ -35,15 +35,15 @@ const createComment = (
   permalink: `/r/example/comments/t3_post_1/${id}`,
 });
 
-const createAuthor = (id: string): AuthorEntity => ({
+const createContributor = (id: string): ContributorEntity => ({
   id,
   avatarUrl: `https://example.com/${id}.png`,
   subredditKarma: id.length,
   fetchedAt: '2026-04-15T12:00:00.000Z',
 });
 
-test('author chart aggregation includes post-only, comment-only, and mixed authors', () => {
-  const activities = createAuthorActivities(
+test('contributor chart aggregation includes post-only, comment-only, and mixed contributors', () => {
+  const activities = createContributorActivities(
     [
       createPost('t3_alice_1', 'alice', 7),
       createPost('t3_alice_2', 'alice', 11),
@@ -55,19 +55,19 @@ test('author chart aggregation includes post-only, comment-only, and mixed autho
       createComment('t1_carol_2', 'carol', 17),
     ]
   );
-  const authors = createChartAuthors(
+  const contributors = createChartContributors(
     activities,
     new Map([
-      ['alice', createAuthor('alice')],
-      ['carol', createAuthor('carol')],
+      ['alice', createContributor('alice')],
+      ['carol', createContributor('carol')],
     ])
   );
 
-  assert.deepEqual(authors, [
+  assert.deepEqual(contributors, [
     {
-      authorName: 'alice',
-      authorAvatarUrl: 'https://example.com/alice.png',
-      authorSubredditKarmaBucket: 0,
+      contributorName: 'alice',
+      contributorAvatarUrl: 'https://example.com/alice.png',
+      contributorSubredditKarmaBucket: 0,
       postCount: 2,
       commentCount: 1,
       postScore: 18,
@@ -76,9 +76,9 @@ test('author chart aggregation includes post-only, comment-only, and mixed autho
       profileUrl: '/user/alice/',
     },
     {
-      authorName: 'carol',
-      authorAvatarUrl: 'https://example.com/carol.png',
-      authorSubredditKarmaBucket: 9,
+      contributorName: 'carol',
+      contributorAvatarUrl: 'https://example.com/carol.png',
+      contributorSubredditKarmaBucket: 9,
       postCount: 0,
       commentCount: 2,
       postScore: 0,
@@ -87,9 +87,9 @@ test('author chart aggregation includes post-only, comment-only, and mixed autho
       profileUrl: '/user/carol/',
     },
     {
-      authorName: 'bob',
-      authorAvatarUrl: USER_AVATAR_FALLBACK_URL,
-      authorSubredditKarmaBucket: null,
+      contributorName: 'bob',
+      contributorAvatarUrl: USER_AVATAR_FALLBACK_URL,
+      contributorSubredditKarmaBucket: null,
       postCount: 1,
       commentCount: 0,
       postScore: 5,
@@ -100,9 +100,9 @@ test('author chart aggregation includes post-only, comment-only, and mixed autho
   ]);
 });
 
-test('author chart aggregation excludes blank and deleted authors', () => {
-  const authors = createChartAuthors(
-    createAuthorActivities(
+test('contributor chart aggregation excludes blank and deleted contributors', () => {
+  const contributors = createChartContributors(
+    createContributorActivities(
       [
         createPost('t3_blank', ' ', 100),
         createPost('t3_deleted', '[deleted]', 200),
@@ -116,11 +116,11 @@ test('author chart aggregation excludes blank and deleted authors', () => {
     )
   );
 
-  assert.deepEqual(authors, [
+  assert.deepEqual(contributors, [
     {
-      authorName: 'alice',
-      authorAvatarUrl: USER_AVATAR_FALLBACK_URL,
-      authorSubredditKarmaBucket: null,
+      contributorName: 'alice',
+      contributorAvatarUrl: USER_AVATAR_FALLBACK_URL,
+      contributorSubredditKarmaBucket: null,
       postCount: 1,
       commentCount: 1,
       postScore: 7,
@@ -131,9 +131,9 @@ test('author chart aggregation excludes blank and deleted authors', () => {
   ]);
 });
 
-test('author chart aggregation preserves zero and negative scores', () => {
-  const authors = createChartAuthors(
-    createAuthorActivities(
+test('contributor chart aggregation preserves zero and negative scores', () => {
+  const contributors = createChartContributors(
+    createContributorActivities(
       [
         createPost('t3_alice', 'alice', -5),
         createPost('t3_bob', 'bob', 0),
@@ -146,17 +146,17 @@ test('author chart aggregation preserves zero and negative scores', () => {
   );
 
   assert.deepEqual(
-    authors.map((author) => ({
-      authorName: author.authorName,
-      totalScore: author.totalScore,
+    contributors.map((contributor) => ({
+      contributorName: contributor.contributorName,
+      totalScore: contributor.totalScore,
     })),
     [
       {
-        authorName: 'bob',
+        contributorName: 'bob',
         totalScore: 0,
       },
       {
-        authorName: 'alice',
+        contributorName: 'alice',
         totalScore: -12,
       },
     ]

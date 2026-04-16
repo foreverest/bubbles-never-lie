@@ -23,7 +23,7 @@ export type CommentEntity = {
   permalink: string;
 };
 
-export type AuthorEntity = {
+export type ContributorEntity = {
   id: string;
   avatarUrl: string | null;
   subredditKarma: number | null;
@@ -44,4 +44,4 @@ export type TimeIndexedEntityRepository<Entity> = EntityRepository<Entity> & {
 
 export type PostRepository = TimeIndexedEntityRepository<PostEntity>;
 export type CommentRepository = TimeIndexedEntityRepository<CommentEntity>;
-export type AuthorRepository = EntityRepository<AuthorEntity>;
+export type ContributorRepository = EntityRepository<ContributorEntity>;

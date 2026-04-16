@@ -1,65 +1,65 @@
 import { reddit } from '@devvit/web/server';
 import { resolveUserAvatarUrl } from '../../shared/api';
 import { createBubbleStatsDataLayer } from '../data';
-import type { AuthorEntity, CommentEntity, PostEntity } from '../data';
-import { shouldUseSyntheticAuthorKarma } from './subreddits';
+import type { ContributorEntity, CommentEntity, PostEntity } from '../data';
+import { shouldUseSyntheticContributorKarma } from './subreddits';
 
-const AUTHOR_METADATA_CONCURRENCY = 4;
+const CONTRIBUTOR_METADATA_CONCURRENCY = 4;
 const DAY_MS = 24 * 60 * 60 * 1000;
-const AUTHOR_LOOKBACK_MS = 90 * DAY_MS;
+const CONTRIBUTOR_LOOKBACK_MS = 90 * DAY_MS;
 const SYNTHETIC_KARMA_MIN = -100;
 const SYNTHETIC_KARMA_MAX = 50_000;
 
-export type AuthorCacheRefreshResult = {
-  candidateAuthorCount: number;
-  refreshedAuthorCount: number;
+export type ContributorCacheRefreshResult = {
+  candidateContributorCount: number;
+  refreshedContributorCount: number;
   generatedAt: string;
 };
 
-export const refreshAuthorCache = async (
+export const refreshContributorCache = async (
   subredditName: string
-): Promise<AuthorCacheRefreshResult> => {
+): Promise<ContributorCacheRefreshResult> => {
   const dataLayer = createBubbleStatsDataLayer(subredditName);
   const fetchedAt = new Date();
   const [posts, comments] = await Promise.all([
     dataLayer.posts.getInTimeRange({
-      startTime: fetchedAt.getTime() - AUTHOR_LOOKBACK_MS,
+      startTime: fetchedAt.getTime() - CONTRIBUTOR_LOOKBACK_MS,
       endTime: fetchedAt.getTime() + DAY_MS,
     }),
     dataLayer.comments.getInTimeRange({
-      startTime: fetchedAt.getTime() - AUTHOR_LOOKBACK_MS,
+      startTime: fetchedAt.getTime() - CONTRIBUTOR_LOOKBACK_MS,
       endTime: fetchedAt.getTime() + DAY_MS,
     }),
   ]);
-  const usernames = getUniqueRefreshableAuthorNames(posts, comments);
-  const refreshedAuthors = await mapWithConcurrency(
+  const usernames = getUniqueRefreshableContributorNames(posts, comments);
+  const refreshedContributors = await mapWithConcurrency(
     usernames,
-    AUTHOR_METADATA_CONCURRENCY,
+    CONTRIBUTOR_METADATA_CONCURRENCY,
     async (username) =>
-      await getAuthorEntity(
+      await getContributorEntity(
         username,
         fetchedAt,
-        shouldUseSyntheticAuthorKarma(subredditName)
+        shouldUseSyntheticContributorKarma(subredditName)
       )
   );
 
-  await dataLayer.authors.upsertMany(refreshedAuthors);
+  await dataLayer.contributors.upsertMany(refreshedContributors);
 
   return {
-    candidateAuthorCount: usernames.length,
-    refreshedAuthorCount: refreshedAuthors.length,
+    candidateContributorCount: usernames.length,
+    refreshedContributorCount: refreshedContributors.length,
     generatedAt: new Date().toISOString(),
   };
 };
 
-const getAuthorEntity = async (
+const getContributorEntity = async (
   username: string,
   fetchedAt: Date,
-  useSyntheticAuthorKarma: boolean
-): Promise<AuthorEntity> => {
+  useSyntheticContributorKarma: boolean
+): Promise<ContributorEntity> => {
   const [subredditKarma, avatarUrl] = await Promise.all([
-    getAuthorKarma(username, useSyntheticAuthorKarma),
-    getAuthorAvatarUrl(username),
+    getContributorKarma(username, useSyntheticContributorKarma),
+    getContributorAvatarUrl(username),
   ]);
 
   return {
@@ -70,12 +70,12 @@ const getAuthorEntity = async (
   };
 };
 
-const getAuthorKarma = async (
+const getContributorKarma = async (
   username: string,
-  useSyntheticAuthorKarma: boolean
+  useSyntheticContributorKarma: boolean
 ): Promise<number | null> => {
-  if (useSyntheticAuthorKarma) {
-    return getSyntheticAuthorKarma();
+  if (useSyntheticContributorKarma) {
+    return getSyntheticContributorKarma();
   }
 
   try {
@@ -87,7 +87,7 @@ const getAuthorKarma = async (
   }
 };
 
-const getAuthorAvatarUrl = async (username: string): Promise<string> => {
+const getContributorAvatarUrl = async (username: string): Promise<string> => {
   try {
     return resolveUserAvatarUrl(await reddit.getSnoovatarUrl(username));
   } catch (error) {
@@ -96,7 +96,7 @@ const getAuthorAvatarUrl = async (username: string): Promise<string> => {
   }
 };
 
-const getUniqueRefreshableAuthorNames = (
+const getUniqueRefreshableContributorNames = (
   posts: PostEntity[],
   comments: CommentEntity[]
 ): string[] =>
@@ -108,7 +108,7 @@ const getUniqueRefreshableAuthorNames = (
     )
   );
 
-const getSyntheticAuthorKarma = (): number =>
+const getSyntheticContributorKarma = (): number =>
   randomInteger(SYNTHETIC_KARMA_MIN, SYNTHETIC_KARMA_MAX);
 
 const randomInteger = (min: number, max: number): number =>

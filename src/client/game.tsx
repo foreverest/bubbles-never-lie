@@ -13,14 +13,14 @@ import { CanvasRenderer } from 'echarts/renderers';
 import { StrictMode, useEffect, useMemo, useRef, useState } from 'react';
 import { createRoot } from 'react-dom/client';
 import {
-  AUTHOR_SUBREDDIT_KARMA_BUCKET_COUNT,
+  SUBREDDIT_KARMA_BUCKET_COUNT,
   USER_AVATAR_FALLBACK_URL,
   resolveUserAvatarUrl,
 } from '../shared/api';
 import type {
-  AuthorSubredditKarmaBucket,
-  AuthorsChartDataResponse,
-  ChartAuthor,
+  SubredditKarmaBucket,
+  ContributorsChartDataResponse,
+  ChartContributor,
   ChartComment,
   ChartResponseMetadata,
   CommentsChartDataResponse,
@@ -45,7 +45,7 @@ type DataState<Data> =
   | { status: 'ready'; data: Data }
   | { status: 'error'; message: string };
 
-type TabName = 'posts' | 'comments' | 'authors' | 'stats';
+type TabName = 'posts' | 'comments' | 'contributors' | 'stats';
 
 type ChartPreferences = {
   zoomEnabled: boolean;
@@ -56,7 +56,7 @@ type BubbleDatum = {
   value: [createdAtTime: number, score: number];
   score: number;
   comments: number;
-  authorSubredditKarmaBucket: AuthorSubredditKarmaBucket | null;
+  authorSubredditKarmaBucket: SubredditKarmaBucket | null;
   title: string;
   authorName: string;
   authorAvatarUrl: string | null;
@@ -75,11 +75,11 @@ type CommentBubbleDatum = {
   postId: string;
 } & CurrentUserDatumFields;
 
-type AuthorBubbleDatum = {
+type ContributorBubbleDatum = {
   value: [commentScore: number, postScore: number, contributionCount: number];
-  authorName: string;
-  authorAvatarUrl: string | null;
-  authorSubredditKarmaBucket: AuthorSubredditKarmaBucket | null;
+  contributorName: string;
+  contributorAvatarUrl: string | null;
+  contributorSubredditKarmaBucket: SubredditKarmaBucket | null;
   postCount: number;
   commentCount: number;
   contributionCount: number;
@@ -130,7 +130,7 @@ const CURRENT_USER_RIPPLE_EFFECT = {
   number: 3,
 } as const;
 const CURRENT_USER_POST_RIPPLE_SERIES_ID = 'current-user-post-ripple';
-const CURRENT_USER_AUTHOR_RIPPLE_SERIES_ID = 'current-user-author-ripple';
+const CURRENT_USER_CONTRIBUTOR_RIPPLE_SERIES_ID = 'current-user-contributor-ripple';
 const KARMA_BUCKET_COLORS = [
   '#667085',
   '#5f7488',
@@ -181,9 +181,10 @@ function App() {
   const [commentsState, setCommentsState] = useState<DataState<CommentsChartDataResponse>>({
     status: 'idle',
   });
-  const [authorsState, setAuthorsState] = useState<DataState<AuthorsChartDataResponse>>({
-    status: 'idle',
-  });
+  const [contributorsState, setContributorsState] =
+    useState<DataState<ContributorsChartDataResponse>>({
+      status: 'idle',
+    });
   const [statsState, setStatsState] = useState<DataState<StatsDataResponse>>({
     status: 'idle',
   });
@@ -284,36 +285,36 @@ function App() {
   }, [activeTab, commentsState.status]);
 
   useEffect(() => {
-    if (activeTab !== 'authors' || authorsState.status !== 'idle') {
+    if (activeTab !== 'contributors' || contributorsState.status !== 'idle') {
       return;
     }
 
-    setAuthorsState({ status: 'loading' });
+    setContributorsState({ status: 'loading' });
 
-    async function loadAuthorsData() {
+    async function loadContributorsData() {
       try {
-        const data = await fetchApiData<AuthorsChartDataResponse>(
-          '/api/authors',
-          'Unable to load author chart data.'
+        const data = await fetchApiData<ContributorsChartDataResponse>(
+          '/api/contributors',
+          'Unable to load contributor chart data.'
         );
 
         if (isMountedRef.current) {
-          setAuthorsState({ status: 'ready', data });
+          setContributorsState({ status: 'ready', data });
         }
       } catch (error) {
         if (isMountedRef.current) {
-          console.error('Error loading author chart data:', error);
-          setAuthorsState({
+          console.error('Error loading contributor chart data:', error);
+          setContributorsState({
             status: 'error',
             message:
-              error instanceof Error ? error.message : 'Unable to load author chart data.',
+              error instanceof Error ? error.message : 'Unable to load contributor chart data.',
           });
         }
       }
     }
 
-    void loadAuthorsData();
-  }, [activeTab, authorsState.status]);
+    void loadContributorsData();
+  }, [activeTab, contributorsState.status]);
 
   useEffect(() => {
     if (activeTab !== 'stats' || statsState.status !== 'idle') {
@@ -403,9 +404,9 @@ function App() {
             zoomEnabled={zoomEnabled}
             currentUserRippleEnabled={currentUserRippleEnabled}
           />
-        ) : activeTab === 'authors' ? (
-          <AuthorsPanel
-            state={authorsState}
+        ) : activeTab === 'contributors' ? (
+          <ContributorsPanel
+            state={contributorsState}
             zoomEnabled={zoomEnabled}
             currentUserRippleEnabled={currentUserRippleEnabled}
           />
@@ -477,33 +478,33 @@ function CommentsPanel({
   );
 }
 
-function AuthorsPanel({
+function ContributorsPanel({
   state,
   zoomEnabled,
   currentUserRippleEnabled,
 }: {
-  state: DataState<AuthorsChartDataResponse>;
+  state: DataState<ContributorsChartDataResponse>;
   zoomEnabled: boolean;
   currentUserRippleEnabled: boolean;
 }) {
   return (
-    <section className="chart-panel" id="authors-panel" aria-label="Authors">
+    <section className="chart-panel" id="contributors-panel" aria-label="Contributors">
       {state.status === 'ready' ? (
-        state.data.authors.length > 0 ? (
-          <AuthorsChart
+        state.data.contributors.length > 0 ? (
+          <ContributorsChart
             data={state.data}
             zoomEnabled={zoomEnabled}
             currentUserRippleEnabled={currentUserRippleEnabled}
           />
         ) : (
           <EmptyState
-            contentLabel="active authors"
+            contentLabel="active contributors"
             subredditName={state.data.subredditName}
             timeframe={state.data.timeframe}
           />
         )
       ) : (
-        <PanelState state={state} loadingMessage="Loading author chart data..." />
+        <PanelState state={state} loadingMessage="Loading contributor chart data..." />
       )}
     </section>
   );
@@ -529,8 +530,8 @@ function StatsPanel({ state }: { state: DataState<StatsDataResponse> }) {
         <strong>{state.data.commentCount.toLocaleString()}</strong>
       </div>
       <div className="stats-panel__item">
-        <span>Authors</span>
-        <strong>{state.data.authorCount.toLocaleString()}</strong>
+        <span>Contributors</span>
+        <strong>{state.data.contributorCount.toLocaleString()}</strong>
       </div>
     </section>
   );
@@ -801,17 +802,17 @@ function ChartHeader({
                 Comments
               </button>
               <button
-                aria-checked={activeTab === 'authors'}
+                aria-checked={activeTab === 'contributors'}
                 className={
-                  activeTab === 'authors'
+                  activeTab === 'contributors'
                     ? 'chart-section-menu__item chart-section-menu__item--active'
                     : 'chart-section-menu__item'
                 }
-                onClick={() => handleSectionSelect('authors')}
+                onClick={() => handleSectionSelect('contributors')}
                 role="menuitemradio"
                 type="button"
               >
-                Authors
+                Contributors
               </button>
               <button
                 aria-checked={activeTab === 'stats'}
@@ -1195,21 +1196,24 @@ function CommentsChart({
   );
 }
 
-function AuthorsChart({
+function ContributorsChart({
   data,
   zoomEnabled,
   currentUserRippleEnabled,
 }: {
-  data: AuthorsChartDataResponse;
+  data: ContributorsChartDataResponse;
   zoomEnabled: boolean;
   currentUserRippleEnabled: boolean;
 }) {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const chartRef = useRef<echarts.EChartsType | null>(null);
   const currentUsername = normalizeUsername(clientContext.username);
-  const chartData = useMemo<AuthorBubbleDatum[]>(
-    () => data.authors.map((author) => toAuthorBubbleDatum(author, currentUsername)),
-    [currentUsername, data.authors]
+  const chartData = useMemo<ContributorBubbleDatum[]>(
+    () =>
+      data.contributors.map((contributor) =>
+        toContributorBubbleDatum(contributor, currentUsername)
+      ),
+    [currentUsername, data.contributors]
   );
 
   useEffect(() => {
@@ -1223,7 +1227,7 @@ function AuthorsChart({
     let resizeFrame = 0;
 
     const handleChartClick = (params: { data?: unknown }) => {
-      const datum = getAuthorBubbleDatum(params.data);
+      const datum = getContributorBubbleDatum(params.data);
       if (!datum) {
         return;
       }
@@ -1268,7 +1272,10 @@ function AuthorsChart({
       return;
     }
 
-    chart.setOption(createAuthorsOption(chartData, zoomEnabled, currentUserRippleEnabled), true);
+    chart.setOption(
+      createContributorsOption(chartData, zoomEnabled, currentUserRippleEnabled),
+      true
+    );
   }, [chartData, currentUserRippleEnabled, zoomEnabled]);
 
   return (
@@ -1276,7 +1283,7 @@ function AuthorsChart({
       className="chart-stage"
       ref={containerRef}
       role="img"
-      aria-label={`Authors in r/${data.subredditName} plotted by total comment upvotes and total post upvotes`}
+      aria-label={`Contributors in r/${data.subredditName} plotted by total comment upvotes and total post upvotes`}
     />
   );
 }
@@ -1621,8 +1628,8 @@ function createCommentsOption(
   return option;
 }
 
-function createAuthorsOption(
-  data: AuthorBubbleDatum[],
+function createContributorsOption(
+  data: ContributorBubbleDatum[],
   zoomEnabled: boolean,
   currentUserRippleEnabled: boolean
 ): EChartsCoreOption {
@@ -1632,14 +1639,14 @@ function createAuthorsOption(
   const maxPostScore = Math.max(0, ...data.map((datum) => datum.postScore));
   const maxContributionCount = Math.max(0, ...data.map((datum) => datum.contributionCount));
   const currentUserData = data.filter((datum) => datum.isCurrentUser);
-  const getAuthorSymbolSize = (_value: unknown, params?: { data?: unknown }) => {
-    const datum = getAuthorBubbleDatum(params?.data);
-    return getAuthorBubbleSize(datum?.contributionCount ?? 0, maxContributionCount);
+  const getContributorSymbolSize = (_value: unknown, params?: { data?: unknown }) => {
+    const datum = getContributorBubbleDatum(params?.data);
+    return getContributorBubbleSize(datum?.contributionCount ?? 0, maxContributionCount);
   };
-  const getAuthorBubbleColor = (params: { data?: unknown }) => {
-    const datum = getAuthorBubbleDatum(params.data);
+  const getContributorBubbleColor = (params: { data?: unknown }) => {
+    const datum = getContributorBubbleDatum(params.data);
     return getBubbleFillColor(
-      getKarmaBucketColor(datum?.authorSubredditKarmaBucket ?? null),
+      getKarmaBucketColor(datum?.contributorSubredditKarmaBucket ?? null),
       SOAP_BUBBLE_FILL_ALPHA
     );
   };
@@ -1661,23 +1668,23 @@ function createAuthorsOption(
       },
       extraCssText: 'border-radius:8px;box-shadow:0 12px 30px rgba(15,23,42,0.14);padding:0;',
       formatter(params: { data?: unknown }) {
-        const datum = getAuthorBubbleDatum(params.data);
+        const datum = getContributorBubbleDatum(params.data);
         if (!datum) {
           return '';
         }
 
         return [
-          '<article class="chart-tooltip chart-tooltip--light chart-tooltip--author">',
+          '<article class="chart-tooltip chart-tooltip--light chart-tooltip--contributor">',
           '<div class="chart-tooltip__meta">',
-          renderTooltipAvatar(datum.authorAvatarUrl),
-          `<span class="chart-tooltip__username">u/${escapeHtml(datum.authorName)}</span>`,
+          renderTooltipAvatar(datum.contributorAvatarUrl),
+          `<span class="chart-tooltip__username">u/${escapeHtml(datum.contributorName)}</span>`,
           renderCurrentUserTooltipBadge(datum.isCurrentUser),
           '</div>',
-          '<div class="chart-tooltip__stats chart-tooltip__author-line">',
+          '<div class="chart-tooltip__stats chart-tooltip__contributor-line">',
           renderTooltipInlineLabeledMetric(TOOLTIP_POST_ICON, datum.postCount, 'posts'),
           renderTooltipInlineLabeledMetric(TOOLTIP_UPVOTE_ICON, datum.postScore, 'post upvotes'),
           '</div>',
-          '<div class="chart-tooltip__stats chart-tooltip__author-line">',
+          '<div class="chart-tooltip__stats chart-tooltip__contributor-line">',
           renderTooltipInlineLabeledMetric(TOOLTIP_COMMENT_ICON, datum.commentCount, 'comments'),
           renderTooltipInlineLabeledMetric(TOOLTIP_UPVOTE_ICON, datum.commentScore, 'comment upvotes'),
           '</div>',
@@ -1731,7 +1738,7 @@ function createAuthorsOption(
     },
     series: [
       {
-        name: 'Authors',
+        name: 'Contributors',
         type: 'scatter',
         cursor: 'pointer',
         data,
@@ -1739,11 +1746,11 @@ function createAuthorsOption(
           x: 0,
           y: 1,
         },
-        symbolSize: getAuthorSymbolSize,
+        symbolSize: getContributorSymbolSize,
         itemStyle: {
           borderColor: SOAP_BUBBLE_BORDER_COLOR,
           borderWidth: 1.5,
-          color: getAuthorBubbleColor,
+          color: getContributorBubbleColor,
           opacity: 0.6,
         },
         emphasis: {
@@ -1760,11 +1767,11 @@ function createAuthorsOption(
       ...(currentUserRippleEnabled && currentUserData.length > 0
         ? [
             createCurrentUserRippleSeries({
-              id: CURRENT_USER_AUTHOR_RIPPLE_SERIES_ID,
-              name: 'Authors',
+              id: CURRENT_USER_CONTRIBUTOR_RIPPLE_SERIES_ID,
+              name: 'Contributors',
               data: currentUserData,
-              symbolSize: getAuthorSymbolSize,
-              color: getAuthorBubbleColor,
+              symbolSize: getContributorSymbolSize,
+              color: getContributorBubbleColor,
               encode: {
                 x: 0,
                 y: 1,
@@ -1835,7 +1842,7 @@ function createCurrentUserRippleSeries({
   };
 }
 
-function getAuthorBubbleSize(contributionCount: number, maxContributionCount: number): number {
+function getContributorBubbleSize(contributionCount: number, maxContributionCount: number): number {
   const count = Math.max(0, contributionCount);
 
   if (maxContributionCount <= 0) {
@@ -1937,8 +1944,8 @@ function getTabLabel(tab: TabName): string {
       return 'Posts';
     case 'comments':
       return 'Comments';
-    case 'authors':
-      return 'Authors';
+    case 'contributors':
+      return 'Contributors';
     case 'stats':
       return 'Stats';
   }
@@ -1961,24 +1968,24 @@ function toCommentBubbleDatum(
   };
 }
 
-function toAuthorBubbleDatum(
-  author: ChartAuthor,
+function toContributorBubbleDatum(
+  contributor: ChartContributor,
   currentUsername: string | null
-): AuthorBubbleDatum {
-  const contributionCount = author.postCount + author.commentCount;
+): ContributorBubbleDatum {
+  const contributionCount = contributor.postCount + contributor.commentCount;
 
   return {
-    value: [author.commentScore, author.postScore, contributionCount],
-    authorName: author.authorName,
-    authorAvatarUrl: author.authorAvatarUrl,
-    authorSubredditKarmaBucket: author.authorSubredditKarmaBucket,
-    postCount: author.postCount,
-    commentCount: author.commentCount,
+    value: [contributor.commentScore, contributor.postScore, contributionCount],
+    contributorName: contributor.contributorName,
+    contributorAvatarUrl: contributor.contributorAvatarUrl,
+    contributorSubredditKarmaBucket: contributor.contributorSubredditKarmaBucket,
+    postCount: contributor.postCount,
+    commentCount: contributor.commentCount,
     contributionCount,
-    postScore: author.postScore,
-    commentScore: author.commentScore,
-    profileUrl: author.profileUrl,
-    ...getCurrentUserDatumFields(author.authorName, currentUsername),
+    postScore: contributor.postScore,
+    commentScore: contributor.commentScore,
+    profileUrl: contributor.profileUrl,
+    ...getCurrentUserDatumFields(contributor.contributorName, currentUsername),
   };
 }
 
@@ -2014,7 +2021,7 @@ function getBubbleDatum(value: unknown): BubbleDatum | null {
     typeof datum.value[1] !== 'number' ||
     typeof datum.score !== 'number' ||
     typeof datum.comments !== 'number' ||
-    !isAuthorSubredditKarmaBucket(datum.authorSubredditKarmaBucket) ||
+    !isSubredditKarmaBucket(datum.authorSubredditKarmaBucket) ||
     typeof datum.title !== 'string' ||
     typeof datum.authorName !== 'string' ||
     (datum.authorAvatarUrl !== null && typeof datum.authorAvatarUrl !== 'string') ||
@@ -2053,20 +2060,21 @@ function getCommentBubbleDatum(value: unknown): CommentBubbleDatum | null {
   return value as CommentBubbleDatum;
 }
 
-function getAuthorBubbleDatum(value: unknown): AuthorBubbleDatum | null {
+function getContributorBubbleDatum(value: unknown): ContributorBubbleDatum | null {
   if (!value || typeof value !== 'object') {
     return null;
   }
 
-  const datum = value as Partial<Record<keyof AuthorBubbleDatum, unknown>>;
+  const datum = value as Partial<Record<keyof ContributorBubbleDatum, unknown>>;
   if (
     !Array.isArray(datum.value) ||
     typeof datum.value[0] !== 'number' ||
     typeof datum.value[1] !== 'number' ||
     typeof datum.value[2] !== 'number' ||
-    typeof datum.authorName !== 'string' ||
-    (datum.authorAvatarUrl !== null && typeof datum.authorAvatarUrl !== 'string') ||
-    !isAuthorSubredditKarmaBucket(datum.authorSubredditKarmaBucket) ||
+    typeof datum.contributorName !== 'string' ||
+    (datum.contributorAvatarUrl !== null &&
+      typeof datum.contributorAvatarUrl !== 'string') ||
+    !isSubredditKarmaBucket(datum.contributorSubredditKarmaBucket) ||
     typeof datum.postCount !== 'number' ||
     typeof datum.commentCount !== 'number' ||
     typeof datum.contributionCount !== 'number' ||
@@ -2078,22 +2086,22 @@ function getAuthorBubbleDatum(value: unknown): AuthorBubbleDatum | null {
     return null;
   }
 
-  return value as AuthorBubbleDatum;
+  return value as ContributorBubbleDatum;
 }
 
-function isAuthorSubredditKarmaBucket(
+function isSubredditKarmaBucket(
   value: unknown
-): value is AuthorSubredditKarmaBucket | null {
+): value is SubredditKarmaBucket | null {
   return (
     value === null ||
     (typeof value === 'number' &&
       Number.isInteger(value) &&
       value >= 0 &&
-      value < AUTHOR_SUBREDDIT_KARMA_BUCKET_COUNT)
+      value < SUBREDDIT_KARMA_BUCKET_COUNT)
   );
 }
 
-function getKarmaBucketColor(bucket: AuthorSubredditKarmaBucket | null): string {
+function getKarmaBucketColor(bucket: SubredditKarmaBucket | null): string {
   return bucket === null
     ? UNKNOWN_KARMA_COLOR
     : KARMA_BUCKET_COLORS[bucket] ?? UNKNOWN_KARMA_COLOR;
@@ -2122,11 +2130,11 @@ function normalizeUsername(username: string | null | undefined): string | null {
 }
 
 function getCurrentUserDatumFields(
-  authorName: string,
+  username: string,
   currentUsername: string | null
 ): CurrentUserDatumFields {
   const isCurrentUser =
-    currentUsername !== null && normalizeUsername(authorName) === currentUsername;
+    currentUsername !== null && normalizeUsername(username) === currentUsername;
 
   return { isCurrentUser };
 }
@@ -2199,8 +2207,8 @@ function formatDateOnly(value: string): string {
   return DATE_ONLY_FORMATTER.format(date);
 }
 
-function renderTooltipAvatar(authorAvatarUrl: string | null): string {
-  const avatarUrl = escapeHtml(resolveUserAvatarUrl(authorAvatarUrl));
+function renderTooltipAvatar(rawAvatarUrl: string | null): string {
+  const avatarUrl = escapeHtml(resolveUserAvatarUrl(rawAvatarUrl));
 
   return `<img alt="" class="chart-tooltip__avatar" src="${avatarUrl}">`;
 }

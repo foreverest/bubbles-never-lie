@@ -1,6 +1,6 @@
 import { context } from '@devvit/web/server';
 import { Hono, type HonoRequest } from 'hono';
-import { refreshAuthorCache } from '../core/author-cache';
+import { refreshContributorCache } from '../core/contributor-cache';
 import {
   refreshCommentCache,
   refreshCommentCacheChunk,
@@ -92,9 +92,9 @@ cache.post('/refresh-comment-cache-chunk', async (c) => {
   }
 });
 
-cache.post('/refresh-author-cache', async (c) => {
+cache.post('/refresh-contributor-cache', async (c) => {
   try {
-    const results = await refreshAuthorCachesForCurrentSubreddits();
+    const results = await refreshContributorCachesForCurrentSubreddits();
 
     return c.json(
       {
@@ -105,7 +105,7 @@ cache.post('/refresh-author-cache', async (c) => {
     );
   } catch (error) {
     const message = getErrorMessage(error);
-    console.error(`Author cache refresh error: ${message}`);
+    console.error(`Contributor cache refresh error: ${message}`);
 
     return c.json(
       {
@@ -146,7 +146,7 @@ cache.post('/refresh-app-cache', async (c) => {
   try {
     const postCaches = await refreshPostCachesForCurrentSubreddits();
     const commentCaches = await refreshCommentCachesForCurrentSubreddits();
-    const authorCaches = await refreshAuthorCachesForCurrentSubreddits();
+    const contributorCaches = await refreshContributorCachesForCurrentSubreddits();
     const subredditIcon = await refreshCurrentSubredditIconCache(context.subredditName);
 
     return c.json(
@@ -154,7 +154,7 @@ cache.post('/refresh-app-cache', async (c) => {
         status: 'ok',
         postCaches,
         commentCaches,
-        authorCaches,
+        contributorCaches,
         subredditIcon,
       },
       200
@@ -226,11 +226,11 @@ const refreshCommentCachesForCurrentSubreddits = async () => {
   return results;
 };
 
-const refreshAuthorCachesForCurrentSubreddits = async () => {
+const refreshContributorCachesForCurrentSubreddits = async () => {
   const subredditNames = getCacheRefreshSubredditNames(context.subredditName);
   const results: Array<{
     subredditName: string;
-    result: Awaited<ReturnType<typeof refreshAuthorCache>>;
+    result: Awaited<ReturnType<typeof refreshContributorCache>>;
   }> = [];
   const failures: string[] = [];
 
@@ -238,7 +238,7 @@ const refreshAuthorCachesForCurrentSubreddits = async () => {
     try {
       results.push({
         subredditName,
-        result: await refreshAuthorCache(subredditName),
+        result: await refreshContributorCache(subredditName),
       });
     } catch (error) {
       failures.push(`r/${subredditName}: ${getErrorMessage(error)}`);
@@ -246,7 +246,7 @@ const refreshAuthorCachesForCurrentSubreddits = async () => {
   }
 
   if (failures.length > 0) {
-    throw new Error(`Unable to refresh author cache for ${failures.join(', ')}`);
+    throw new Error(`Unable to refresh contributor cache for ${failures.join(', ')}`);
   }
 
   return results;

@@ -30,5 +30,5 @@ export const resolveChartDataSubredditName = (
     : normalizedSubredditName;
 };
 
-export const shouldUseSyntheticAuthorKarma = (subredditName: string): boolean =>
+export const shouldUseSyntheticContributorKarma = (subredditName: string): boolean =>
   normalizeSubredditName(subredditName) === TEST_DATA_SOURCE_SUBREDDIT_NAME;

@@ -53,7 +53,7 @@ type PostCommentsRefreshResult = {
   failed: boolean;
 };
 
-type CommentWithAuthor = HydratedComment<{ authors: true }>;
+type CommentWithAuthor = HydratedComment<{ author: true }>;
 
 export const readCommentsForTimeframe = async ({
   subredditName,
@@ -63,7 +63,7 @@ export const readCommentsForTimeframe = async ({
   const dataLayer = createBubbleStatsDataLayer(subredditName);
   const comments = await dataLayer.comments.getInTimeRange({ startTime, endTime });
   const hydratedComments = await dataLayer.hydrateCommentRelations(comments, {
-    authors: true,
+    author: true,
   });
 
   return {

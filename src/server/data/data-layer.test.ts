@@ -3,7 +3,7 @@ import { test } from 'node:test';
 import {
   createBubbleStatsDataLayer,
   getDataKeys,
-  type AuthorEntity,
+  type ContributorEntity,
   type CommentEntity,
   type PostEntity,
   type RedisDataClient,
@@ -79,7 +79,7 @@ class FakeRedisDataClient implements RedisDataClient {
   }
 }
 
-const createAuthor = (id: string): AuthorEntity => ({
+const createContributor = (id: string): ContributorEntity => ({
   id,
   avatarUrl: `https://example.com/${id}.png`,
   subredditKarma: id.length,
@@ -119,18 +119,18 @@ test('hash repositories skip missing and malformed entities while preserving val
   const redisClient = new FakeRedisDataClient();
   const dataLayer = createBubbleStatsDataLayer('ExampleSub', redisClient);
   const keys = getDataKeys('ExampleSub');
-  const alice = createAuthor('alice');
-  const carol = createAuthor('carol');
+  const alice = createContributor('alice');
+  const carol = createContributor('carol');
 
-  await dataLayer.authors.upsertMany([alice, carol]);
-  await redisClient.hSet(keys.authors, {
+  await dataLayer.contributors.upsertMany([alice, carol]);
+  await redisClient.hSet(keys.contributors, {
     malformed: JSON.stringify({ id: 'malformed', avatarUrl: 5 }),
   });
 
-  assert.equal(await dataLayer.authors.getById('missing'), null);
-  assert.equal(await dataLayer.authors.getById('malformed'), null);
+  assert.equal(await dataLayer.contributors.getById('missing'), null);
+  assert.equal(await dataLayer.contributors.getById('malformed'), null);
   assert.deepEqual(
-    await dataLayer.authors.getByIds(['carol', 'missing', 'alice', 'malformed']),
+    await dataLayer.contributors.getByIds(['carol', 'missing', 'alice', 'malformed']),
     [carol, alice]
   );
 });
@@ -177,7 +177,7 @@ test('relation hydrators add requested relations, preserve order, and keep missi
   const redisClient = new FakeRedisDataClient();
   const dataLayer = createBubbleStatsDataLayer('ExampleSub', redisClient);
   const keys = getDataKeys('ExampleSub');
-  const alice = createAuthor('alice');
+  const alice = createContributor('alice');
   const post = createPost('t3_post_1', '2026-04-15T10:00:00.000Z');
   const firstComment = createComment('t1_comment_1', '2026-04-15T10:30:00.000Z');
   const secondComment = createComment('t1_comment_2', '2026-04-15T11:30:00.000Z');
@@ -188,7 +188,7 @@ test('relation hydrators add requested relations, preserve order, and keep missi
     'ghost'
   );
 
-  await dataLayer.authors.upsert(alice);
+  await dataLayer.contributors.upsert(alice);
   await dataLayer.posts.upsert(post);
   await dataLayer.comments.upsertMany([
     firstComment,
@@ -206,7 +206,7 @@ test('relation hydrators add requested relations, preserve order, and keep missi
 
   const hydratedComments = await dataLayer.hydrateCommentRelations(comments, {
     posts: true,
-    authors: true,
+    author: true,
   });
   const [firstHydratedComment, secondHydratedComment, missingHydratedComment] =
     hydratedComments;
@@ -226,7 +226,7 @@ test('relation hydrators add requested relations, preserve order, and keep missi
     ['t3_post_1', 't3_missing']
   );
   assert.deepEqual(
-    redisClient.hMGetCalls.find((call) => call.key === keys.authors)?.fields,
+    redisClient.hMGetCalls.find((call) => call.key === keys.contributors)?.fields,
     ['alice', 'ghost']
   );
 
@@ -243,7 +243,7 @@ test('relation hydrators add requested relations, preserve order, and keep missi
 test('post relation hydrator adds author when requested', async () => {
   const redisClient = new FakeRedisDataClient();
   const dataLayer = createBubbleStatsDataLayer('ExampleSub', redisClient);
-  const alice = createAuthor('alice');
+  const alice = createContributor('alice');
   const post = createPost('t3_post_1', '2026-04-15T10:00:00.000Z');
   const missingAuthorPost = createPost(
     't3_post_2',
@@ -251,10 +251,10 @@ test('post relation hydrator adds author when requested', async () => {
     'ghost'
   );
 
-  await dataLayer.authors.upsert(alice);
+  await dataLayer.contributors.upsert(alice);
 
   const hydratedPosts = await dataLayer.hydratePostRelations([post, missingAuthorPost], {
-    authors: true,
+    author: true,
   });
   const [hydratedPost, missingAuthorHydratedPost] = hydratedPosts;
 
