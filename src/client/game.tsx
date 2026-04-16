@@ -47,6 +47,11 @@ type DataState<Data> =
 
 type TabName = 'posts' | 'comments' | 'authors' | 'stats';
 
+type ChartPreferences = {
+  zoomEnabled: boolean;
+  currentUserRippleEnabled: boolean;
+};
+
 type BubbleDatum = {
   value: [createdAtTime: number, score: number];
   score: number;
@@ -162,6 +167,11 @@ const DATE_ONLY_FORMATTER = new Intl.DateTimeFormat('en-US', {
   timeZone: 'UTC',
 });
 const bubbleFillColorCache = new Map<string, string>();
+const CHART_PREFERENCES_STORAGE_KEY = 'bubble-stats:chart-preferences:v1';
+const DEFAULT_CHART_PREFERENCES: ChartPreferences = {
+  zoomEnabled: false,
+  currentUserRippleEnabled: false,
+};
 
 function App() {
   const isMountedRef = useRef(true);
@@ -178,14 +188,19 @@ function App() {
     status: 'idle',
   });
   const [activeTab, setActiveTab] = useState<TabName>('posts');
-  const [zoomEnabled, setZoomEnabled] = useState(false);
-  const [currentUserRippleEnabled, setCurrentUserRippleEnabled] = useState(false);
+  const [chartPreferences, setChartPreferences] =
+    useState<ChartPreferences>(readStoredChartPreferences);
+  const { zoomEnabled, currentUserRippleEnabled } = chartPreferences;
 
   useEffect(() => {
     return () => {
       isMountedRef.current = false;
     };
   }, []);
+
+  useEffect(() => {
+    writeStoredChartPreferences(chartPreferences);
+  }, [chartPreferences]);
 
   useEffect(() => {
     const handleAvatarLoadError = (event: Event) => {
@@ -361,9 +376,19 @@ function App() {
           activeTab={activeTab}
           onTabChange={setActiveTab}
           zoomEnabled={zoomEnabled}
-          onZoomEnabledChange={setZoomEnabled}
+          onZoomEnabledChange={(nextZoomEnabled) =>
+            setChartPreferences((preferences) => ({
+              ...preferences,
+              zoomEnabled: nextZoomEnabled,
+            }))
+          }
           currentUserRippleEnabled={currentUserRippleEnabled}
-          onCurrentUserRippleEnabledChange={setCurrentUserRippleEnabled}
+          onCurrentUserRippleEnabledChange={(nextCurrentUserRippleEnabled) =>
+            setChartPreferences((preferences) => ({
+              ...preferences,
+              currentUserRippleEnabled: nextCurrentUserRippleEnabled,
+            }))
+          }
         />
 
         {activeTab === 'posts' ? (
@@ -574,6 +599,54 @@ function isErrorResponse(value: unknown): value is ErrorResponse {
 
   const body = value as Partial<Record<keyof ErrorResponse, unknown>>;
   return body.status === 'error' && typeof body.message === 'string';
+}
+
+function readStoredChartPreferences(): ChartPreferences {
+  if (typeof window === 'undefined') {
+    return DEFAULT_CHART_PREFERENCES;
+  }
+
+  try {
+    const storedPreferences = window.localStorage.getItem(CHART_PREFERENCES_STORAGE_KEY);
+    if (!storedPreferences) {
+      return DEFAULT_CHART_PREFERENCES;
+    }
+
+    return normalizeChartPreferences(JSON.parse(storedPreferences) as unknown);
+  } catch {
+    return DEFAULT_CHART_PREFERENCES;
+  }
+}
+
+function writeStoredChartPreferences(preferences: ChartPreferences): void {
+  if (typeof window === 'undefined') {
+    return;
+  }
+
+  try {
+    window.localStorage.setItem(CHART_PREFERENCES_STORAGE_KEY, JSON.stringify(preferences));
+  } catch {
+    // localStorage can be unavailable in embedded or privacy-restricted browsers.
+  }
+}
+
+function normalizeChartPreferences(value: unknown): ChartPreferences {
+  if (!value || typeof value !== 'object') {
+    return DEFAULT_CHART_PREFERENCES;
+  }
+
+  const preferences = value as Partial<Record<keyof ChartPreferences, unknown>>;
+
+  return {
+    zoomEnabled:
+      typeof preferences.zoomEnabled === 'boolean'
+        ? preferences.zoomEnabled
+        : DEFAULT_CHART_PREFERENCES.zoomEnabled,
+    currentUserRippleEnabled:
+      typeof preferences.currentUserRippleEnabled === 'boolean'
+        ? preferences.currentUserRippleEnabled
+        : DEFAULT_CHART_PREFERENCES.currentUserRippleEnabled,
+  };
 }
 
 function ChartHeader({
