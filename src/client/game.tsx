@@ -118,8 +118,8 @@ const KARMA_BUCKET_COLORS = [
   '#ffb703',
 ];
 const COMMENT_BUBBLE_SIZE = 7;
-const AUTHOR_BUBBLE_MIN_SIZE = 26;
-const AUTHOR_BUBBLE_MAX_SIZE = 64;
+const AUTHOR_BUBBLE_MIN_SIZE = 10;
+const AUTHOR_BUBBLE_MAX_SIZE = 72;
 const COMMENT_GROUP_COLORS = [
   '#2d6cdf',
   '#0f8b8d',
@@ -1420,21 +1420,24 @@ function renderAuthorBubble(
 
   const [x, y] = api.coord([datum.commentCount, datum.postCount]);
   const size = getAuthorBubbleSize(datum.totalScore, maxBubbleScore);
-  const radius = Math.min(8, size / 3);
-  const shape = {
+  const circleShape = {
+    cx: x,
+    cy: y,
+    r: size / 2,
+  };
+  const imageShape = {
     x: x - size / 2,
     y: y - size / 2,
     width: size,
     height: size,
-    r: radius,
   };
 
   return {
     type: 'group',
     children: [
       {
-        type: 'rect',
-        shape,
+        type: 'circle',
+        shape: circleShape,
         style: {
           fill: '#eef7f3',
           shadowBlur: 8,
@@ -1444,20 +1447,20 @@ function renderAuthorBubble(
       {
         type: 'image',
         clipPath: {
-          type: 'rect',
-          shape,
+          type: 'circle',
+          shape: circleShape,
         },
         style: {
           image: datum.avatarImageUrl,
-          x: shape.x,
-          y: shape.y,
-          width: shape.width,
-          height: shape.height,
+          x: imageShape.x,
+          y: imageShape.y,
+          width: imageShape.width,
+          height: imageShape.height,
         },
       },
       {
-        type: 'rect',
-        shape,
+        type: 'circle',
+        shape: circleShape,
         style: {
           fill: 'transparent',
           stroke: '#ffffff',
@@ -1477,7 +1480,7 @@ function getAuthorBubbleSize(totalScore: number, maxScore: number): number {
 
   return (
     AUTHOR_BUBBLE_MIN_SIZE +
-    Math.sqrt(score / maxScore) * (AUTHOR_BUBBLE_MAX_SIZE - AUTHOR_BUBBLE_MIN_SIZE)
+    (score / maxScore) * (AUTHOR_BUBBLE_MAX_SIZE - AUTHOR_BUBBLE_MIN_SIZE)
   );
 }
 
