@@ -1,6 +1,6 @@
 import './index.css';
 
-import { navigateTo } from '@devvit/web/client';
+import { context as clientContext, navigateTo } from '@devvit/web/client';
 import {
   DataZoomComponent,
   GridComponent,
@@ -8,7 +8,7 @@ import {
 } from 'echarts/components';
 import * as echarts from 'echarts/core';
 import type { EChartsCoreOption } from 'echarts/core';
-import { ScatterChart } from 'echarts/charts';
+import { EffectScatterChart, ScatterChart } from 'echarts/charts';
 import { CanvasRenderer } from 'echarts/renderers';
 import { StrictMode, useEffect, useMemo, useRef, useState } from 'react';
 import { createRoot } from 'react-dom/client';
@@ -34,6 +34,7 @@ echarts.use([
   CanvasRenderer,
   DataZoomComponent,
   GridComponent,
+  EffectScatterChart,
   ScatterChart,
   TooltipComponent,
 ]);
@@ -56,7 +57,7 @@ type BubbleDatum = {
   authorAvatarUrl: string | null;
   createdAt: string;
   permalink: string;
-};
+} & CurrentUserDatumFields;
 
 type CommentBubbleDatum = {
   value: [createdAtTime: number, score: number];
@@ -67,7 +68,7 @@ type CommentBubbleDatum = {
   createdAt: string;
   permalink: string;
   postId: string;
-};
+} & CurrentUserDatumFields;
 
 type AuthorBubbleDatum = {
   value: [commentScore: number, postScore: number, contributionCount: number];
@@ -80,6 +81,10 @@ type AuthorBubbleDatum = {
   postScore: number;
   commentScore: number;
   profileUrl: string;
+} & CurrentUserDatumFields;
+
+type CurrentUserDatumFields = {
+  isCurrentUser: boolean;
 };
 
 type CommentGroup = {
@@ -93,6 +98,8 @@ type TimeRange = {
 };
 
 type GetVisibleTimeRange = () => TimeRange | null;
+type SymbolSizeOption = number | ((_value: unknown, params?: { data?: unknown }) => number);
+type RippleColorOption = string | ((params: { data?: unknown }) => string);
 
 const TIME_EDGE_TOLERANCE_MS = 1_000;
 
@@ -110,6 +117,15 @@ const SOAP_BUBBLE_EMPHASIS_BORDER_COLOR = 'rgba(255, 255, 255, 0.94)';
 const SOAP_BUBBLE_EMPHASIS_SHADOW_COLOR = 'rgba(22, 51, 45, 0.18)';
 const SOAP_BUBBLE_FILL_ALPHA = 0.84;
 const COMMENT_BUBBLE_FILL_ALPHA = 0.92;
+const CURRENT_USER_RIPPLE_SERIES_Z = 4;
+const CURRENT_USER_RIPPLE_EFFECT = {
+  brushType: 'fill',
+  scale: 3,
+  period: 3,
+  number: 3,
+} as const;
+const CURRENT_USER_POST_RIPPLE_SERIES_ID = 'current-user-post-ripple';
+const CURRENT_USER_AUTHOR_RIPPLE_SERIES_ID = 'current-user-author-ripple';
 const KARMA_BUCKET_COLORS = [
   '#667085',
   '#5f7488',
@@ -163,6 +179,7 @@ function App() {
   });
   const [activeTab, setActiveTab] = useState<TabName>('posts');
   const [zoomEnabled, setZoomEnabled] = useState(false);
+  const [currentUserRippleEnabled, setCurrentUserRippleEnabled] = useState(false);
 
   useEffect(() => {
     return () => {
@@ -345,14 +362,28 @@ function App() {
           onTabChange={setActiveTab}
           zoomEnabled={zoomEnabled}
           onZoomEnabledChange={setZoomEnabled}
+          currentUserRippleEnabled={currentUserRippleEnabled}
+          onCurrentUserRippleEnabledChange={setCurrentUserRippleEnabled}
         />
 
         {activeTab === 'posts' ? (
-          <PostsPanel data={postsData} zoomEnabled={zoomEnabled} />
+          <PostsPanel
+            data={postsData}
+            zoomEnabled={zoomEnabled}
+            currentUserRippleEnabled={currentUserRippleEnabled}
+          />
         ) : activeTab === 'comments' ? (
-          <CommentsPanel state={commentsState} zoomEnabled={zoomEnabled} />
+          <CommentsPanel
+            state={commentsState}
+            zoomEnabled={zoomEnabled}
+            currentUserRippleEnabled={currentUserRippleEnabled}
+          />
         ) : activeTab === 'authors' ? (
-          <AuthorsPanel state={authorsState} zoomEnabled={zoomEnabled} />
+          <AuthorsPanel
+            state={authorsState}
+            zoomEnabled={zoomEnabled}
+            currentUserRippleEnabled={currentUserRippleEnabled}
+          />
         ) : (
           <StatsPanel state={statsState} />
         )}
@@ -364,14 +395,20 @@ function App() {
 function PostsPanel({
   data,
   zoomEnabled,
+  currentUserRippleEnabled,
 }: {
   data: PostsChartDataResponse;
   zoomEnabled: boolean;
+  currentUserRippleEnabled: boolean;
 }) {
   return (
     <section className="chart-panel" id="posts-panel" aria-label="Posts">
       {data.posts.length > 0 ? (
-        <BubbleChart data={data} zoomEnabled={zoomEnabled} />
+        <BubbleChart
+          data={data}
+          zoomEnabled={zoomEnabled}
+          currentUserRippleEnabled={currentUserRippleEnabled}
+        />
       ) : (
         <EmptyState
           contentLabel="posts"
@@ -386,15 +423,21 @@ function PostsPanel({
 function CommentsPanel({
   state,
   zoomEnabled,
+  currentUserRippleEnabled,
 }: {
   state: DataState<CommentsChartDataResponse>;
   zoomEnabled: boolean;
+  currentUserRippleEnabled: boolean;
 }) {
   return (
     <section className="chart-panel" id="comments-panel" aria-label="Comments">
       {state.status === 'ready' ? (
         state.data.comments.length > 0 ? (
-          <CommentsChart data={state.data} zoomEnabled={zoomEnabled} />
+          <CommentsChart
+            data={state.data}
+            zoomEnabled={zoomEnabled}
+            currentUserRippleEnabled={currentUserRippleEnabled}
+          />
         ) : (
           <EmptyState
             contentLabel="comments"
@@ -412,15 +455,21 @@ function CommentsPanel({
 function AuthorsPanel({
   state,
   zoomEnabled,
+  currentUserRippleEnabled,
 }: {
   state: DataState<AuthorsChartDataResponse>;
   zoomEnabled: boolean;
+  currentUserRippleEnabled: boolean;
 }) {
   return (
     <section className="chart-panel" id="authors-panel" aria-label="Authors">
       {state.status === 'ready' ? (
         state.data.authors.length > 0 ? (
-          <AuthorsChart data={state.data} zoomEnabled={zoomEnabled} />
+          <AuthorsChart
+            data={state.data}
+            zoomEnabled={zoomEnabled}
+            currentUserRippleEnabled={currentUserRippleEnabled}
+          />
         ) : (
           <EmptyState
             contentLabel="active authors"
@@ -533,12 +582,16 @@ function ChartHeader({
   onTabChange,
   zoomEnabled,
   onZoomEnabledChange,
+  currentUserRippleEnabled,
+  onCurrentUserRippleEnabledChange,
 }: {
   data: ChartResponseMetadata;
   activeTab: TabName;
   onTabChange: (tab: TabName) => void;
   zoomEnabled: boolean;
   onZoomEnabledChange: (enabled: boolean) => void;
+  currentUserRippleEnabled: boolean;
+  onCurrentUserRippleEnabledChange: (enabled: boolean) => void;
 }) {
   const [sectionMenuOpen, setSectionMenuOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
@@ -761,6 +814,22 @@ function ChartHeader({
                   <span className="chart-settings__switch-thumb" />
                 </span>
               </button>
+              <button
+                aria-checked={currentUserRippleEnabled}
+                className={
+                  currentUserRippleEnabled
+                    ? 'chart-settings__switch chart-settings__switch--on'
+                    : 'chart-settings__switch'
+                }
+                onClick={() => onCurrentUserRippleEnabledChange(!currentUserRippleEnabled)}
+                role="switch"
+                type="button"
+              >
+                <span>My bubbles</span>
+                <span className="chart-settings__switch-track" aria-hidden="true">
+                  <span className="chart-settings__switch-thumb" />
+                </span>
+              </button>
             </div>
           ) : null}
         </div>
@@ -772,12 +841,15 @@ function ChartHeader({
 function BubbleChart({
   data,
   zoomEnabled,
+  currentUserRippleEnabled,
 }: {
   data: PostsChartDataResponse;
   zoomEnabled: boolean;
+  currentUserRippleEnabled: boolean;
 }) {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const chartRef = useRef<echarts.EChartsType | null>(null);
+  const currentUsername = normalizeUsername(clientContext.username);
   const chartData = useMemo<BubbleDatum[]>(
     () =>
       data.posts.map((post) => ({
@@ -790,8 +862,9 @@ function BubbleChart({
         authorAvatarUrl: post.authorAvatarUrl,
         createdAt: post.createdAt,
         permalink: post.permalink,
+        ...getCurrentUserDatumFields(post.authorName, currentUsername),
       })),
-    [data.posts]
+    [currentUsername, data.posts]
   );
 
   useEffect(() => {
@@ -851,10 +924,16 @@ function BubbleChart({
     }
 
     chart.setOption(
-      createBubbleOption(chartData, data, zoomEnabled, () => readVisibleTimeRange(chart)),
+      createBubbleOption(
+        chartData,
+        data,
+        zoomEnabled,
+        currentUserRippleEnabled,
+        () => readVisibleTimeRange(chart)
+      ),
       true
     );
-  }, [chartData, data, zoomEnabled]);
+  }, [chartData, currentUserRippleEnabled, data, zoomEnabled]);
 
   return (
     <div
@@ -869,16 +948,19 @@ function BubbleChart({
 function CommentsChart({
   data,
   zoomEnabled,
+  currentUserRippleEnabled,
 }: {
   data: CommentsChartDataResponse;
   zoomEnabled: boolean;
+  currentUserRippleEnabled: boolean;
 }) {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const chartRef = useRef<echarts.EChartsType | null>(null);
   const emphasizedCommentGroupRef = useRef<string | null>(null);
+  const currentUsername = normalizeUsername(clientContext.username);
   const chartData = useMemo<CommentBubbleDatum[]>(
-    () => data.comments.map(toCommentBubbleDatum),
-    [data.comments]
+    () => data.comments.map((comment) => toCommentBubbleDatum(comment, currentUsername)),
+    [currentUsername, data.comments]
   );
 
   useEffect(() => {
@@ -1019,10 +1101,16 @@ function CommentsChart({
 
     emphasizedCommentGroupRef.current = null;
     chart.setOption(
-      createCommentsOption(chartData, data, zoomEnabled, () => readVisibleTimeRange(chart)),
+      createCommentsOption(
+        chartData,
+        data,
+        zoomEnabled,
+        currentUserRippleEnabled,
+        () => readVisibleTimeRange(chart)
+      ),
       true
     );
-  }, [chartData, data, zoomEnabled]);
+  }, [chartData, currentUserRippleEnabled, data, zoomEnabled]);
 
   return (
     <div
@@ -1037,15 +1125,18 @@ function CommentsChart({
 function AuthorsChart({
   data,
   zoomEnabled,
+  currentUserRippleEnabled,
 }: {
   data: AuthorsChartDataResponse;
   zoomEnabled: boolean;
+  currentUserRippleEnabled: boolean;
 }) {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const chartRef = useRef<echarts.EChartsType | null>(null);
+  const currentUsername = normalizeUsername(clientContext.username);
   const chartData = useMemo<AuthorBubbleDatum[]>(
-    () => data.authors.map(toAuthorBubbleDatum),
-    [data.authors]
+    () => data.authors.map((author) => toAuthorBubbleDatum(author, currentUsername)),
+    [currentUsername, data.authors]
   );
 
   useEffect(() => {
@@ -1104,8 +1195,8 @@ function AuthorsChart({
       return;
     }
 
-    chart.setOption(createAuthorsOption(chartData, zoomEnabled), true);
-  }, [chartData, zoomEnabled]);
+    chart.setOption(createAuthorsOption(chartData, zoomEnabled, currentUserRippleEnabled), true);
+  }, [chartData, currentUserRippleEnabled, zoomEnabled]);
 
   return (
     <div
@@ -1121,12 +1212,26 @@ function createBubbleOption(
   data: BubbleDatum[],
   chartData: ChartResponseMetadata,
   zoomEnabled: boolean,
+  currentUserRippleEnabled: boolean,
   getVisibleTimeRange?: GetVisibleTimeRange
 ): EChartsCoreOption {
   const minScore = Math.min(0, ...data.map((datum) => datum.score));
   const maxComments = Math.max(1, ...data.map((datum) => datum.comments));
   const startTime = Date.parse(chartData.timeframe.startIso);
   const endTime = Date.parse(chartData.timeframe.endIso);
+  const currentUserData = data.filter((datum) => datum.isCurrentUser);
+  const getPostSymbolSize = (_value: unknown, params?: { data?: unknown }) => {
+    const datum = getBubbleDatum(params?.data);
+    const comments = datum ? Math.max(0, datum.comments) : 0;
+    return getPostBubbleSize(comments, maxComments);
+  };
+  const getPostBubbleColor = (params: { data?: unknown }) => {
+    const datum = getBubbleDatum(params.data);
+    return getBubbleFillColor(
+      getKarmaBucketColor(datum?.authorSubredditKarmaBucket ?? null),
+      SOAP_BUBBLE_FILL_ALPHA
+    );
+  };
 
   const option: EChartsCoreOption = {
     grid: {
@@ -1158,6 +1263,7 @@ function createBubbleOption(
           '<div class="chart-tooltip__meta">',
           renderTooltipAvatar(datum.authorAvatarUrl),
           `<span class="chart-tooltip__username">u/${escapeHtml(datum.authorName)}</span>`,
+          renderCurrentUserTooltipBadge(datum.isCurrentUser),
           '<span aria-hidden="true" class="chart-tooltip__separator">&middot;</span>',
           `<span class="chart-tooltip__age">${escapeHtml(createdAgo)}</span>`,
           '</div>',
@@ -1229,21 +1335,11 @@ function createBubbleOption(
         type: 'scatter',
         cursor: 'pointer',
         data,
-        symbolSize(_value: unknown, params?: { data?: unknown }) {
-          const datum = getBubbleDatum(params?.data);
-          const comments = datum ? Math.max(0, datum.comments) : 0;
-          return getPostBubbleSize(comments, maxComments);
-        },
+        symbolSize: getPostSymbolSize,
         itemStyle: {
           borderColor: SOAP_BUBBLE_BORDER_COLOR,
           borderWidth: 1.5,
-          color(params: { data?: unknown }) {
-            const datum = getBubbleDatum(params.data);
-            return getBubbleFillColor(
-              getKarmaBucketColor(datum?.authorSubredditKarmaBucket ?? null),
-              SOAP_BUBBLE_FILL_ALPHA
-            );
-          },
+          color: getPostBubbleColor,
           opacity: 0.6,
         },
         emphasis: {
@@ -1257,6 +1353,17 @@ function createBubbleOption(
           },
         },
       },
+      ...(currentUserRippleEnabled && currentUserData.length > 0
+        ? [
+            createCurrentUserRippleSeries({
+              id: CURRENT_USER_POST_RIPPLE_SERIES_ID,
+              name: 'Posts',
+              data: currentUserData,
+              symbolSize: getPostSymbolSize,
+              color: getPostBubbleColor,
+            }),
+          ]
+        : []),
     ],
   };
 
@@ -1275,6 +1382,7 @@ function createCommentsOption(
   data: CommentBubbleDatum[],
   chartData: ChartResponseMetadata,
   zoomEnabled: boolean,
+  currentUserRippleEnabled: boolean,
   getVisibleTimeRange?: GetVisibleTimeRange
 ): EChartsCoreOption {
   const minScore = Math.min(0, ...data.map((datum) => datum.score));
@@ -1311,6 +1419,7 @@ function createCommentsOption(
           '<div class="chart-tooltip__meta">',
           renderTooltipAvatar(datum.authorAvatarUrl),
           `<span class="chart-tooltip__username">u/${escapeHtml(datum.authorName)}</span>`,
+          renderCurrentUserTooltipBadge(datum.isCurrentUser),
           '<span aria-hidden="true" class="chart-tooltip__separator">&middot;</span>',
           `<span class="chart-tooltip__age">${escapeHtml(createdAgo)}</span>`,
           '</div>',
@@ -1375,36 +1484,57 @@ function createCommentsOption(
         },
       },
     },
-    series: commentGroups.map((group) => ({
-      id: getCommentGroupSeriesId(group.postId),
-      name: group.postId,
-      type: 'scatter',
-      cursor: 'pointer',
-      data: group.comments,
-      symbolSize: COMMENT_BUBBLE_SIZE,
-      itemStyle: {
-        borderColor: SOAP_BUBBLE_BORDER_COLOR,
-        borderWidth: 1,
-        color: getBubbleFillColor(getCommentGroupColor(group.postId), COMMENT_BUBBLE_FILL_ALPHA),
-        opacity: 0.6,
-      },
-      emphasis: {
-        focus: 'series',
-        scale: 1.8,
-        itemStyle: {
-          borderColor: SOAP_BUBBLE_EMPHASIS_BORDER_COLOR,
-          borderWidth: 1.5,
-          opacity: 0.9,
-          shadowBlur: 8,
-          shadowColor: SOAP_BUBBLE_EMPHASIS_SHADOW_COLOR,
+    series: commentGroups.flatMap((group) => {
+      const groupColor = getBubbleFillColor(
+        getCommentGroupColor(group.postId),
+        COMMENT_BUBBLE_FILL_ALPHA
+      );
+      const currentUserComments = group.comments.filter((datum) => datum.isCurrentUser);
+
+      return [
+        {
+          id: getCommentGroupSeriesId(group.postId),
+          name: group.postId,
+          type: 'scatter',
+          cursor: 'pointer',
+          data: group.comments,
+          symbolSize: COMMENT_BUBBLE_SIZE,
+          itemStyle: {
+            borderColor: SOAP_BUBBLE_BORDER_COLOR,
+            borderWidth: 1,
+            color: groupColor,
+            opacity: 0.6,
+          },
+          emphasis: {
+            focus: 'series',
+            scale: 1.8,
+            itemStyle: {
+              borderColor: SOAP_BUBBLE_EMPHASIS_BORDER_COLOR,
+              borderWidth: 1.5,
+              opacity: 0.9,
+              shadowBlur: 8,
+              shadowColor: SOAP_BUBBLE_EMPHASIS_SHADOW_COLOR,
+            },
+          },
+          blur: {
+            itemStyle: {
+              opacity: 0.12,
+            },
+          },
         },
-      },
-      blur: {
-        itemStyle: {
-          opacity: 0.12,
-        },
-      },
-    })),
+        ...(currentUserRippleEnabled && currentUserComments.length > 0
+          ? [
+              createCurrentUserRippleSeries({
+                id: getCurrentUserCommentRippleSeriesId(group.postId),
+                name: group.postId,
+                data: currentUserComments,
+                symbolSize: COMMENT_BUBBLE_SIZE,
+                color: groupColor,
+              }),
+            ]
+          : []),
+      ];
+    }),
   };
 
   if (zoomEnabled) {
@@ -1420,13 +1550,26 @@ function createCommentsOption(
 
 function createAuthorsOption(
   data: AuthorBubbleDatum[],
-  zoomEnabled: boolean
+  zoomEnabled: boolean,
+  currentUserRippleEnabled: boolean
 ): EChartsCoreOption {
   const minCommentScore = Math.min(0, ...data.map((datum) => datum.commentScore));
   const maxCommentScore = Math.max(0, ...data.map((datum) => datum.commentScore));
   const minPostScore = Math.min(0, ...data.map((datum) => datum.postScore));
   const maxPostScore = Math.max(0, ...data.map((datum) => datum.postScore));
   const maxContributionCount = Math.max(0, ...data.map((datum) => datum.contributionCount));
+  const currentUserData = data.filter((datum) => datum.isCurrentUser);
+  const getAuthorSymbolSize = (_value: unknown, params?: { data?: unknown }) => {
+    const datum = getAuthorBubbleDatum(params?.data);
+    return getAuthorBubbleSize(datum?.contributionCount ?? 0, maxContributionCount);
+  };
+  const getAuthorBubbleColor = (params: { data?: unknown }) => {
+    const datum = getAuthorBubbleDatum(params.data);
+    return getBubbleFillColor(
+      getKarmaBucketColor(datum?.authorSubredditKarmaBucket ?? null),
+      SOAP_BUBBLE_FILL_ALPHA
+    );
+  };
   const option: EChartsCoreOption = {
     grid: {
       top: 24,
@@ -1455,6 +1598,7 @@ function createAuthorsOption(
           '<div class="chart-tooltip__meta">',
           renderTooltipAvatar(datum.authorAvatarUrl),
           `<span class="chart-tooltip__username">u/${escapeHtml(datum.authorName)}</span>`,
+          renderCurrentUserTooltipBadge(datum.isCurrentUser),
           '</div>',
           '<div class="chart-tooltip__stats chart-tooltip__author-line">',
           renderTooltipInlineLabeledMetric(TOOLTIP_POST_ICON, datum.postCount, 'posts'),
@@ -1522,20 +1666,11 @@ function createAuthorsOption(
           x: 0,
           y: 1,
         },
-        symbolSize(_value: unknown, params?: { data?: unknown }) {
-          const datum = getAuthorBubbleDatum(params?.data);
-          return getAuthorBubbleSize(datum?.contributionCount ?? 0, maxContributionCount);
-        },
+        symbolSize: getAuthorSymbolSize,
         itemStyle: {
           borderColor: SOAP_BUBBLE_BORDER_COLOR,
           borderWidth: 1.5,
-          color(params: { data?: unknown }) {
-            const datum = getAuthorBubbleDatum(params.data);
-            return getBubbleFillColor(
-              getKarmaBucketColor(datum?.authorSubredditKarmaBucket ?? null),
-              SOAP_BUBBLE_FILL_ALPHA
-            );
-          },
+          color: getAuthorBubbleColor,
           opacity: 0.6,
         },
         emphasis: {
@@ -1549,6 +1684,21 @@ function createAuthorsOption(
           },
         },
       },
+      ...(currentUserRippleEnabled && currentUserData.length > 0
+        ? [
+            createCurrentUserRippleSeries({
+              id: CURRENT_USER_AUTHOR_RIPPLE_SERIES_ID,
+              name: 'Authors',
+              data: currentUserData,
+              symbolSize: getAuthorSymbolSize,
+              color: getAuthorBubbleColor,
+              encode: {
+                x: 0,
+                y: 1,
+              },
+            }),
+          ]
+        : []),
     ],
   };
 
@@ -1570,6 +1720,46 @@ function createAuthorsOption(
   }
 
   return option;
+}
+
+function createCurrentUserRippleSeries({
+  id,
+  name,
+  data,
+  symbolSize,
+  color,
+  encode,
+}: {
+  id: string;
+  name: string;
+  data: unknown[];
+  symbolSize: SymbolSizeOption;
+  color: RippleColorOption;
+  encode?: { x: number; y: number };
+}) {
+  return {
+    id,
+    name,
+    type: 'effectScatter',
+    cursor: 'default',
+    silent: true,
+    data,
+    encode,
+    symbolSize,
+    showEffectOn: 'render',
+    rippleEffect: CURRENT_USER_RIPPLE_EFFECT,
+    itemStyle: {
+      color,
+      opacity: 0,
+    },
+    emphasis: {
+      disabled: true,
+    },
+    tooltip: {
+      show: false,
+    },
+    z: CURRENT_USER_RIPPLE_SERIES_Z,
+  };
 }
 
 function getAuthorBubbleSize(contributionCount: number, maxContributionCount: number): number {
@@ -1681,7 +1871,10 @@ function getTabLabel(tab: TabName): string {
   }
 }
 
-function toCommentBubbleDatum(comment: ChartComment): CommentBubbleDatum {
+function toCommentBubbleDatum(
+  comment: ChartComment,
+  currentUsername: string | null
+): CommentBubbleDatum {
   return {
     value: [Date.parse(comment.createdAt), comment.score],
     score: comment.score,
@@ -1691,10 +1884,14 @@ function toCommentBubbleDatum(comment: ChartComment): CommentBubbleDatum {
     createdAt: comment.createdAt,
     permalink: comment.permalink,
     postId: comment.postId,
+    ...getCurrentUserDatumFields(comment.authorName, currentUsername),
   };
 }
 
-function toAuthorBubbleDatum(author: ChartAuthor): AuthorBubbleDatum {
+function toAuthorBubbleDatum(
+  author: ChartAuthor,
+  currentUsername: string | null
+): AuthorBubbleDatum {
   const contributionCount = author.postCount + author.commentCount;
 
   return {
@@ -1708,6 +1905,7 @@ function toAuthorBubbleDatum(author: ChartAuthor): AuthorBubbleDatum {
     postScore: author.postScore,
     commentScore: author.commentScore,
     profileUrl: author.profileUrl,
+    ...getCurrentUserDatumFields(author.authorName, currentUsername),
   };
 }
 
@@ -1748,7 +1946,8 @@ function getBubbleDatum(value: unknown): BubbleDatum | null {
     typeof datum.authorName !== 'string' ||
     (datum.authorAvatarUrl !== null && typeof datum.authorAvatarUrl !== 'string') ||
     typeof datum.createdAt !== 'string' ||
-    typeof datum.permalink !== 'string'
+    typeof datum.permalink !== 'string' ||
+    typeof datum.isCurrentUser !== 'boolean'
   ) {
     return null;
   }
@@ -1772,7 +1971,8 @@ function getCommentBubbleDatum(value: unknown): CommentBubbleDatum | null {
     (datum.authorAvatarUrl !== null && typeof datum.authorAvatarUrl !== 'string') ||
     typeof datum.createdAt !== 'string' ||
     typeof datum.permalink !== 'string' ||
-    typeof datum.postId !== 'string'
+    typeof datum.postId !== 'string' ||
+    typeof datum.isCurrentUser !== 'boolean'
   ) {
     return null;
   }
@@ -1799,7 +1999,8 @@ function getAuthorBubbleDatum(value: unknown): AuthorBubbleDatum | null {
     typeof datum.contributionCount !== 'number' ||
     typeof datum.postScore !== 'number' ||
     typeof datum.commentScore !== 'number' ||
-    typeof datum.profileUrl !== 'string'
+    typeof datum.profileUrl !== 'string' ||
+    typeof datum.isCurrentUser !== 'boolean'
   ) {
     return null;
   }
@@ -1831,6 +2032,30 @@ function getCommentGroupColor(postId: string): string {
 
 function getCommentGroupSeriesId(postId: string): string {
   return `comment-group-${postId}`;
+}
+
+function getCurrentUserCommentRippleSeriesId(postId: string): string {
+  return `current-user-comment-ripple-${postId}`;
+}
+
+function normalizeUsername(username: string | null | undefined): string | null {
+  if (typeof username !== 'string') {
+    return null;
+  }
+
+  const normalizedUsername = username.trim().replace(/^u\//i, '').toLowerCase();
+
+  return normalizedUsername === '' ? null : normalizedUsername;
+}
+
+function getCurrentUserDatumFields(
+  authorName: string,
+  currentUsername: string | null
+): CurrentUserDatumFields {
+  const isCurrentUser =
+    currentUsername !== null && normalizeUsername(authorName) === currentUsername;
+
+  return { isCurrentUser };
 }
 
 function getBubbleFillColor(baseColor: string, alpha: number): string {
@@ -1905,6 +2130,10 @@ function renderTooltipAvatar(authorAvatarUrl: string | null): string {
   const avatarUrl = escapeHtml(resolveUserAvatarUrl(authorAvatarUrl));
 
   return `<img alt="" class="chart-tooltip__avatar" src="${avatarUrl}">`;
+}
+
+function renderCurrentUserTooltipBadge(isCurrentUser: boolean): string {
+  return isCurrentUser ? '<span class="chart-tooltip__you">you</span>' : '';
 }
 
 function renderTooltipVotePill(value: number, label = 'upvotes'): string {

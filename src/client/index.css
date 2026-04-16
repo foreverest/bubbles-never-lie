@@ -411,6 +411,21 @@ select {
   white-space: nowrap;
 }
 
+.chart-tooltip__you {
+  display: inline-flex;
+  height: 18px;
+  flex: 0 0 auto;
+  align-items: center;
+  padding: 0 6px;
+  border: 1px solid rgba(53, 215, 255, 0.64);
+  border-radius: 8px;
+  background: rgba(53, 215, 255, 0.14);
+  color: #006a80;
+  font-size: 0.68rem;
+  font-weight: 800;
+  line-height: 1;
+}
+
 .chart-tooltip__separator,
 .chart-tooltip__age {
   flex: 0 0 auto;
