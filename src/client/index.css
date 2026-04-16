@@ -465,7 +465,12 @@ select {
   color: #0f1419;
 }
 
-.chart-tooltip--post .chart-tooltip__separator,
+.chart-tooltip--post .chart-tooltip__separator {
+  font-size: 0.95rem;
+  color: black;
+  line-height: 1;
+}
+
 .chart-tooltip--post .chart-tooltip__age {
   color: #57616a;
   font-weight: 400;
