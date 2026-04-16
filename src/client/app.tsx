@@ -116,7 +116,6 @@ const TOOLTIP_COMMENT_ICON =
   '<svg aria-hidden="true" class="chart-tooltip__metric-icon" fill="currentColor" height="16" viewBox="0 0 20 20" width="16" xmlns="http://www.w3.org/2000/svg"><path d="M10 1a9 9 0 00-9 9c0 1.947.79 3.58 1.935 4.957L.231 17.661A.784.784 0 00.785 19H10a9 9 0 009-9 9 9 0 00-9-9zm0 16.2H6.162c-.994.004-1.907.053-3.045.144l-.076-.188a36.981 36.981 0 002.328-2.087l-1.05-1.263C3.297 12.576 2.8 11.331 2.8 10c0-3.97 3.23-7.2 7.2-7.2s7.2 3.23 7.2 7.2-3.23 7.2-7.2 7.2z"></path></svg>';
 const TOOLTIP_POST_ICON =
   '<svg aria-hidden="true" class="chart-tooltip__metric-icon" fill="currentColor" height="20" viewBox="0 0 20 20" width="20" xmlns="http://www.w3.org/2000/svg"><path d="M14.7 2H5.3C3.48 2 2 3.48 2 5.3v9.4C2 16.52 3.48 18 5.3 18h9.4c1.82 0 3.3-1.48 3.3-3.3V5.3C18 3.48 16.52 2 14.7 2zm1.5 12.7c0 .83-.67 1.5-1.5 1.5H5.3c-.83 0-1.5-.67-1.5-1.5V5.3c0-.83.67-1.5 1.5-1.5h9.4c.83 0 1.5.67 1.5 1.5v9.4z"></path><path d="M12 11.1H6v1.8h6v-1.8zM14 7.1H6v1.8h8V7.1z"></path></svg>';
-const UNKNOWN_KARMA_COLOR = '#8b9b95';
 const SOAP_BUBBLE_BORDER_COLOR = 'rgba(255, 255, 255, 0.76)';
 const SOAP_BUBBLE_EMPHASIS_BORDER_COLOR = 'rgba(255, 255, 255, 0.94)';
 const SOAP_BUBBLE_EMPHASIS_SHADOW_COLOR = 'rgba(22, 51, 45, 0.18)';
@@ -131,34 +130,23 @@ const CURRENT_USER_RIPPLE_EFFECT = {
 } as const;
 const CURRENT_USER_POST_RIPPLE_SERIES_ID = 'current-user-post-ripple';
 const CURRENT_USER_CONTRIBUTOR_RIPPLE_SERIES_ID = 'current-user-contributor-ripple';
-const KARMA_BUCKET_COLORS = [
-  '#667085',
-  '#5f7488',
-  '#527f8d',
-  '#438b85',
-  '#369875',
-  '#43a95f',
-  '#73bb51',
-  '#aecd45',
-  '#e2d13f',
-  '#ffb703',
-];
+const CHART_COLOR_PALETTE = [
+  '#99cccc',
+  '#ffcc33',
+  '#666633',
+  '#996699',
+  '#996633',
+  '#ff6666',
+  '#ff33cc',
+  '#00cc99',
+  '#cc0066',
+  '#006699',
+] as const;
+const CHART_COLOR_FALLBACK = CHART_COLOR_PALETTE[0];
 const COMMENT_BUBBLE_SIZE = 10;
 const COMMENT_GROUP_EMPHASIZED_BUBBLE_SIZE = 26;
 const BUBBLE_MIN_SIZE = 10;
 const BUBBLE_MAX_SIZE = 72;
-const COMMENT_GROUP_COLORS = [
-  '#2d6cdf',
-  '#0f8b8d',
-  '#5ca760',
-  '#f2b84b',
-  '#e85d75',
-  '#7b61ff',
-  '#00a676',
-  '#d96c06',
-  '#c44569',
-  '#607d3b',
-];
 const DATE_ONLY_PATTERN = /^(\d{4})-(\d{2})-(\d{2})$/;
 const DATE_ONLY_FORMATTER = new Intl.DateTimeFormat('en-US', {
   month: 'short',
@@ -2102,13 +2090,11 @@ function isSubredditKarmaBucket(
 }
 
 function getKarmaBucketColor(bucket: SubredditKarmaBucket | null): string {
-  return bucket === null
-    ? UNKNOWN_KARMA_COLOR
-    : KARMA_BUCKET_COLORS[bucket] ?? UNKNOWN_KARMA_COLOR;
+  return bucket === null ? CHART_COLOR_FALLBACK : getChartPaletteColor(bucket);
 }
 
 function getCommentGroupColor(postId: string): string {
-  return COMMENT_GROUP_COLORS[hashString(postId) % COMMENT_GROUP_COLORS.length] ?? '#0f8b8d';
+  return getChartPaletteColor(hashString(postId));
 }
 
 function getCommentGroupSeriesId(postId: string): string {
@@ -2146,11 +2132,15 @@ function getBubbleFillColor(baseColor: string, alpha: number): string {
     return cachedColor;
   }
 
-  const rgb = hexToRgb(baseColor) ?? hexToRgb('#0f8b8d');
-  const color = rgb ? toRgba(rgb, alpha) : `rgba(15, 139, 141, ${alpha})`;
+  const rgb = hexToRgb(baseColor) ?? hexToRgb(CHART_COLOR_FALLBACK);
+  const color = rgb ? toRgba(rgb, alpha) : `rgba(153, 204, 204, ${alpha})`;
 
   bubbleFillColorCache.set(cacheKey, color);
   return color;
+}
+
+function getChartPaletteColor(index: number): string {
+  return CHART_COLOR_PALETTE[index % CHART_COLOR_PALETTE.length] ?? CHART_COLOR_FALLBACK;
 }
 
 function hexToRgb(color: string): { red: number; green: number; blue: number } | null {
