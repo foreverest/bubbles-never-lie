@@ -75,6 +75,7 @@ export type StatsDataResponse = {
   type: 'stats-data';
   postCount: number;
   commentCount: number;
+  authorCount: number;
 };
 
 export type ErrorResponse = {

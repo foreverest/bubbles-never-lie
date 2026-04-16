@@ -406,6 +406,10 @@ function StatsPanel({ state }: { state: DataState<StatsDataResponse> }) {
         <span>Comments</span>
         <strong>{state.data.commentCount.toLocaleString()}</strong>
       </div>
+      <div className="stats-panel__item">
+        <span>Authors</span>
+        <strong>{state.data.authorCount.toLocaleString()}</strong>
+      </div>
     </section>
   );
 }

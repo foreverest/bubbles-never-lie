@@ -8,7 +8,7 @@ import type {
   PostsChartDataResponse,
   StatsDataResponse,
 } from '../../shared/api';
-import { readAuthorsForTimeframe } from '../core/author-chart';
+import { readAuthorCountForTimeframe, readAuthorsForTimeframe } from '../core/author-chart';
 import { readCommentCountForTimeframe, readCommentsForTimeframe } from '../core/comment-cache';
 import { readPostCountForTimeframe, readPostsForTimeframe } from '../core/post-cache';
 import { readCachedSubredditIconUrl } from '../core/subreddit-icons';
@@ -160,13 +160,18 @@ api.get('/stats', async (c) => {
   }
 
   try {
-    const [posts, comments] = await Promise.all([
+    const [posts, comments, authors] = await Promise.all([
       readPostCountForTimeframe({
         subredditName: chartContext.subredditName,
         startTime: chartContext.startTime,
         endTime: chartContext.endTime,
       }),
       readCommentCountForTimeframe({
+        subredditName: chartContext.subredditName,
+        startTime: chartContext.startTime,
+        endTime: chartContext.endTime,
+      }),
+      readAuthorCountForTimeframe({
         subredditName: chartContext.subredditName,
         startTime: chartContext.startTime,
         endTime: chartContext.endTime,
@@ -178,6 +183,7 @@ api.get('/stats', async (c) => {
         type: 'stats-data',
         postCount: posts.postCount,
         commentCount: comments.commentCount,
+        authorCount: authors.authorCount,
       },
       200
     );

@@ -12,6 +12,10 @@ export type AuthorChartReadResult = {
   authors: ChartAuthor[];
 };
 
+export type AuthorCountReadResult = {
+  authorCount: number;
+};
+
 type AuthorActivity = {
   authorName: string;
   postCount: number;
@@ -36,6 +40,22 @@ export const readAuthorsForTimeframe = async ({
 
   return {
     authors: createChartAuthors(activities, cachedAuthorsByName),
+  };
+};
+
+export const readAuthorCountForTimeframe = async ({
+  subredditName,
+  startTime,
+  endTime,
+}: AuthorChartReadOptions): Promise<AuthorCountReadResult> => {
+  const dataLayer = createBubbleStatsDataLayer(subredditName);
+  const [posts, comments] = await Promise.all([
+    dataLayer.posts.getInTimeRange({ startTime, endTime }),
+    dataLayer.comments.getInTimeRange({ startTime, endTime }),
+  ]);
+
+  return {
+    authorCount: createAuthorActivities(posts, comments).size,
   };
 };
 
