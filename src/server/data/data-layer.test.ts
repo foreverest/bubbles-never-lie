@@ -60,15 +60,37 @@ class FakeRedisDataClient implements RedisDataClient {
   async zRange(
     key: string,
     start: number | string,
-    stop: number | string
+    stop: number | string,
+    options?: Parameters<RedisDataClient['zRange']>[3]
   ): Promise<Array<{ member: string; score: number }>> {
+    const indexedEntities = [...(this.sortedSets.get(key)?.entries() ?? [])]
+      .map(([member, score]) => ({ member, score }))
+      .sort((a, b) => a.score - b.score || a.member.localeCompare(b.member));
+
+    if (options?.by === 'rank') {
+      const rankedEntities = options.reverse ? indexedEntities.toReversed() : indexedEntities;
+      const startRank = Number(start);
+      const stopRank = Number(stop);
+      const endRank = stopRank < 0 ? rankedEntities.length + stopRank : stopRank;
+
+      return rankedEntities.slice(startRank, endRank + 1);
+    }
+
     const startScore = Number(start);
     const stopScore = Number(stop);
+    const matchedEntities = indexedEntities.filter(
+      ({ score }) => score >= startScore && score <= stopScore
+    );
+    const orderedEntities = options?.reverse ? matchedEntities.toReversed() : matchedEntities;
 
-    return [...(this.sortedSets.get(key)?.entries() ?? [])]
-      .map(([member, score]) => ({ member, score }))
-      .filter(({ score }) => score >= startScore && score <= stopScore)
-      .sort((a, b) => a.score - b.score || a.member.localeCompare(b.member));
+    if (options?.limit) {
+      return orderedEntities.slice(
+        options.limit.offset,
+        options.limit.offset + options.limit.count
+      );
+    }
+
+    return options?.by === 'score' ? orderedEntities.slice(0, 1000) : orderedEntities;
   }
 
   clearCallHistory(): void {
@@ -164,6 +186,34 @@ test('time indexed repositories maintain createdAt indexes and skip malformed hy
     't1_comment_1',
     't1_comment_2',
   ]);
+});
+
+test('time indexed repositories read latest ids in newest-first order', async () => {
+  const redisClient = new FakeRedisDataClient();
+  const dataLayer = createBubbleStatsDataLayer('ExampleSub', redisClient);
+  const postCount = 1005;
+  const posts = Array.from({ length: postCount }, (_, index) =>
+    createPost(
+      `t3_post_${String(index).padStart(4, '0')}`,
+      new Date(Date.UTC(2026, 3, 15, 0, 0, index)).toISOString()
+    )
+  );
+
+  await dataLayer.posts.upsertMany(posts);
+
+  const latestPostIds = await dataLayer.posts.getLatestIds(1000);
+
+  assert.equal(latestPostIds.length, 1000);
+  assert.deepEqual(latestPostIds.slice(0, 5), [
+    't3_post_1004',
+    't3_post_1003',
+    't3_post_1002',
+    't3_post_1001',
+    't3_post_1000',
+  ]);
+  assert.equal(latestPostIds.at(-1), 't3_post_0005');
+  assert.equal(latestPostIds.includes('t3_post_0004'), false);
+  assert.deepEqual(await dataLayer.posts.getLatestIds(0), []);
 });
 
 test('relation hydrators add requested relations, preserve order, and keep missing relations null', async () => {

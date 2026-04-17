@@ -119,6 +119,19 @@ export const createRedisTimeIndexedRepository = <Entity>({
     return indexedEntities.map((entity) => entity.member);
   };
 
+  const getLatestIds = async (limit: number): Promise<string[]> => {
+    if (limit <= 0) {
+      return [];
+    }
+
+    const indexedEntities = await redisClient.zRange(indexKey, 0, limit - 1, {
+      by: 'rank',
+      reverse: true,
+    });
+
+    return indexedEntities.map((entity) => entity.member);
+  };
+
   return {
     getById,
     getByIds,
@@ -127,6 +140,7 @@ export const createRedisTimeIndexedRepository = <Entity>({
     },
     upsertMany,
     getIdsInTimeRange,
+    getLatestIds,
     async getInTimeRange(range) {
       return await getByIds(await getIdsInTimeRange(range));
     },

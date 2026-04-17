@@ -34,6 +34,11 @@ export type CachedPostIdReadOptions = {
   endTime: number;
 };
 
+export type LatestCachedPostIdReadOptions = {
+  subredditName: string;
+  limit: number;
+};
+
 export type CachedPostIdReadResult = {
   postIds: `t3_${string}`[];
 };
@@ -121,6 +126,18 @@ export const readCachedPostIdsForTimeframe = async ({
   const postIds = (await dataLayer.posts.getIdsInTimeRange({ startTime, endTime })).filter(
     isPostId
   );
+
+  return {
+    postIds,
+  };
+};
+
+export const readLatestCachedPostIds = async ({
+  subredditName,
+  limit,
+}: LatestCachedPostIdReadOptions): Promise<CachedPostIdReadResult> => {
+  const dataLayer = createBubbleStatsDataLayer(subredditName);
+  const postIds = (await dataLayer.posts.getLatestIds(limit)).filter(isPostId);
 
   return {
     postIds,

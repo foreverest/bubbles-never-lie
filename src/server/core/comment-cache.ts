@@ -4,15 +4,14 @@ import { resolveUserAvatarUrl, type ChartComment } from '../../shared/api';
 import { createBubbleStatsDataLayer } from '../data';
 import type { CommentEntity, HydratedComment } from '../data';
 import { createLogger } from '../logging/logger';
-import { readCachedPostIdsForTimeframe } from './post-cache';
+import { readLatestCachedPostIds } from './post-cache';
 
 const logger = createLogger('comment-cache');
+const COMMENT_REFRESH_PARENT_POST_LIMIT = 1000;
 const COMMENT_REFRESH_POST_CHUNK_SIZE = 50;
 const COMMENT_REFRESH_CHUNK_JOB_DELAY_MS = 60 * 1000;
 export const COMMENT_REFRESH_CHUNK_JOB_NAME = 'refreshCommentCacheChunk';
 const COMMENT_PREVIEW_LENGTH = 20;
-const DAY_MS = 24 * 60 * 60 * 1000;
-const PARENT_POST_LOOKBACK_MS = 90 * DAY_MS;
 
 export type CommentCacheReadOptions = {
   subredditName: string;
@@ -94,8 +93,7 @@ export const refreshCommentCache = async (
   logger.info('Refreshing comment cache', { subredditName });
 
   try {
-    const fetchedAt = new Date();
-    const parentPostIds = await readCommentParentPostIds(subredditName, fetchedAt.getTime());
+    const parentPostIds = await readCommentParentPostIds(subredditName);
     const postIdChunks = chunkItems(parentPostIds, COMMENT_REFRESH_POST_CHUNK_SIZE);
     const firstRunAt = Date.now() + COMMENT_REFRESH_CHUNK_JOB_DELAY_MS;
     const scheduledJobIds: string[] = [];
@@ -103,6 +101,7 @@ export const refreshCommentCache = async (
     logger.info('Scheduling comment cache refresh chunks', {
       subredditName,
       parentPostCount: parentPostIds.length,
+      parentPostLimit: COMMENT_REFRESH_PARENT_POST_LIMIT,
       chunkCount: postIdChunks.length,
       chunkSize: COMMENT_REFRESH_POST_CHUNK_SIZE,
     });
@@ -140,6 +139,7 @@ export const refreshCommentCache = async (
     logger.info('Scheduled comment cache refresh chunks', {
       subredditName,
       parentPostCount: result.parentPostCount,
+      parentPostLimit: COMMENT_REFRESH_PARENT_POST_LIMIT,
       scheduledPostCount: result.scheduledPostCount,
       scheduledJobCount: result.scheduledJobCount,
       generatedAt: result.generatedAt,
@@ -206,14 +206,10 @@ export const refreshCommentCacheChunk = async ({
   }
 };
 
-const readCommentParentPostIds = async (
-  subredditName: string,
-  now: number
-): Promise<`t3_${string}`[]> => {
-  const cachedPostIds = await readCachedPostIdsForTimeframe({
+const readCommentParentPostIds = async (subredditName: string): Promise<`t3_${string}`[]> => {
+  const cachedPostIds = await readLatestCachedPostIds({
     subredditName,
-    startTime: now - PARENT_POST_LOOKBACK_MS,
-    endTime: now + DAY_MS,
+    limit: COMMENT_REFRESH_PARENT_POST_LIMIT,
   });
 
   return cachedPostIds.postIds;
