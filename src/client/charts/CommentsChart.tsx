@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef } from 'react';
 
 import type { CommentsChartDataResponse } from '../../shared/api';
 import { useCurrentUsername } from '../hooks/useCurrentUsername';
+import type { ResolvedTheme } from '../types';
 import { openRedditUrl } from '../utils/navigation';
 import { getCommentGroupSeriesId, isCommentBubbleDatum, toCommentBubbleDatum } from './data';
 import type { EChartsInstance } from './echarts';
@@ -15,10 +16,12 @@ export function CommentsChart({
   data,
   zoomEnabled,
   currentUserRippleEnabled,
+  resolvedTheme,
 }: {
   data: CommentsChartDataResponse;
   zoomEnabled: boolean;
   currentUserRippleEnabled: boolean;
+  resolvedTheme: ResolvedTheme;
 }) {
   const emphasizedCommentGroupRef = useRef<string | null>(null);
   const currentUsername = useCurrentUsername();
@@ -129,12 +132,17 @@ export function CommentsChart({
 
     emphasizedCommentGroupRef.current = null;
     chart.setOption(
-      createCommentsOption(chartData, data, zoomEnabled, currentUserRippleEnabled, () =>
-        readVisibleTimeRange(chart)
+      createCommentsOption(
+        chartData,
+        data,
+        zoomEnabled,
+        currentUserRippleEnabled,
+        () => readVisibleTimeRange(chart),
+        resolvedTheme
       ),
       true
     );
-  }, [chartData, chartRef, currentUserRippleEnabled, data, zoomEnabled]);
+  }, [chartData, chartRef, currentUserRippleEnabled, data, resolvedTheme, zoomEnabled]);
 
   return (
     <div

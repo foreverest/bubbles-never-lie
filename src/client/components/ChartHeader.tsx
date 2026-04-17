@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 
 import type { ChartResponseMetadata } from '../../shared/api';
-import type { ChartPreferences, TabName } from '../types';
+import type { ChartPreferences, TabName, ThemeMode } from '../types';
 import { TABS, getTabLabel } from '../types';
 import { formatTimeframeDateRangeLabel } from '../utils/date';
 
@@ -15,14 +15,22 @@ type ChartHeaderProps = {
   onZoomEnabledChange: (enabled: boolean) => void;
   currentUserRippleEnabled: boolean;
   onCurrentUserRippleEnabledChange: (enabled: boolean) => void;
+  themeMode: ThemeMode;
+  onThemeModeChange: (themeMode: ThemeMode) => void;
 };
 
 type ChartSetting = {
-  key: keyof ChartPreferences;
+  key: Exclude<keyof ChartPreferences, 'themeMode'>;
   label: string;
   enabled: boolean;
   onToggle: () => void;
 };
+
+const THEME_OPTIONS: readonly { mode: ThemeMode; label: string }[] = [
+  { mode: 'system', label: 'System' },
+  { mode: 'light', label: 'Light' },
+  { mode: 'dark', label: 'Dark' },
+];
 
 export function ChartHeader({
   data,
@@ -32,6 +40,8 @@ export function ChartHeader({
   onZoomEnabledChange,
   currentUserRippleEnabled,
   onCurrentUserRippleEnabledChange,
+  themeMode,
+  onThemeModeChange,
 }: ChartHeaderProps) {
   const [openMenu, setOpenMenu] = useState<OpenMenu>(null);
   const sectionMenuRef = useRef<HTMLDivElement | null>(null);
@@ -158,7 +168,11 @@ export function ChartHeader({
 
           {openMenu === 'settings' ? (
             <div className="chart-settings__menu" aria-label="Chart settings" role="group">
-              <SettingsSwitches settings={settings} />
+              <SettingsMenuContent
+                settings={settings}
+                themeMode={themeMode}
+                onThemeModeChange={onThemeModeChange}
+              />
             </div>
           ) : null}
         </div>
@@ -192,12 +206,53 @@ export function ChartHeader({
             </div>
 
             <div className="chart-mobile-controls__group" aria-label="Chart settings" role="group">
-              <SettingsSwitches settings={settings} />
+              <SettingsMenuContent
+                settings={settings}
+                themeMode={themeMode}
+                onThemeModeChange={onThemeModeChange}
+              />
             </div>
           </div>
         ) : null}
       </div>
     </header>
+  );
+}
+
+function SettingsMenuContent({
+  settings,
+  themeMode,
+  onThemeModeChange,
+}: {
+  settings: ChartSetting[];
+  themeMode: ThemeMode;
+  onThemeModeChange: (themeMode: ThemeMode) => void;
+}) {
+  return (
+    <>
+      <SettingsSwitches settings={settings} />
+      <div className="chart-settings__divider" />
+      <div className="chart-theme-control" aria-label="Theme">
+        <span className="chart-theme-control__label">Theme</span>
+        <div className="chart-theme-control__options">
+          {THEME_OPTIONS.map((option) => (
+            <button
+              aria-pressed={themeMode === option.mode}
+              className={
+                themeMode === option.mode
+                  ? 'chart-theme-control__option chart-theme-control__option--active'
+                  : 'chart-theme-control__option'
+              }
+              key={option.mode}
+              onClick={() => onThemeModeChange(option.mode)}
+              type="button"
+            >
+              {option.label}
+            </button>
+          ))}
+        </div>
+      </div>
+    </>
   );
 }
 

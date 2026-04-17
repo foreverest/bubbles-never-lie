@@ -83,39 +83,51 @@
   font-weight: 800;
 }
 
-.chart-tooltip--light {
+.chart-tooltip--light,
+.chart-tooltip--dark {
   color: var(--color-text);
 }
 
-.chart-tooltip--light .chart-tooltip__meta {
+.chart-tooltip--light .chart-tooltip__meta,
+.chart-tooltip--dark .chart-tooltip__meta {
   color: var(--color-muted);
 }
 
-.chart-tooltip--light .chart-tooltip__avatar {
+.chart-tooltip--light .chart-tooltip__avatar,
+.chart-tooltip--dark .chart-tooltip__avatar {
   border-color: var(--color-border-strong);
   background: var(--color-surface-soft);
 }
 
 .chart-tooltip--light .chart-tooltip__username,
-.chart-tooltip--light .chart-tooltip__title {
+.chart-tooltip--light .chart-tooltip__title,
+.chart-tooltip--dark .chart-tooltip__username,
+.chart-tooltip--dark .chart-tooltip__title {
   color: var(--color-text);
 }
 
-.chart-tooltip--light .chart-tooltip__separator {
+.chart-tooltip--light .chart-tooltip__separator,
+.chart-tooltip--dark .chart-tooltip__separator {
   font-size: 0.95rem;
   color: var(--color-subtle);
   line-height: 1;
 }
 
-.chart-tooltip--light .chart-tooltip__age {
+.chart-tooltip--light .chart-tooltip__age,
+.chart-tooltip--dark .chart-tooltip__age {
   color: var(--color-muted);
   font-weight: 400;
 }
 
-.chart-tooltip--light .chart-tooltip__stats {
+.chart-tooltip--light .chart-tooltip__stats,
+.chart-tooltip--dark .chart-tooltip__stats {
   gap: 12px;
   color: var(--color-text);
   font-size: 0.95rem;
+}
+
+.chart-tooltip--dark .chart-tooltip__you {
+  color: #9eeeff;
 }
 
 .chart-tooltip__metric {

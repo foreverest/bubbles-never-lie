@@ -3,6 +3,8 @@ import { formatRelativeAge } from '../utils/date';
 import { escapeHtml } from '../utils/html';
 import type { CommentBubbleDatum, ContributorBubbleDatum, PostBubbleDatum } from './types';
 
+type TooltipVariant = 'light' | 'dark';
+
 const TOOLTIP_UPVOTE_ICON =
   '<svg aria-hidden="true" class="chart-tooltip__metric-icon" fill="currentColor" height="16" viewBox="0 0 20 20" width="16" xmlns="http://www.w3.org/2000/svg"><path d="M10 19a3.966 3.966 0 01-3.96-3.962V10.98H2.838a1.731 1.731 0 01-1.605-1.073 1.734 1.734 0 01.377-1.895L9.364.254a.925.925 0 011.272 0l7.754 7.759c.498.499.646 1.242.376 1.894-.27.652-.9 1.073-1.605 1.073h-3.202v4.058A3.965 3.965 0 019.999 19H10zM2.989 9.179H7.84v5.731c0 1.13.81 2.163 1.934 2.278a2.163 2.163 0 002.386-2.15V9.179h4.851L10 2.163 2.989 9.179z"></path></svg>';
 const TOOLTIP_DOWNVOTE_ICON =
@@ -12,11 +14,14 @@ const TOOLTIP_COMMENT_ICON =
 const TOOLTIP_POST_ICON =
   '<svg aria-hidden="true" class="chart-tooltip__metric-icon" fill="currentColor" height="20" viewBox="0 0 20 20" width="20" xmlns="http://www.w3.org/2000/svg"><path d="M14.7 2H5.3C3.48 2 2 3.48 2 5.3v9.4C2 16.52 3.48 18 5.3 18h9.4c1.82 0 3.3-1.48 3.3-3.3V5.3C18 3.48 16.52 2 14.7 2zm1.5 12.7c0 .83-.67 1.5-1.5 1.5H5.3c-.83 0-1.5-.67-1.5-1.5V5.3c0-.83.67-1.5 1.5-1.5h9.4c.83 0 1.5.67 1.5 1.5v9.4z"></path><path d="M12 11.1H6v1.8h6v-1.8zM14 7.1H6v1.8h8V7.1z"></path></svg>';
 
-export function renderPostTooltip(datum: PostBubbleDatum): string {
+export function renderPostTooltip(
+  datum: PostBubbleDatum,
+  variant: TooltipVariant = 'light'
+): string {
   const createdAgo = formatRelativeAge(new Date(datum.createdAt), { labelStyle: 'long' });
 
   return [
-    '<article class="chart-tooltip chart-tooltip--light chart-tooltip--post">',
+    `<article class="chart-tooltip chart-tooltip--${variant} chart-tooltip--post">`,
     '<div class="chart-tooltip__meta">',
     renderTooltipAvatar(datum.authorAvatarUrl),
     `<span class="chart-tooltip__username">u/${escapeHtml(datum.authorName)}</span>`,
@@ -33,11 +38,14 @@ export function renderPostTooltip(datum: PostBubbleDatum): string {
   ].join('');
 }
 
-export function renderCommentTooltip(datum: CommentBubbleDatum): string {
+export function renderCommentTooltip(
+  datum: CommentBubbleDatum,
+  variant: TooltipVariant = 'light'
+): string {
   const createdAgo = formatRelativeAge(new Date(datum.createdAt), { labelStyle: 'long' });
 
   return [
-    '<article class="chart-tooltip chart-tooltip--light chart-tooltip--comment">',
+    `<article class="chart-tooltip chart-tooltip--${variant} chart-tooltip--comment">`,
     '<div class="chart-tooltip__meta">',
     renderTooltipAvatar(datum.authorAvatarUrl),
     `<span class="chart-tooltip__username">u/${escapeHtml(datum.authorName)}</span>`,
@@ -53,9 +61,12 @@ export function renderCommentTooltip(datum: CommentBubbleDatum): string {
   ].join('');
 }
 
-export function renderContributorTooltip(datum: ContributorBubbleDatum): string {
+export function renderContributorTooltip(
+  datum: ContributorBubbleDatum,
+  variant: TooltipVariant = 'light'
+): string {
   return [
-    '<article class="chart-tooltip chart-tooltip--light chart-tooltip--contributor">',
+    `<article class="chart-tooltip chart-tooltip--${variant} chart-tooltip--contributor">`,
     '<div class="chart-tooltip__meta">',
     renderTooltipAvatar(datum.contributorAvatarUrl),
     `<span class="chart-tooltip__username">u/${escapeHtml(datum.contributorName)}</span>`,

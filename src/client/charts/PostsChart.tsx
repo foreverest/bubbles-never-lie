@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo } from 'react';
 
 import type { PostsChartDataResponse } from '../../shared/api';
 import { useCurrentUsername } from '../hooks/useCurrentUsername';
+import type { ResolvedTheme } from '../types';
 import { openRedditUrl } from '../utils/navigation';
 import { isPostBubbleDatum, toPostBubbleDatum } from './data';
 import type { EChartsInstance } from './echarts';
@@ -14,10 +15,12 @@ export function PostsChart({
   data,
   zoomEnabled,
   currentUserRippleEnabled,
+  resolvedTheme,
 }: {
   data: PostsChartDataResponse;
   zoomEnabled: boolean;
   currentUserRippleEnabled: boolean;
+  resolvedTheme: ResolvedTheme;
 }) {
   const currentUsername = useCurrentUsername();
   const chartData = useMemo<PostBubbleDatum[]>(
@@ -49,12 +52,17 @@ export function PostsChart({
     }
 
     chart.setOption(
-      createPostsOption(chartData, data, zoomEnabled, currentUserRippleEnabled, () =>
-        readVisibleTimeRange(chart)
+      createPostsOption(
+        chartData,
+        data,
+        zoomEnabled,
+        currentUserRippleEnabled,
+        () => readVisibleTimeRange(chart),
+        resolvedTheme
       ),
       true
     );
-  }, [chartData, chartRef, currentUserRippleEnabled, data, zoomEnabled]);
+  }, [chartData, chartRef, currentUserRippleEnabled, data, resolvedTheme, zoomEnabled]);
 
   return (
     <div

@@ -1,13 +1,14 @@
 import { useEffect, useState } from 'react';
 import type { Dispatch, SetStateAction } from 'react';
 
-import type { ChartPreferences } from '../types';
+import type { ChartPreferences, ThemeMode } from '../types';
 
-const CHART_PREFERENCES_STORAGE_KEY = 'bubble-stats:chart-preferences:v1';
+export const CHART_PREFERENCES_STORAGE_KEY = 'bubble-stats:chart-preferences:v1';
 
 export const DEFAULT_CHART_PREFERENCES: ChartPreferences = {
   zoomEnabled: false,
   currentUserRippleEnabled: false,
+  themeMode: 'system',
 };
 
 export function useChartPreferences(): [
@@ -41,7 +42,14 @@ export function normalizeChartPreferences(value: unknown): ChartPreferences {
       typeof preferences.currentUserRippleEnabled === 'boolean'
         ? preferences.currentUserRippleEnabled
         : DEFAULT_CHART_PREFERENCES.currentUserRippleEnabled,
+    themeMode: isThemeMode(preferences.themeMode)
+      ? preferences.themeMode
+      : DEFAULT_CHART_PREFERENCES.themeMode,
   };
+}
+
+function isThemeMode(value: unknown): value is ThemeMode {
+  return value === 'system' || value === 'light' || value === 'dark';
 }
 
 function readStoredChartPreferences(): ChartPreferences {

@@ -1,20 +1,63 @@
+import type { ResolvedTheme } from '../../types';
 import type { EChartsCoreOption } from '../echarts';
 import { formatXAxisLabel } from '../timeAxis';
 import type { GetVisibleTimeRange, RippleColorOption, SymbolSizeOption } from '../types';
 
-export const SOAP_BUBBLE_BORDER_COLOR = 'rgba(255, 255, 255, 0.88)';
-export const SOAP_BUBBLE_EMPHASIS_BORDER_COLOR = 'rgba(255, 255, 255, 0.98)';
-export const SOAP_BUBBLE_EMPHASIS_SHADOW_COLOR = 'rgba(15, 23, 42, 0.18)';
 export const SOAP_BUBBLE_FILL_ALPHA = 0.9;
 export const COMMENT_BUBBLE_FILL_ALPHA = 0.94;
 
-const CHART_GRID_LINE_COLOR = '#edf1f4';
-const CHART_AXIS_LINE_COLOR = '#c6d1d8';
-const CHART_AXIS_LABEL_COLOR = '#56636d';
-const CHART_AXIS_NAME_COLOR = '#697780';
-const CHART_TOOLTIP_BACKGROUND_COLOR = '#ffffff';
-const CHART_TOOLTIP_EXTRA_CSS =
-  'border-radius:8px;box-shadow:0 18px 44px rgba(15,23,42,0.18);padding:0;';
+type TooltipVariant = 'light' | 'dark';
+
+export type ChartTheme = {
+  mode: ResolvedTheme;
+  backgroundColor: string;
+  gridLineColor: string;
+  axisLineColor: string;
+  axisLabelColor: string;
+  axisNameColor: string;
+  tooltipBackgroundColor: string;
+  tooltipTextColor: string;
+  tooltipExtraCss: string;
+  tooltipVariant: TooltipVariant;
+  bubbleBorderColor: string;
+  bubbleEmphasisBorderColor: string;
+  bubbleEmphasisShadowColor: string;
+};
+
+const CHART_THEMES: Record<ResolvedTheme, ChartTheme> = {
+  light: {
+    mode: 'light',
+    backgroundColor: '#ffffff',
+    gridLineColor: '#edf1f4',
+    axisLineColor: '#c6d1d8',
+    axisLabelColor: '#56636d',
+    axisNameColor: '#697780',
+    tooltipBackgroundColor: '#ffffff',
+    tooltipTextColor: '#0f1419',
+    tooltipExtraCss: 'border-radius:8px;box-shadow:0 18px 44px rgba(15,23,42,0.18);padding:0;',
+    tooltipVariant: 'light',
+    bubbleBorderColor: 'rgba(255, 255, 255, 0.88)',
+    bubbleEmphasisBorderColor: 'rgba(255, 255, 255, 0.98)',
+    bubbleEmphasisShadowColor: 'rgba(15, 23, 42, 0.18)',
+  },
+  dark: {
+    mode: 'dark',
+    backgroundColor: '#171d1b',
+    gridLineColor: '#28332f',
+    axisLineColor: '#3a4642',
+    axisLabelColor: '#a9b5af',
+    axisNameColor: '#b7c2bd',
+    tooltipBackgroundColor: '#151b19',
+    tooltipTextColor: '#eef3ef',
+    tooltipExtraCss: 'border-radius:8px;box-shadow:0 18px 44px rgba(0,0,0,0.42);padding:0;',
+    tooltipVariant: 'dark',
+    bubbleBorderColor: 'rgba(238, 243, 239, 0.72)',
+    bubbleEmphasisBorderColor: 'rgba(255, 255, 255, 0.95)',
+    bubbleEmphasisShadowColor: 'rgba(0, 0, 0, 0.36)',
+  },
+};
+
+const LIGHT_CHART_THEME = CHART_THEMES.light;
 const CURRENT_USER_RIPPLE_SERIES_Z = 4;
 const CURRENT_USER_RIPPLE_EFFECT = {
   brushType: 'fill',
@@ -36,16 +79,23 @@ export function createChartGrid(
   };
 }
 
-export function createChartTooltip(formatter: (params: { data?: unknown }) => string) {
+export function getChartTheme(resolvedTheme: ResolvedTheme = 'light'): ChartTheme {
+  return CHART_THEMES[resolvedTheme];
+}
+
+export function createChartTooltip(
+  formatter: (params: { data?: unknown }) => string,
+  theme = LIGHT_CHART_THEME
+) {
   return {
     trigger: 'item',
     confine: true,
     borderWidth: 0,
-    backgroundColor: CHART_TOOLTIP_BACKGROUND_COLOR,
+    backgroundColor: theme.tooltipBackgroundColor,
     textStyle: {
-      color: '#0f1419',
+      color: theme.tooltipTextColor,
     },
-    extraCssText: CHART_TOOLTIP_EXTRA_CSS,
+    extraCssText: theme.tooltipExtraCss,
     formatter,
   };
 }
@@ -53,19 +103,20 @@ export function createChartTooltip(formatter: (params: { data?: unknown }) => st
 export function createTimeXAxis(
   startTime: number,
   endTime: number,
-  getVisibleTimeRange?: GetVisibleTimeRange
+  getVisibleTimeRange?: GetVisibleTimeRange,
+  theme = LIGHT_CHART_THEME
 ) {
   return {
     type: 'time',
     min: startTime,
     max: endTime,
-    splitLine: createSplitLine(),
-    axisLine: createAxisLine(),
+    splitLine: createSplitLine(theme),
+    axisLine: createAxisLine(theme),
     axisTick: {
       show: false,
     },
     axisLabel: {
-      color: CHART_AXIS_LABEL_COLOR,
+      color: theme.axisLabelColor,
       fontSize: 12,
       fontWeight: 600,
       margin: 14,
@@ -84,49 +135,52 @@ export function createTimeXAxis(
   };
 }
 
-export function createUpvotesYAxis() {
+export function createUpvotesYAxis(theme = LIGHT_CHART_THEME) {
   return {
     name: 'Upvotes',
     nameLocation: 'middle',
     nameGap: 40,
-    nameTextStyle: createAxisNameTextStyle(),
+    nameTextStyle: createAxisNameTextStyle(theme),
     type: 'value',
     minInterval: 1,
-    splitLine: createSplitLine(),
-    axisLine: createAxisLine(),
+    splitLine: createSplitLine(theme),
+    axisLine: createAxisLine(theme),
     axisTick: {
       show: false,
     },
-    axisLabel: createAxisLabel(),
+    axisLabel: createAxisLabel(theme),
   };
 }
 
-export function createValueAxis({
-  name,
-  min,
-  max,
-  nameGap,
-}: {
-  name: string;
-  min: number;
-  max: number;
-  nameGap: number;
-}) {
+export function createValueAxis(
+  {
+    name,
+    min,
+    max,
+    nameGap,
+  }: {
+    name: string;
+    min: number;
+    max: number;
+    nameGap: number;
+  },
+  theme = LIGHT_CHART_THEME
+) {
   return {
     name,
     nameLocation: 'middle',
     nameGap,
-    nameTextStyle: createAxisNameTextStyle(),
+    nameTextStyle: createAxisNameTextStyle(theme),
     type: 'value',
     min,
     max,
     minInterval: 1,
-    splitLine: createSplitLine(),
-    axisLine: createAxisLine(),
+    splitLine: createSplitLine(theme),
+    axisLine: createAxisLine(theme),
     axisTick: {
       show: false,
     },
-    axisLabel: createAxisLabel(),
+    axisLabel: createAxisLabel(theme),
   };
 }
 
@@ -199,36 +253,36 @@ export function enableSingleAxisZoom(option: EChartsCoreOption, minSpan = 10): v
   option.dataZoom = createSingleAxisDataZoom(minSpan);
 }
 
-function createSplitLine() {
+function createSplitLine(theme: ChartTheme) {
   return {
     show: true,
     lineStyle: {
       type: 'solid',
-      color: CHART_GRID_LINE_COLOR,
+      color: theme.gridLineColor,
     },
   };
 }
 
-function createAxisLine() {
+function createAxisLine(theme: ChartTheme) {
   return {
     show: true,
     lineStyle: {
-      color: CHART_AXIS_LINE_COLOR,
+      color: theme.axisLineColor,
     },
   };
 }
 
-function createAxisLabel() {
+function createAxisLabel(theme: ChartTheme) {
   return {
-    color: CHART_AXIS_LABEL_COLOR,
+    color: theme.axisLabelColor,
     fontSize: 12,
     fontWeight: 600,
   };
 }
 
-function createAxisNameTextStyle() {
+function createAxisNameTextStyle(theme: ChartTheme) {
   return {
-    color: CHART_AXIS_NAME_COLOR,
+    color: theme.axisNameColor,
     fontSize: 12,
     fontWeight: 700,
   };

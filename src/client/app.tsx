@@ -15,13 +15,15 @@ import { PanelState } from './components/PanelState';
 import { StatsPanel } from './components/StatsPanel';
 import { useApiResource } from './hooks/useApiResource';
 import { useChartPreferences } from './hooks/useChartPreferences';
+import { useResolvedTheme } from './hooks/useResolvedTheme';
 import { useTooltipAvatarFallback } from './hooks/useTooltipAvatarFallback';
-import type { DataState, TabName } from './types';
+import type { DataState, ResolvedTheme, TabName } from './types';
 
 export function App() {
   const [activeTab, setActiveTab] = useState<TabName>('posts');
   const [chartPreferences, setChartPreferences] = useChartPreferences();
-  const { zoomEnabled, currentUserRippleEnabled } = chartPreferences;
+  const { zoomEnabled, currentUserRippleEnabled, themeMode } = chartPreferences;
+  const resolvedTheme = useResolvedTheme(themeMode);
   const postsState = useApiResource<PostsChartDataResponse>({
     path: '/api/posts',
     fallbackMessage: 'Unable to load post chart data.',
@@ -91,6 +93,13 @@ export function App() {
               currentUserRippleEnabled: nextCurrentUserRippleEnabled,
             }))
           }
+          themeMode={themeMode}
+          onThemeModeChange={(nextThemeMode) =>
+            setChartPreferences((preferences) => ({
+              ...preferences,
+              themeMode: nextThemeMode,
+            }))
+          }
         />
 
         {activeTab === 'posts' ? (
@@ -98,18 +107,21 @@ export function App() {
             data={postsData}
             zoomEnabled={zoomEnabled}
             currentUserRippleEnabled={currentUserRippleEnabled}
+            resolvedTheme={resolvedTheme}
           />
         ) : activeTab === 'comments' ? (
           <CommentsPanel
             state={commentsState}
             zoomEnabled={zoomEnabled}
             currentUserRippleEnabled={currentUserRippleEnabled}
+            resolvedTheme={resolvedTheme}
           />
         ) : activeTab === 'contributors' ? (
           <ContributorsPanel
             state={contributorsState}
             zoomEnabled={zoomEnabled}
             currentUserRippleEnabled={currentUserRippleEnabled}
+            resolvedTheme={resolvedTheme}
           />
         ) : (
           <StatsPanel state={statsState} />
@@ -123,10 +135,12 @@ function PostsPanel({
   data,
   zoomEnabled,
   currentUserRippleEnabled,
+  resolvedTheme,
 }: {
   data: PostsChartDataResponse;
   zoomEnabled: boolean;
   currentUserRippleEnabled: boolean;
+  resolvedTheme: ResolvedTheme;
 }) {
   return (
     <section className="chart-panel" id="posts-panel" aria-label="Posts">
@@ -135,6 +149,7 @@ function PostsPanel({
           data={data}
           zoomEnabled={zoomEnabled}
           currentUserRippleEnabled={currentUserRippleEnabled}
+          resolvedTheme={resolvedTheme}
         />
       ) : (
         <EmptyState
@@ -151,10 +166,12 @@ function CommentsPanel({
   state,
   zoomEnabled,
   currentUserRippleEnabled,
+  resolvedTheme,
 }: {
   state: DataState<CommentsChartDataResponse>;
   zoomEnabled: boolean;
   currentUserRippleEnabled: boolean;
+  resolvedTheme: ResolvedTheme;
 }) {
   return (
     <section className="chart-panel" id="comments-panel" aria-label="Comments">
@@ -164,6 +181,7 @@ function CommentsPanel({
             data={state.data}
             zoomEnabled={zoomEnabled}
             currentUserRippleEnabled={currentUserRippleEnabled}
+            resolvedTheme={resolvedTheme}
           />
         ) : (
           <EmptyState
@@ -183,10 +201,12 @@ function ContributorsPanel({
   state,
   zoomEnabled,
   currentUserRippleEnabled,
+  resolvedTheme,
 }: {
   state: DataState<ContributorsChartDataResponse>;
   zoomEnabled: boolean;
   currentUserRippleEnabled: boolean;
+  resolvedTheme: ResolvedTheme;
 }) {
   return (
     <section className="chart-panel" id="contributors-panel" aria-label="Contributors">
@@ -196,6 +216,7 @@ function ContributorsPanel({
             data={state.data}
             zoomEnabled={zoomEnabled}
             currentUserRippleEnabled={currentUserRippleEnabled}
+            resolvedTheme={resolvedTheme}
           />
         ) : (
           <EmptyState

@@ -1,4 +1,5 @@
 import type { ChartResponseMetadata } from '../../../shared/api';
+import type { ResolvedTheme } from '../../types';
 import { getBubbleFillColor, getCommentGroupColor } from '../colors';
 import {
   getCurrentUserCommentRippleSeriesId,
@@ -12,15 +13,13 @@ import { renderCommentTooltip } from '../tooltips';
 import type { CommentBubbleDatum, GetVisibleTimeRange } from '../types';
 import {
   COMMENT_BUBBLE_FILL_ALPHA,
-  SOAP_BUBBLE_BORDER_COLOR,
-  SOAP_BUBBLE_EMPHASIS_BORDER_COLOR,
-  SOAP_BUBBLE_EMPHASIS_SHADOW_COLOR,
   createChartGrid,
   createChartTooltip,
   createCurrentUserRippleSeries,
   createTimeXAxis,
   createUpvotesYAxis,
   enableSingleAxisZoom,
+  getChartTheme,
 } from './common';
 
 export function createCommentsOption(
@@ -28,21 +27,25 @@ export function createCommentsOption(
   chartData: ChartResponseMetadata,
   zoomEnabled: boolean,
   currentUserRippleEnabled: boolean,
-  getVisibleTimeRange?: GetVisibleTimeRange
+  getVisibleTimeRange?: GetVisibleTimeRange,
+  resolvedTheme: ResolvedTheme = 'light'
 ): EChartsCoreOption {
+  const chartTheme = getChartTheme(resolvedTheme);
   const minScore = Math.min(0, ...data.map((datum) => datum.score));
   const startTime = Date.parse(chartData.timeframe.startIso);
   const endTime = Date.parse(chartData.timeframe.endIso);
   const commentGroups = groupCommentsByPost(data);
   const option: EChartsCoreOption = {
+    backgroundColor: chartTheme.backgroundColor,
+    darkMode: chartTheme.mode === 'dark',
     grid: createChartGrid(),
     tooltip: createChartTooltip((params) => {
       const datum = isCommentBubbleDatum(params.data) ? params.data : null;
-      return datum ? renderCommentTooltip(datum) : '';
-    }),
-    xAxis: createTimeXAxis(startTime, endTime, getVisibleTimeRange),
+      return datum ? renderCommentTooltip(datum, chartTheme.tooltipVariant) : '';
+    }, chartTheme),
+    xAxis: createTimeXAxis(startTime, endTime, getVisibleTimeRange, chartTheme),
     yAxis: {
-      ...createUpvotesYAxis(),
+      ...createUpvotesYAxis(chartTheme),
       min: minScore,
     },
     series: commentGroups.flatMap((group) => {
@@ -61,7 +64,7 @@ export function createCommentsOption(
           data: group.comments,
           symbolSize: COMMENT_BUBBLE_SIZE,
           itemStyle: {
-            borderColor: SOAP_BUBBLE_BORDER_COLOR,
+            borderColor: chartTheme.bubbleBorderColor,
             borderWidth: 1,
             color: groupColor,
             opacity: 0.78,
@@ -70,11 +73,11 @@ export function createCommentsOption(
             focus: 'series',
             scale: 1.8,
             itemStyle: {
-              borderColor: SOAP_BUBBLE_EMPHASIS_BORDER_COLOR,
+              borderColor: chartTheme.bubbleEmphasisBorderColor,
               borderWidth: 1.5,
               opacity: 0.96,
               shadowBlur: 14,
-              shadowColor: SOAP_BUBBLE_EMPHASIS_SHADOW_COLOR,
+              shadowColor: chartTheme.bubbleEmphasisShadowColor,
             },
           },
           blur: {

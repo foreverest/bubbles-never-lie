@@ -1,4 +1,5 @@
 import type { ChartResponseMetadata } from '../../../shared/api';
+import type { ResolvedTheme } from '../../types';
 import { getBubbleFillColor, getKarmaBucketColor } from '../colors';
 import { isPostBubbleDatum } from '../data';
 import type { EChartsCoreOption } from '../echarts';
@@ -6,9 +7,6 @@ import { getPostBubbleSize } from '../sizing';
 import { renderPostTooltip } from '../tooltips';
 import type { GetVisibleTimeRange, PostBubbleDatum } from '../types';
 import {
-  SOAP_BUBBLE_BORDER_COLOR,
-  SOAP_BUBBLE_EMPHASIS_BORDER_COLOR,
-  SOAP_BUBBLE_EMPHASIS_SHADOW_COLOR,
   SOAP_BUBBLE_FILL_ALPHA,
   createChartGrid,
   createChartTooltip,
@@ -16,6 +14,7 @@ import {
   createTimeXAxis,
   createUpvotesYAxis,
   enableSingleAxisZoom,
+  getChartTheme,
 } from './common';
 
 const CURRENT_USER_POST_RIPPLE_SERIES_ID = 'current-user-post-ripple';
@@ -25,8 +24,10 @@ export function createPostsOption(
   chartData: ChartResponseMetadata,
   zoomEnabled: boolean,
   currentUserRippleEnabled: boolean,
-  getVisibleTimeRange?: GetVisibleTimeRange
+  getVisibleTimeRange?: GetVisibleTimeRange,
+  resolvedTheme: ResolvedTheme = 'light'
 ): EChartsCoreOption {
+  const chartTheme = getChartTheme(resolvedTheme);
   const minScore = Math.min(0, ...data.map((datum) => datum.score));
   const maxComments = Math.max(1, ...data.map((datum) => datum.comments));
   const startTime = Date.parse(chartData.timeframe.startIso);
@@ -46,14 +47,16 @@ export function createPostsOption(
   };
 
   const option: EChartsCoreOption = {
+    backgroundColor: chartTheme.backgroundColor,
+    darkMode: chartTheme.mode === 'dark',
     grid: createChartGrid(),
     tooltip: createChartTooltip((params) => {
       const datum = isPostBubbleDatum(params.data) ? params.data : null;
-      return datum ? renderPostTooltip(datum) : '';
-    }),
-    xAxis: createTimeXAxis(startTime, endTime, getVisibleTimeRange),
+      return datum ? renderPostTooltip(datum, chartTheme.tooltipVariant) : '';
+    }, chartTheme),
+    xAxis: createTimeXAxis(startTime, endTime, getVisibleTimeRange, chartTheme),
     yAxis: {
-      ...createUpvotesYAxis(),
+      ...createUpvotesYAxis(chartTheme),
       min: minScore,
     },
     series: [
@@ -64,7 +67,7 @@ export function createPostsOption(
         data,
         symbolSize: getPostSymbolSize,
         itemStyle: {
-          borderColor: SOAP_BUBBLE_BORDER_COLOR,
+          borderColor: chartTheme.bubbleBorderColor,
           borderWidth: 1.5,
           color: getPostBubbleColor,
           opacity: 0.82,
@@ -72,11 +75,11 @@ export function createPostsOption(
         emphasis: {
           scale: 1.35,
           itemStyle: {
-            borderColor: SOAP_BUBBLE_EMPHASIS_BORDER_COLOR,
+            borderColor: chartTheme.bubbleEmphasisBorderColor,
             borderWidth: 1.5,
             opacity: 0.96,
             shadowBlur: 14,
-            shadowColor: SOAP_BUBBLE_EMPHASIS_SHADOW_COLOR,
+            shadowColor: chartTheme.bubbleEmphasisShadowColor,
           },
         },
       },

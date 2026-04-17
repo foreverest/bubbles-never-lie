@@ -3,6 +3,7 @@ import { expect, test } from 'vitest';
 import type { ChartResponseMetadata, ChartPost } from '../../../shared/api';
 import { toPostBubbleDatum } from '../data';
 import { createContributorsOption } from './contributors';
+import { getChartTheme } from './common';
 import { createPostsOption } from './posts';
 
 const metadata: ChartResponseMetadata = {
@@ -46,6 +47,28 @@ test('posts option toggles zoom and current-user ripple series', () => {
 
   expect(readOptionField(noRippleOption, 'dataZoom')).toBe(undefined);
   expect(readSeries(noRippleOption).length).toBe(1);
+  expect(readOptionField(noRippleOption, 'darkMode')).toBe(false);
+});
+
+test('posts option applies dark mode and dark chart chrome without changing data colors', () => {
+  const datum = toPostBubbleDatum(post, 'alice');
+  const lightOption = createPostsOption([datum], metadata, false, false);
+  const darkOption = createPostsOption([datum], metadata, false, false, undefined, 'dark');
+  const darkTheme = getChartTheme('dark');
+
+  expect(readOptionField(darkOption, 'darkMode')).toBe(true);
+  expect(readOptionField(darkOption, 'backgroundColor')).toBe(darkTheme.backgroundColor);
+
+  const xAxis = readObject(readOptionField(darkOption, 'xAxis'));
+  expect(readLineColor(xAxis, 'splitLine')).toBe(darkTheme.gridLineColor);
+  expect(readLineColor(xAxis, 'axisLine')).toBe(darkTheme.axisLineColor);
+  expect(readObject(xAxis.axisLabel).color).toBe(darkTheme.axisLabelColor);
+
+  const tooltip = readObject(readOptionField(darkOption, 'tooltip'));
+  expect(tooltip.backgroundColor).toBe(darkTheme.tooltipBackgroundColor);
+  expect(readObject(tooltip.textStyle).color).toBe(darkTheme.tooltipTextColor);
+
+  expect(readFirstSeriesColor(lightOption, datum)).toBe(readFirstSeriesColor(darkOption, datum));
 });
 
 test('contributors option uses dual-axis zoom when enabled', () => {
@@ -85,4 +108,25 @@ function readSeries(option: unknown): unknown[] {
   const series = readOptionField(option, 'series');
   expect(Array.isArray(series)).toBe(true);
   return series as unknown[];
+}
+
+function readObject(value: unknown): Record<string, unknown> {
+  expect(typeof value).toBe('object');
+  expect(value).not.toBe(null);
+  return value as Record<string, unknown>;
+}
+
+function readLineColor(axis: Record<string, unknown>, key: string): unknown {
+  const axisSection = readObject(axis[key]);
+  return readObject(axisSection.lineStyle).color;
+}
+
+function readFirstSeriesColor(option: unknown, datum: unknown): string {
+  const series = readObject(readSeries(option)[0]);
+  const itemStyle = readObject(series.itemStyle);
+  const color = itemStyle.color;
+
+  expect(typeof color).toBe('function');
+
+  return (color as (params: { data?: unknown }) => string)({ data: datum });
 }

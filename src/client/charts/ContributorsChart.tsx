@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo } from 'react';
 
 import type { ContributorsChartDataResponse } from '../../shared/api';
 import { useCurrentUsername } from '../hooks/useCurrentUsername';
+import type { ResolvedTheme } from '../types';
 import { openRedditUrl } from '../utils/navigation';
 import { isContributorBubbleDatum, toContributorBubbleDatum } from './data';
 import type { EChartsInstance } from './echarts';
@@ -13,10 +14,12 @@ export function ContributorsChart({
   data,
   zoomEnabled,
   currentUserRippleEnabled,
+  resolvedTheme,
 }: {
   data: ContributorsChartDataResponse;
   zoomEnabled: boolean;
   currentUserRippleEnabled: boolean;
+  resolvedTheme: ResolvedTheme;
 }) {
   const currentUsername = useCurrentUsername();
   const chartData = useMemo<ContributorBubbleDatum[]>(
@@ -51,10 +54,10 @@ export function ContributorsChart({
     }
 
     chart.setOption(
-      createContributorsOption(chartData, zoomEnabled, currentUserRippleEnabled),
+      createContributorsOption(chartData, zoomEnabled, currentUserRippleEnabled, resolvedTheme),
       true
     );
-  }, [chartData, chartRef, currentUserRippleEnabled, zoomEnabled]);
+  }, [chartData, chartRef, currentUserRippleEnabled, resolvedTheme, zoomEnabled]);
 
   return (
     <div

@@ -7,6 +7,37 @@
       content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"
     />
     <title>Bubble Stats</title>
+    <script>
+      (() => {
+        const storageKey = 'bubble-stats:chart-preferences:v1';
+        let themeMode = 'system';
+
+        try {
+          const storedPreferences = window.localStorage.getItem(storageKey);
+          const preferences = storedPreferences ? JSON.parse(storedPreferences) : null;
+
+          if (
+            preferences &&
+            (preferences.themeMode === 'system' ||
+              preferences.themeMode === 'light' ||
+              preferences.themeMode === 'dark')
+          ) {
+            themeMode = preferences.themeMode;
+          }
+        } catch {
+          themeMode = 'system';
+        }
+
+        const prefersDark =
+          typeof window.matchMedia === 'function' &&
+          window.matchMedia('(prefers-color-scheme: dark)').matches;
+        const resolvedTheme =
+          themeMode === 'dark' || (themeMode === 'system' && prefersDark) ? 'dark' : 'light';
+
+        document.documentElement.dataset.theme = resolvedTheme;
+        document.documentElement.style.colorScheme = resolvedTheme;
+      })();
+    </script>
   </head>
   <body>
     <div id="root"></div>
