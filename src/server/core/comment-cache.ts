@@ -3,8 +3,10 @@ import type { Comment } from '@devvit/web/server';
 import { resolveUserAvatarUrl, type ChartComment } from '../../shared/api';
 import { createBubbleStatsDataLayer } from '../data';
 import type { CommentEntity, HydratedComment } from '../data';
+import { createLogger } from '../logging/logger';
 import { readCachedPostIdsForTimeframe } from './post-cache';
 
+const logger = createLogger('comment-cache');
 const COMMENT_REFRESH_POST_CHUNK_SIZE = 50;
 const COMMENT_REFRESH_CHUNK_JOB_DELAY_MS = 60 * 1000;
 export const COMMENT_REFRESH_CHUNK_JOB_NAME = 'refreshCommentCacheChunk';
@@ -89,60 +91,119 @@ export const readCommentCountForTimeframe = async ({
 export const refreshCommentCache = async (
   subredditName: string
 ): Promise<CommentCacheRefreshResult> => {
-  const fetchedAt = new Date();
-  const parentPostIds = await readCommentParentPostIds(subredditName, fetchedAt.getTime());
-  const postIdChunks = chunkItems(parentPostIds, COMMENT_REFRESH_POST_CHUNK_SIZE);
-  const firstRunAt = Date.now() + COMMENT_REFRESH_CHUNK_JOB_DELAY_MS;
-  const scheduledJobIds: string[] = [];
+  logger.info('Refreshing comment cache', { subredditName });
 
-  console.log(
-    `Scheduling comment cache refresh for r/${subredditName}. Found ${parentPostIds.length} parent posts in the timeframe.`
-  );
+  try {
+    const fetchedAt = new Date();
+    const parentPostIds = await readCommentParentPostIds(subredditName, fetchedAt.getTime());
+    const postIdChunks = chunkItems(parentPostIds, COMMENT_REFRESH_POST_CHUNK_SIZE);
+    const firstRunAt = Date.now() + COMMENT_REFRESH_CHUNK_JOB_DELAY_MS;
+    const scheduledJobIds: string[] = [];
 
-  for (const [chunkIndex, postIds] of postIdChunks.entries()) {
-    const jobId = await scheduler.runJob({
-      name: COMMENT_REFRESH_CHUNK_JOB_NAME,
-      data: {
-        subredditName,
-        postIds,
-      },
-      runAt: new Date(firstRunAt + chunkIndex * COMMENT_REFRESH_CHUNK_JOB_DELAY_MS),
+    logger.info('Scheduling comment cache refresh chunks', {
+      subredditName,
+      parentPostCount: parentPostIds.length,
+      chunkCount: postIdChunks.length,
+      chunkSize: COMMENT_REFRESH_POST_CHUNK_SIZE,
     });
 
-    scheduledJobIds.push(jobId);
-  }
+    for (const [chunkIndex, postIds] of postIdChunks.entries()) {
+      const runAt = new Date(firstRunAt + chunkIndex * COMMENT_REFRESH_CHUNK_JOB_DELAY_MS);
+      const jobId = await scheduler.runJob({
+        name: COMMENT_REFRESH_CHUNK_JOB_NAME,
+        data: {
+          subredditName,
+          postIds,
+        },
+        runAt,
+      });
 
-  return {
-    parentPostCount: parentPostIds.length,
-    scheduledPostCount: postIdChunks.reduce((total, postIds) => total + postIds.length, 0),
-    scheduledJobCount: scheduledJobIds.length,
-    scheduledJobIds,
-    generatedAt: new Date().toISOString(),
-  };
+      logger.debug('Scheduled comment cache refresh chunk', {
+        subredditName,
+        chunkIndex,
+        postCount: postIds.length,
+        runAt: runAt.toISOString(),
+        jobId,
+      });
+
+      scheduledJobIds.push(jobId);
+    }
+
+    const result = {
+      parentPostCount: parentPostIds.length,
+      scheduledPostCount: postIdChunks.reduce((total, postIds) => total + postIds.length, 0),
+      scheduledJobCount: scheduledJobIds.length,
+      scheduledJobIds,
+      generatedAt: new Date().toISOString(),
+    };
+
+    logger.info('Scheduled comment cache refresh chunks', {
+      subredditName,
+      parentPostCount: result.parentPostCount,
+      scheduledPostCount: result.scheduledPostCount,
+      scheduledJobCount: result.scheduledJobCount,
+      generatedAt: result.generatedAt,
+    });
+
+    return result;
+  } catch (error) {
+    logger.error('Comment cache refresh failed', {
+      subredditName,
+      error: getErrorMessage(error),
+    });
+    throw error;
+  }
 };
 
 export const refreshCommentCacheChunk = async ({
   subredditName,
   postIds,
 }: CommentCacheChunkRefreshData): Promise<CommentCacheChunkRefreshResult> => {
-  const dataLayer = createBubbleStatsDataLayer(subredditName);
-  const refreshResults: PostCommentsRefreshResult[] = [];
+  logger.info('Refreshing comment cache chunk', {
+    subredditName,
+    postCount: postIds.length,
+  });
 
-  console.log(
-    `Refreshing comment cache chunk for r/${subredditName}. Found ${postIds.length} parent posts in this chunk.`
-  );
+  try {
+    const dataLayer = createBubbleStatsDataLayer(subredditName);
+    const refreshResults: PostCommentsRefreshResult[] = [];
 
-  for (const postId of postIds) {
-    refreshResults.push(await refreshPostComments(dataLayer, postId));
+    for (const postId of postIds) {
+      refreshResults.push(await refreshPostComments(dataLayer, postId));
+    }
+
+    const result = {
+      refreshedPostCount: postIds.length,
+      failedPostCount: refreshResults.filter((refreshResult) => refreshResult.failed).length,
+      fetchedCommentCount: sumRefreshCount(
+        refreshResults,
+        (refreshResult) => refreshResult.fetchedCommentCount
+      ),
+      cachedCommentCount: sumRefreshCount(
+        refreshResults,
+        (refreshResult) => refreshResult.cachedCommentCount
+      ),
+      generatedAt: new Date().toISOString(),
+    };
+
+    logger.info('Refreshed comment cache chunk', {
+      subredditName,
+      refreshedPostCount: result.refreshedPostCount,
+      failedPostCount: result.failedPostCount,
+      fetchedCommentCount: result.fetchedCommentCount,
+      cachedCommentCount: result.cachedCommentCount,
+      generatedAt: result.generatedAt,
+    });
+
+    return result;
+  } catch (error) {
+    logger.error('Comment cache chunk refresh failed', {
+      subredditName,
+      postCount: postIds.length,
+      error: getErrorMessage(error),
+    });
+    throw error;
   }
-
-  return {
-    refreshedPostCount: postIds.length,
-    failedPostCount: refreshResults.filter((result) => result.failed).length,
-    fetchedCommentCount: sumRefreshCount(refreshResults, (result) => result.fetchedCommentCount),
-    cachedCommentCount: sumRefreshCount(refreshResults, (result) => result.cachedCommentCount),
-    generatedAt: new Date().toISOString(),
-  };
 };
 
 const readCommentParentPostIds = async (
@@ -170,7 +231,10 @@ const refreshPostComments = async (
         pageSize: 100,
       })
       .all();
-    console.log(`Fetched ${comments.length} comments for post ${postId}. Caching...`);
+    logger.debug('Fetched comments for post', {
+      postId,
+      fetchedCommentCount: comments.length,
+    });
     const commentEntities = comments.map(toCommentEntity);
 
     await dataLayer.comments.upsertMany(commentEntities);
@@ -181,7 +245,10 @@ const refreshPostComments = async (
       failed: false,
     };
   } catch (error) {
-    console.warn(`Unable to refresh comments for ${postId}: ${getErrorMessage(error)}`);
+    logger.warn('Unable to refresh comments for post', {
+      postId,
+      error: getErrorMessage(error),
+    });
 
     return {
       fetchedCommentCount: 0,

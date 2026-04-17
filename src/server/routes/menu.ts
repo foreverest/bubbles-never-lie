@@ -7,9 +7,11 @@ import {
   resolveCurrentTimeZone,
 } from '../core/timeframe';
 import { canUseTestDataSource } from '../core/subreddits';
+import { createLogger } from '../logging/logger';
 
 export const menu = new Hono();
 const timeZoneHeader = 'devvit-accept-timezone';
+const logger = createLogger('menu:create-chart');
 
 menu.post('/create-chart', async (c) => {
   await c.req.json<MenuItemRequest>();
@@ -20,6 +22,11 @@ menu.post('/create-chart', async (c) => {
     ...defaults,
   };
   const allowTestDataSource = canUseTestDataSource(context.subredditName);
+  logger.info('Opened create chart form', {
+    subredditName: context.subredditName,
+    currentTimeZone,
+    allowTestDataSource,
+  });
 
   return c.json<UiResponse>(
     {

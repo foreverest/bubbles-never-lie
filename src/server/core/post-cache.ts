@@ -3,7 +3,10 @@ import type { Post } from '@devvit/web/server';
 import { resolveUserAvatarUrl, type ChartPost, type SubredditKarmaBucket } from '../../shared/api';
 import { createBubbleStatsDataLayer } from '../data';
 import type { ContributorEntity, HydratedPost, PostEntity } from '../data';
+import { createLogger } from '../logging/logger';
 import { createContributorKarmaBuckets } from './contributor-karma';
+
+const logger = createLogger('post-cache');
 
 export type PostCacheReadOptions = {
   subredditName: string;
@@ -68,24 +71,45 @@ export const readPostCountForTimeframe = async ({
 };
 
 export const refreshPostCache = async (subredditName: string): Promise<PostCacheRefreshResult> => {
-  const dataLayer = createBubbleStatsDataLayer(subredditName);
-  const posts = await reddit
-    .getNewPosts({
+  logger.info('Refreshing post cache', { subredditName });
+
+  try {
+    const dataLayer = createBubbleStatsDataLayer(subredditName);
+    const posts = await reddit
+      .getNewPosts({
+        subredditName,
+        limit: 1000,
+        pageSize: 100,
+      })
+      .all();
+    const postEntities = posts.map(toPostEntity);
+    const generatedAt = new Date().toISOString();
+
+    logger.info('Fetched posts from Reddit', {
       subredditName,
-      limit: 1000,
-      pageSize: 100,
-    })
-    .all();
-  const postEntities = posts.map(toPostEntity);
-  const generatedAt = new Date().toISOString();
+      fetchedPostCount: posts.length,
+    });
 
-  await dataLayer.posts.upsertMany(postEntities);
+    await dataLayer.posts.upsertMany(postEntities);
 
-  return {
-    fetchedPostCount: posts.length,
-    cachedPostCount: postEntities.length,
-    generatedAt,
-  };
+    logger.info('Stored post cache entries', {
+      subredditName,
+      cachedPostCount: postEntities.length,
+      generatedAt,
+    });
+
+    return {
+      fetchedPostCount: posts.length,
+      cachedPostCount: postEntities.length,
+      generatedAt,
+    };
+  } catch (error) {
+    logger.error('Post cache refresh failed', {
+      subredditName,
+      error: getErrorMessage(error),
+    });
+    throw error;
+  }
 };
 
 export const readCachedPostIdsForTimeframe = async ({
@@ -142,3 +166,6 @@ const getUniquePostAuthors = (posts: PostWithAuthor[]): ContributorEntity[] => {
 
 const isPostId = (value: string): value is `t3_${string}` =>
   value.startsWith('t3_') && value.length > 3;
+
+const getErrorMessage = (error: unknown): string =>
+  error instanceof Error ? error.message : String(error);

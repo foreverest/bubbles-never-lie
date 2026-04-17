@@ -4,10 +4,12 @@ import { Hono } from 'hono';
 import { api } from './routes/api';
 import { cache } from './routes/cache';
 import { forms } from './routes/forms';
+import { createLogger } from './logging/logger';
 import { menu } from './routes/menu';
 
 const app = new Hono();
 const internal = new Hono();
+const logger = createLogger('server');
 
 internal.route('/menu', menu);
 internal.route('/form', forms);
@@ -16,8 +18,16 @@ internal.route('/cache', cache);
 app.route('/api', api);
 app.route('/internal', internal);
 
+const port = getServerPort();
+
+logger.info('Registered server routes', {
+  publicRoutes: ['/api'],
+  internalRoutes: ['/internal/menu', '/internal/form', '/internal/cache'],
+});
+logger.info('Starting server', { port });
+
 serve({
   fetch: app.fetch,
   createServer,
-  port: getServerPort(),
+  port,
 });
