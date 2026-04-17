@@ -9,7 +9,7 @@
   }
 
   .chart-header {
-    align-items: flex-start;
+    align-items: center;
     flex-direction: row;
     gap: 8px;
     padding: 10px;

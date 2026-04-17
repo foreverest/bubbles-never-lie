@@ -2,12 +2,8 @@
   display: flex;
   flex: 0 0 auto;
   align-items: center;
-  gap: 6px;
+  gap: 8px;
   min-width: 0;
-  padding: 4px;
-  border: 1px solid var(--color-border);
-  border-radius: 8px;
-  background: var(--color-surface-soft);
   pointer-events: auto;
 }
 
