@@ -6,9 +6,16 @@
   "type": "module",
   "scripts": {
     "build": "vite build",
+    "check": "npm run type-check && npm run lint && npm run format:check && npm run test:unit",
     "dev": "devvit playtest",
+    "format": "prettier . --write",
+    "format:check": "prettier . --check",
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix",
     "login": "devvit login",
-    "test": "npm run type-check && node tools/run-data-layer-tests.mjs",
+    "test": "npm run type-check && npm run test:unit",
+    "test:unit": "vitest run",
+    "test:watch": "vitest",
     "type-check": "tsc --build"
   },
   "engines": {
@@ -25,11 +32,22 @@
     "react-dom": "19.2.4"
   },
   "devDependencies": {
+    "@devvit/test": "0.12.18",
+    "@eslint/js": "^9.39.4",
     "@types/node": "^22.19.7",
     "@types/react": "19.2.10",
     "@types/react-dom": "19.2.3",
     "@vitejs/plugin-react": "5.1.2",
+    "@vitest/eslint-plugin": "^1.6.16",
+    "eslint": "^9.39.4",
+    "eslint-config-prettier": "^10.1.8",
+    "eslint-plugin-react-hooks": "^7.1.0",
+    "eslint-plugin-react-refresh": "^0.5.2",
+    "globals": "^17.5.0",
+    "prettier": "^3.8.3",
     "typescript": "5.9.3",
-    "vite": "^7.3.2"
+    "typescript-eslint": "^8.58.2",
+    "vite": "^7.3.2",
+    "vitest": "^4.1.4"
   }
 }

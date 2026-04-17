@@ -18,10 +18,7 @@ import { readCachedSubredditIconUrl } from '../core/subreddit-icons';
 import { resolveChartDataSubredditName } from '../core/subreddits';
 import type { ValidatedTimeframePostData } from '../core/timeframe';
 import { readTimeframePostData } from '../core/timeframe';
-import {
-  createChartDataCacheKey,
-  type ChartDataCacheEndpoint,
-} from './chart-response-cache';
+import { createChartDataCacheKey, type ChartDataCacheEndpoint } from './chart-response-cache';
 
 export const api = new Hono();
 const chartDataCacheTtlSeconds = 30;
@@ -241,19 +238,16 @@ const readCachedChartDataResponse = async <Response extends CacheableChartDataRe
   createResponse: () => Promise<Response>,
   ttl = chartDataCacheTtlSeconds
 ): Promise<Response> =>
-  (await devvitCache(
-    async () => (await createResponse()) as unknown as CacheableJsonValue,
-    {
-      key: createChartDataCacheKey({
-        endpoint,
-        postId: context.postId,
-        subredditName: chartContext.subredditName,
-        startTime: chartContext.startTime,
-        endTime: chartContext.endTime,
-      }),
-      ttl,
-    }
-  )) as unknown as Response;
+  (await devvitCache(async () => (await createResponse()) as unknown as CacheableJsonValue, {
+    key: createChartDataCacheKey({
+      endpoint,
+      postId: context.postId,
+      subredditName: chartContext.subredditName,
+      startTime: chartContext.startTime,
+      endTime: chartContext.endTime,
+    }),
+    ttl,
+  })) as unknown as Response;
 
 const readChartContext = (): ChartContext | null => {
   const timeframe = readTimeframePostData(context.postData);

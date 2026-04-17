@@ -3,16 +3,9 @@ import {
   createCommentRepository,
   createPostRepository,
 } from './repositories';
-import {
-  createRelationHydrators,
-  type RelationHydrators,
-} from './relations';
+import { createRelationHydrators, type RelationHydrators } from './relations';
 import type { RedisDataClient } from './redis-repository';
-import type {
-  ContributorRepository,
-  CommentRepository,
-  PostRepository,
-} from './types';
+import type { ContributorRepository, CommentRepository, PostRepository } from './types';
 
 export type {
   ContributorEntity,

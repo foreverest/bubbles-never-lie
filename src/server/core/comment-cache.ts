@@ -106,9 +106,7 @@ export const refreshCommentCache = async (
         subredditName,
         postIds,
       },
-      runAt: new Date(
-        firstRunAt + chunkIndex * COMMENT_REFRESH_CHUNK_JOB_DELAY_MS
-      ),
+      runAt: new Date(firstRunAt + chunkIndex * COMMENT_REFRESH_CHUNK_JOB_DELAY_MS),
     });
 
     scheduledJobIds.push(jobId);
@@ -141,14 +139,8 @@ export const refreshCommentCacheChunk = async ({
   return {
     refreshedPostCount: postIds.length,
     failedPostCount: refreshResults.filter((result) => result.failed).length,
-    fetchedCommentCount: sumRefreshCount(
-      refreshResults,
-      (result) => result.fetchedCommentCount
-    ),
-    cachedCommentCount: sumRefreshCount(
-      refreshResults,
-      (result) => result.cachedCommentCount
-    ),
+    fetchedCommentCount: sumRefreshCount(refreshResults, (result) => result.fetchedCommentCount),
+    cachedCommentCount: sumRefreshCount(refreshResults, (result) => result.cachedCommentCount),
     generatedAt: new Date().toISOString(),
   };
 };

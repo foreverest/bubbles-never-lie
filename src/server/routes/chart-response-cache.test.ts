@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { test } from 'node:test';
+import { test } from 'vitest';
 import { createChartDataCacheKey, type ChartDataCacheKeyOptions } from './chart-response-cache';
 
 const baseOptions: ChartDataCacheKeyOptions = {

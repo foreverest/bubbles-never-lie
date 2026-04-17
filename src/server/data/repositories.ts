@@ -5,11 +5,7 @@ import {
   createRedisTimeIndexedRepository,
   type RedisDataClient,
 } from './redis-repository';
-import type {
-  ContributorRepository,
-  CommentRepository,
-  PostRepository,
-} from './types';
+import type { ContributorRepository, CommentRepository, PostRepository } from './types';
 
 export const createPostRepository = (
   subredditName: string,

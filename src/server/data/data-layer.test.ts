@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { test } from 'node:test';
+import { test } from 'vitest';
 import {
   createBubbleStatsDataLayer,
   getDataKeys,
@@ -41,10 +41,7 @@ class FakeRedisDataClient implements RedisDataClient {
     return addedFieldCount;
   }
 
-  async zAdd(
-    key: string,
-    ...members: Array<{ member: string; score: number }>
-  ): Promise<number> {
+  async zAdd(key: string, ...members: Array<{ member: string; score: number }>): Promise<number> {
     const sortedSet = this.sortedSets.get(key) ?? new Map<string, number>();
     let addedMemberCount = 0;
 
@@ -86,11 +83,7 @@ const createContributor = (id: string): ContributorEntity => ({
   fetchedAt: '2026-04-15T12:00:00.000Z',
 });
 
-const createPost = (
-  id: string,
-  createdAt: string,
-  authorName = 'alice'
-): PostEntity => ({
+const createPost = (id: string, createdAt: string, authorName = 'alice'): PostEntity => ({
   id,
   title: `Post ${id}`,
   authorName,
@@ -167,10 +160,10 @@ test('time indexed repositories maintain createdAt indexes and skip malformed hy
 
   await dataLayer.comments.upsertMany([secondComment, firstComment]);
 
-  assert.deepEqual(
-    await dataLayer.comments.getIdsInTimeRange({ startTime, endTime }),
-    ['t1_comment_1', 't1_comment_2']
-  );
+  assert.deepEqual(await dataLayer.comments.getIdsInTimeRange({ startTime, endTime }), [
+    't1_comment_1',
+    't1_comment_2',
+  ]);
 });
 
 test('relation hydrators add requested relations, preserve order, and keep missing relations null', async () => {
@@ -190,11 +183,7 @@ test('relation hydrators add requested relations, preserve order, and keep missi
 
   await dataLayer.contributors.upsert(alice);
   await dataLayer.posts.upsert(post);
-  await dataLayer.comments.upsertMany([
-    firstComment,
-    secondComment,
-    missingRelationsComment,
-  ]);
+  await dataLayer.comments.upsertMany([firstComment, secondComment, missingRelationsComment]);
 
   redisClient.clearCallHistory();
   const comments = await dataLayer.comments.getByIds([
@@ -208,8 +197,7 @@ test('relation hydrators add requested relations, preserve order, and keep missi
     posts: true,
     author: true,
   });
-  const [firstHydratedComment, secondHydratedComment, missingHydratedComment] =
-    hydratedComments;
+  const [firstHydratedComment, secondHydratedComment, missingHydratedComment] = hydratedComments;
 
   assert.ok(firstHydratedComment);
   assert.ok(secondHydratedComment);
@@ -221,14 +209,14 @@ test('relation hydrators add requested relations, preserve order, and keep missi
   assert.deepEqual(firstHydratedComment.author, alice);
   assert.equal(missingHydratedComment.post, null);
   assert.equal(missingHydratedComment.author, null);
-  assert.deepEqual(
-    redisClient.hMGetCalls.find((call) => call.key === keys.posts)?.fields,
-    ['t3_post_1', 't3_missing']
-  );
-  assert.deepEqual(
-    redisClient.hMGetCalls.find((call) => call.key === keys.contributors)?.fields,
-    ['alice', 'ghost']
-  );
+  assert.deepEqual(redisClient.hMGetCalls.find((call) => call.key === keys.posts)?.fields, [
+    't3_post_1',
+    't3_missing',
+  ]);
+  assert.deepEqual(redisClient.hMGetCalls.find((call) => call.key === keys.contributors)?.fields, [
+    'alice',
+    'ghost',
+  ]);
 
   const postsOnly = await dataLayer.hydrateCommentRelations([firstComment], {
     posts: true,
@@ -245,11 +233,7 @@ test('post relation hydrator adds author when requested', async () => {
   const dataLayer = createBubbleStatsDataLayer('ExampleSub', redisClient);
   const alice = createContributor('alice');
   const post = createPost('t3_post_1', '2026-04-15T10:00:00.000Z');
-  const missingAuthorPost = createPost(
-    't3_post_2',
-    '2026-04-15T11:00:00.000Z',
-    'ghost'
-  );
+  const missingAuthorPost = createPost('t3_post_2', '2026-04-15T11:00:00.000Z', 'ghost');
 
   await dataLayer.contributors.upsert(alice);
 

@@ -16,11 +16,11 @@ export type CommentRelationOptions = {
 };
 
 export type HydratedPost<Options extends PostRelationOptions> = PostEntity &
-  (Options extends { author: true } ? { author: ContributorEntity | null } : {});
+  (Options extends { author: true } ? { author: ContributorEntity | null } : object);
 
 export type HydratedComment<Options extends CommentRelationOptions> = CommentEntity &
-  (Options extends { posts: true } ? { post: PostEntity | null } : {}) &
-  (Options extends { author: true } ? { author: ContributorEntity | null } : {});
+  (Options extends { posts: true } ? { post: PostEntity | null } : object) &
+  (Options extends { author: true } ? { author: ContributorEntity | null } : object);
 
 export type RelationHydrators = {
   hydratePostRelations<Options extends PostRelationOptions>(
@@ -64,10 +64,7 @@ export const createRelationHydrators = ({
   async hydrateCommentRelations(comments, options) {
     const [postsById, contributorsByName] = await Promise.all([
       options.posts
-        ? loadEntitiesById(
-            uniqueItems(comments.map((comment) => comment.postId)),
-            postRepository
-          )
+        ? loadEntitiesById(uniqueItems(comments.map((comment) => comment.postId)), postRepository)
         : Promise.resolve(null),
       options.author
         ? loadEntitiesById(

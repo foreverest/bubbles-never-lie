@@ -1,11 +1,7 @@
 import './index.css';
 
 import { context as clientContext, navigateTo } from '@devvit/web/client';
-import {
-  DataZoomComponent,
-  GridComponent,
-  TooltipComponent,
-} from 'echarts/components';
+import { DataZoomComponent, GridComponent, TooltipComponent } from 'echarts/components';
 import * as echarts from 'echarts/core';
 import type { EChartsCoreOption } from 'echarts/core';
 import { EffectScatterChart, ScatterChart } from 'echarts/charts';
@@ -177,16 +173,18 @@ function App() {
   const [commentsState, setCommentsState] = useState<DataState<CommentsChartDataResponse>>({
     status: 'idle',
   });
-  const [contributorsState, setContributorsState] =
-    useState<DataState<ContributorsChartDataResponse>>({
-      status: 'idle',
-    });
+  const [contributorsState, setContributorsState] = useState<
+    DataState<ContributorsChartDataResponse>
+  >({
+    status: 'idle',
+  });
   const [statsState, setStatsState] = useState<DataState<StatsDataResponse>>({
     status: 'idle',
   });
   const [activeTab, setActiveTab] = useState<TabName>('posts');
-  const [chartPreferences, setChartPreferences] =
-    useState<ChartPreferences>(readStoredChartPreferences);
+  const [chartPreferences, setChartPreferences] = useState<ChartPreferences>(
+    readStoredChartPreferences
+  );
   const { zoomEnabled, currentUserRippleEnabled } = chartPreferences;
 
   useEffect(() => {
@@ -270,8 +268,7 @@ function App() {
           console.error('Error loading comment chart data:', error);
           setCommentsState({
             status: 'error',
-            message:
-              error instanceof Error ? error.message : 'Unable to load comment chart data.',
+            message: error instanceof Error ? error.message : 'Unable to load comment chart data.',
           });
         }
       }
@@ -570,9 +567,7 @@ function EmptyState({
   return (
     <div className="empty-state">
       <p>{`No ${contentLabel} found ${datePhrase}.`}</p>
-      <span>
-        {`Try choosing dates when r/${subredditName} had activity.`}
-      </span>
+      <span>{`Try choosing dates when r/${subredditName} had activity.`}</span>
     </div>
   );
 }
@@ -680,19 +675,11 @@ function ChartHeader({
     const handleDocumentPointerDown = (event: PointerEvent) => {
       const target = event.target;
 
-      if (
-        target instanceof Node &&
-        sectionMenuOpen &&
-        !sectionMenuRef.current?.contains(target)
-      ) {
+      if (target instanceof Node && sectionMenuOpen && !sectionMenuRef.current?.contains(target)) {
         setSectionMenuOpen(false);
       }
 
-      if (
-        target instanceof Node &&
-        settingsOpen &&
-        !settingsRef.current?.contains(target)
-      ) {
+      if (target instanceof Node && settingsOpen && !settingsRef.current?.contains(target)) {
         setSettingsOpen(false);
       }
 
@@ -732,17 +719,11 @@ function ChartHeader({
     <header className="chart-header">
       <div className="chart-header__main">
         <div
-          className={
-            data.subredditIconUrl ? 'chart-title chart-title--with-icon' : 'chart-title'
-          }
+          className={data.subredditIconUrl ? 'chart-title chart-title--with-icon' : 'chart-title'}
         >
           <div className="chart-title__name">
             {data.subredditIconUrl ? (
-              <img
-                alt=""
-                className="chart-title__icon"
-                src={data.subredditIconUrl}
-              />
+              <img alt="" className="chart-title__icon" src={data.subredditIconUrl} />
             ) : null}
             <span>r/{data.subredditName}</span>
           </div>
@@ -770,11 +751,7 @@ function ChartHeader({
             type="button"
           >
             <span>{activeTabLabel}</span>
-            <svg
-              aria-hidden="true"
-              className="section-menu-button__icon"
-              viewBox="0 0 12 12"
-            >
+            <svg aria-hidden="true" className="section-menu-button__icon" viewBox="0 0 12 12">
               <path
                 d="M3 4.5 6 7.5l3-3"
                 fill="none"
@@ -854,9 +831,7 @@ function ChartHeader({
             aria-haspopup="true"
             aria-label="Chart settings"
             className={
-              settingsOpen
-                ? 'chart-menu-button chart-menu-button--open'
-                : 'chart-menu-button'
+              settingsOpen ? 'chart-menu-button chart-menu-button--open' : 'chart-menu-button'
             }
             onClick={() => {
               setMobileControlsOpen(false);
@@ -865,11 +840,7 @@ function ChartHeader({
             }}
             type="button"
           >
-            <svg
-              aria-hidden="true"
-              className="chart-menu-button__icon"
-              viewBox="0 0 20 20"
-            >
+            <svg aria-hidden="true" className="chart-menu-button__icon" viewBox="0 0 20 20">
               <path
                 d="M8.9 2.5h2.2l.4 2.1c.4.1.8.3 1.1.5l1.8-1.2L16 5.5l-1.2 1.8c.2.4.4.7.5 1.1l2.1.4v2.3l-2.1.4c-.1.4-.3.8-.5 1.1l1.2 1.8-1.6 1.6-1.8-1.2c-.4.2-.7.4-1.1.5l-.4 2.1H8.9l-.4-2.1c-.4-.1-.8-.3-1.1-.5l-1.8 1.2L4 14.5l1.2-1.8c-.2-.4-.4-.7-.5-1.1l-2.1-.4V8.9l2.1-.4c.1-.4.3-.8.5-1.1L4 5.5l1.6-1.6 1.8 1.2c.4-.2.7-.4 1.1-.5l.4-2.1Z"
                 fill="none"
@@ -877,14 +848,7 @@ function ChartHeader({
                 strokeLinejoin="round"
                 strokeWidth="1.6"
               />
-              <circle
-                cx="10"
-                cy="10"
-                fill="none"
-                r="2.7"
-                stroke="currentColor"
-                strokeWidth="1.6"
-              />
+              <circle cx="10" cy="10" fill="none" r="2.7" stroke="currentColor" strokeWidth="1.6" />
             </svg>
           </button>
 
@@ -945,11 +909,7 @@ function ChartHeader({
           type="button"
         >
           <span>{activeTabLabel}</span>
-          <svg
-            aria-hidden="true"
-            className="chart-mobile-controls__icon"
-            viewBox="0 0 12 12"
-          >
+          <svg aria-hidden="true" className="chart-mobile-controls__icon" viewBox="0 0 12 12">
             <path
               d="M3 4.5 6 7.5l3-3"
               fill="none"
@@ -1149,12 +1109,8 @@ function BubbleChart({
     }
 
     chart.setOption(
-      createBubbleOption(
-        chartData,
-        data,
-        zoomEnabled,
-        currentUserRippleEnabled,
-        () => readVisibleTimeRange(chart)
+      createBubbleOption(chartData, data, zoomEnabled, currentUserRippleEnabled, () =>
+        readVisibleTimeRange(chart)
       ),
       true
     );
@@ -1326,12 +1282,8 @@ function CommentsChart({
 
     emphasizedCommentGroupRef.current = null;
     chart.setOption(
-      createCommentsOption(
-        chartData,
-        data,
-        zoomEnabled,
-        currentUserRippleEnabled,
-        () => readVisibleTimeRange(chart)
+      createCommentsOption(chartData, data, zoomEnabled, currentUserRippleEnabled, () =>
+        readVisibleTimeRange(chart)
       ),
       true
     );
@@ -1875,7 +1827,11 @@ function createContributorsOption(
           '</div>',
           '<div class="chart-tooltip__stats chart-tooltip__contributor-line">',
           renderTooltipInlineLabeledMetric(TOOLTIP_COMMENT_ICON, datum.commentCount, 'comments'),
-          renderTooltipInlineLabeledMetric(TOOLTIP_UPVOTE_ICON, datum.commentScore, 'comment upvotes'),
+          renderTooltipInlineLabeledMetric(
+            TOOLTIP_UPVOTE_ICON,
+            datum.commentScore,
+            'comment upvotes'
+          ),
           '</div>',
           '</article>',
         ].join('');
@@ -2287,8 +2243,7 @@ function getContributorBubbleDatum(value: unknown): ContributorBubbleDatum | nul
     typeof datum.value[1] !== 'number' ||
     typeof datum.value[2] !== 'number' ||
     typeof datum.contributorName !== 'string' ||
-    (datum.contributorAvatarUrl !== null &&
-      typeof datum.contributorAvatarUrl !== 'string') ||
+    (datum.contributorAvatarUrl !== null && typeof datum.contributorAvatarUrl !== 'string') ||
     !isSubredditKarmaBucket(datum.contributorSubredditKarmaBucket) ||
     typeof datum.postCount !== 'number' ||
     typeof datum.commentCount !== 'number' ||
@@ -2304,9 +2259,7 @@ function getContributorBubbleDatum(value: unknown): ContributorBubbleDatum | nul
   return value as ContributorBubbleDatum;
 }
 
-function isSubredditKarmaBucket(
-  value: unknown
-): value is SubredditKarmaBucket | null {
+function isSubredditKarmaBucket(value: unknown): value is SubredditKarmaBucket | null {
   return (
     value === null ||
     (typeof value === 'number' &&
@@ -2346,8 +2299,7 @@ function getCurrentUserDatumFields(
   username: string,
   currentUsername: string | null
 ): CurrentUserDatumFields {
-  const isCurrentUser =
-    currentUsername !== null && normalizeUsername(username) === currentUsername;
+  const isCurrentUser = currentUsername !== null && normalizeUsername(username) === currentUsername;
 
   return { isCurrentUser };
 }
@@ -2479,7 +2431,7 @@ type RelativeAgeLabelStyle = 'short' | 'long';
 
 function formatRelativeAge(
   date: Date,
-  options: { labelStyle?: RelativeAgeLabelStyle } = {},
+  options: { labelStyle?: RelativeAgeLabelStyle } = {}
 ): string {
   const secondsAgo = Math.max(0, Math.floor((Date.now() - date.getTime()) / 1000));
   const useLongLabels = options.labelStyle === 'long';

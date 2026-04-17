@@ -4,10 +4,7 @@ import type { EntityRepository, TimeIndexedEntityRepository, TimeRange } from '.
 
 const REDIS_CHUNK_SIZE = 100;
 
-export type RedisDataClient = Pick<
-  typeof redis,
-  'hGet' | 'hMGet' | 'hSet' | 'zAdd' | 'zRange'
->;
+export type RedisDataClient = Pick<typeof redis, 'hGet' | 'hMGet' | 'hSet' | 'zAdd' | 'zRange'>;
 
 type RedisHashRepositoryOptions<Entity> = {
   redisClient?: RedisDataClient;
@@ -114,10 +111,7 @@ export const createRedisTimeIndexedRepository = <Entity>({
     }
   };
 
-  const getIdsInTimeRange = async ({
-    startTime,
-    endTime,
-  }: TimeRange): Promise<string[]> => {
+  const getIdsInTimeRange = async ({ startTime, endTime }: TimeRange): Promise<string[]> => {
     const indexedEntities = await redisClient.zRange(indexKey, startTime, endTime, {
       by: 'score',
     });

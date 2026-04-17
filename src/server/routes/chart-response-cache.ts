@@ -28,10 +28,7 @@ export const createChartDataCacheKey = ({
     `end=${endTime}`,
   ].join(':');
 
-const normalizeCacheKeyPart = (
-  value: string | null | undefined,
-  fallback: string
-): string => {
+const normalizeCacheKeyPart = (value: string | null | undefined, fallback: string): string => {
   const normalized = value?.trim() ?? '';
 
   return normalized === '' ? fallback : normalized;

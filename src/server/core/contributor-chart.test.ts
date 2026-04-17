@@ -1,17 +1,10 @@
 import assert from 'node:assert/strict';
-import { test } from 'node:test';
-import {
-  createContributorActivities,
-  createChartContributors,
-} from './contributor-chart';
+import { test } from 'vitest';
+import { createContributorActivities, createChartContributors } from './contributor-chart';
 import type { ContributorEntity, CommentEntity, PostEntity } from '../data';
 import { USER_AVATAR_FALLBACK_URL } from '../../shared/api';
 
-const createPost = (
-  id: string,
-  authorName: string,
-  score: number
-): PostEntity => ({
+const createPost = (id: string, authorName: string, score: number): PostEntity => ({
   id,
   title: `Post ${id}`,
   authorName,
@@ -21,11 +14,7 @@ const createPost = (
   permalink: `/r/example/comments/${id}`,
 });
 
-const createComment = (
-  id: string,
-  authorName: string,
-  score: number
-): CommentEntity => ({
+const createComment = (id: string, authorName: string, score: number): CommentEntity => ({
   id,
   postId: 't3_post_1',
   authorName,
@@ -134,14 +123,8 @@ test('contributor chart aggregation excludes blank and deleted contributors', ()
 test('contributor chart aggregation preserves zero and negative scores', () => {
   const contributors = createChartContributors(
     createContributorActivities(
-      [
-        createPost('t3_alice', 'alice', -5),
-        createPost('t3_bob', 'bob', 0),
-      ],
-      [
-        createComment('t1_alice', 'alice', -7),
-        createComment('t1_bob', 'bob', 0),
-      ]
+      [createPost('t3_alice', 'alice', -5), createPost('t3_bob', 'bob', 0)],
+      [createComment('t1_alice', 'alice', -7), createComment('t1_bob', 'bob', 0)]
     )
   );
 

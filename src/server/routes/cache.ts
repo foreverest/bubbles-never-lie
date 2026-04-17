@@ -265,9 +265,7 @@ const readCommentCacheChunkRefreshData = async (
   return data;
 };
 
-const isCommentCacheChunkRefreshData = (
-  value: unknown
-): value is CommentCacheChunkRefreshData =>
+const isCommentCacheChunkRefreshData = (value: unknown): value is CommentCacheChunkRefreshData =>
   isRecord(value) &&
   typeof value.subredditName === 'string' &&
   Array.isArray(value.postIds) &&
