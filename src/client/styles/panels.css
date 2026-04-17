@@ -5,9 +5,9 @@
   min-height: 0;
   align-items: center;
   justify-content: center;
-  gap: 14px;
+  gap: 10px;
   overflow: hidden;
-  padding: 24px;
+  padding: 14px;
   text-align: center;
 }
 
@@ -16,7 +16,7 @@
   display: grid;
   min-width: 0;
   gap: 10px;
-  padding: 20px 18px;
+  padding: 16px 14px;
   overflow: hidden;
   border: 1px solid var(--color-border);
   border-radius: 8px;
