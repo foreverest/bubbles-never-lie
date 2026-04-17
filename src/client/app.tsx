@@ -116,11 +116,18 @@ const TOOLTIP_COMMENT_ICON =
   '<svg aria-hidden="true" class="chart-tooltip__metric-icon" fill="currentColor" height="16" viewBox="0 0 20 20" width="16" xmlns="http://www.w3.org/2000/svg"><path d="M10 1a9 9 0 00-9 9c0 1.947.79 3.58 1.935 4.957L.231 17.661A.784.784 0 00.785 19H10a9 9 0 009-9 9 9 0 00-9-9zm0 16.2H6.162c-.994.004-1.907.053-3.045.144l-.076-.188a36.981 36.981 0 002.328-2.087l-1.05-1.263C3.297 12.576 2.8 11.331 2.8 10c0-3.97 3.23-7.2 7.2-7.2s7.2 3.23 7.2 7.2-3.23 7.2-7.2 7.2z"></path></svg>';
 const TOOLTIP_POST_ICON =
   '<svg aria-hidden="true" class="chart-tooltip__metric-icon" fill="currentColor" height="20" viewBox="0 0 20 20" width="20" xmlns="http://www.w3.org/2000/svg"><path d="M14.7 2H5.3C3.48 2 2 3.48 2 5.3v9.4C2 16.52 3.48 18 5.3 18h9.4c1.82 0 3.3-1.48 3.3-3.3V5.3C18 3.48 16.52 2 14.7 2zm1.5 12.7c0 .83-.67 1.5-1.5 1.5H5.3c-.83 0-1.5-.67-1.5-1.5V5.3c0-.83.67-1.5 1.5-1.5h9.4c.83 0 1.5.67 1.5 1.5v9.4z"></path><path d="M12 11.1H6v1.8h6v-1.8zM14 7.1H6v1.8h8V7.1z"></path></svg>';
-const SOAP_BUBBLE_BORDER_COLOR = 'rgba(255, 255, 255, 0.76)';
-const SOAP_BUBBLE_EMPHASIS_BORDER_COLOR = 'rgba(255, 255, 255, 0.94)';
-const SOAP_BUBBLE_EMPHASIS_SHADOW_COLOR = 'rgba(22, 51, 45, 0.18)';
-const SOAP_BUBBLE_FILL_ALPHA = 0.84;
-const COMMENT_BUBBLE_FILL_ALPHA = 0.92;
+const SOAP_BUBBLE_BORDER_COLOR = 'rgba(255, 255, 255, 0.88)';
+const SOAP_BUBBLE_EMPHASIS_BORDER_COLOR = 'rgba(255, 255, 255, 0.98)';
+const SOAP_BUBBLE_EMPHASIS_SHADOW_COLOR = 'rgba(15, 23, 42, 0.18)';
+const SOAP_BUBBLE_FILL_ALPHA = 0.9;
+const COMMENT_BUBBLE_FILL_ALPHA = 0.94;
+const CHART_GRID_LINE_COLOR = '#edf1f4';
+const CHART_AXIS_LINE_COLOR = '#c6d1d8';
+const CHART_AXIS_LABEL_COLOR = '#56636d';
+const CHART_AXIS_NAME_COLOR = '#697780';
+const CHART_TOOLTIP_BACKGROUND_COLOR = '#ffffff';
+const CHART_TOOLTIP_EXTRA_CSS =
+  'border-radius:8px;box-shadow:0 18px 44px rgba(15,23,42,0.18);padding:0;';
 const CURRENT_USER_RIPPLE_SERIES_Z = 4;
 const CURRENT_USER_RIPPLE_EFFECT = {
   brushType: 'fill',
@@ -131,18 +138,19 @@ const CURRENT_USER_RIPPLE_EFFECT = {
 const CURRENT_USER_POST_RIPPLE_SERIES_ID = 'current-user-post-ripple';
 const CURRENT_USER_CONTRIBUTOR_RIPPLE_SERIES_ID = 'current-user-contributor-ripple';
 const CHART_COLOR_PALETTE = [
-  '#99cccc',
-  '#ffcc33',
-  '#666633',
-  '#996699',
-  '#996633',
-  '#ff6666',
-  '#ff33cc',
-  '#00cc99',
-  '#cc0066',
-  '#006699',
+  '#267c8c',
+  '#d65a31',
+  '#2f9e74',
+  '#c8325e',
+  '#6f58c9',
+  '#d99a22',
+  '#3487d4',
+  '#6a9f35',
+  '#c84f9b',
+  '#60758a',
 ] as const;
 const CHART_COLOR_FALLBACK = CHART_COLOR_PALETTE[0];
+const CHART_UNKNOWN_BUCKET_COLOR = '#9aa6b2';
 const COMMENT_BUBBLE_SIZE = 10;
 const COMMENT_GROUP_EMPHASIZED_BUBBLE_SIZE = 26;
 const BUBBLE_MIN_SIZE = 10;
@@ -510,15 +518,15 @@ function StatsPanel({ state }: { state: DataState<StatsDataResponse> }) {
   return (
     <section className="chart-panel stats-panel" id="stats-panel" aria-label="Stats">
       <div className="stats-panel__item">
-        <span>Posts</span>
+        <span className="stats-panel__label">Posts</span>
         <strong>{state.data.postCount.toLocaleString()}</strong>
       </div>
       <div className="stats-panel__item">
-        <span>Comments</span>
+        <span className="stats-panel__label">Comments</span>
         <strong>{state.data.commentCount.toLocaleString()}</strong>
       </div>
       <div className="stats-panel__item">
-        <span>Contributors</span>
+        <span className="stats-panel__label">Contributors</span>
         <strong>{state.data.contributorCount.toLocaleString()}</strong>
       </div>
     </section>
@@ -657,12 +665,15 @@ function ChartHeader({
 }) {
   const [sectionMenuOpen, setSectionMenuOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [mobileControlsOpen, setMobileControlsOpen] = useState(false);
   const sectionMenuRef = useRef<HTMLDivElement | null>(null);
   const settingsRef = useRef<HTMLDivElement | null>(null);
+  const mobileControlsRef = useRef<HTMLDivElement | null>(null);
   const activeTabLabel = getTabLabel(activeTab);
+  const timeframeLabel = formatTimeframeDateRangeLabel(data.timeframe);
 
   useEffect(() => {
-    if (!sectionMenuOpen && !settingsOpen) {
+    if (!sectionMenuOpen && !settingsOpen && !mobileControlsOpen) {
       return;
     }
 
@@ -684,12 +695,21 @@ function ChartHeader({
       ) {
         setSettingsOpen(false);
       }
+
+      if (
+        target instanceof Node &&
+        mobileControlsOpen &&
+        !mobileControlsRef.current?.contains(target)
+      ) {
+        setMobileControlsOpen(false);
+      }
     };
 
     const handleDocumentKeyDown = (event: KeyboardEvent) => {
       if (event.key === 'Escape') {
         setSectionMenuOpen(false);
         setSettingsOpen(false);
+        setMobileControlsOpen(false);
       }
     };
 
@@ -700,29 +720,37 @@ function ChartHeader({
       document.removeEventListener('pointerdown', handleDocumentPointerDown);
       document.removeEventListener('keydown', handleDocumentKeyDown);
     };
-  }, [sectionMenuOpen, settingsOpen]);
+  }, [mobileControlsOpen, sectionMenuOpen, settingsOpen]);
 
   const handleSectionSelect = (tab: TabName) => {
     onTabChange(tab);
     setSectionMenuOpen(false);
+    setMobileControlsOpen(false);
   };
 
   return (
     <header className="chart-header">
-      <div className="chart-title" aria-hidden="true">
-        <div className="chart-title__name">
-          {data.subredditIconUrl ? (
-            <img
-              alt=""
-              className="chart-title__icon"
-              src={data.subredditIconUrl}
-            />
-          ) : null}
-          <span>r/{data.subredditName}</span>
+      <div className="chart-header__main">
+        <div
+          className={
+            data.subredditIconUrl ? 'chart-title chart-title--with-icon' : 'chart-title'
+          }
+        >
+          <div className="chart-title__name">
+            {data.subredditIconUrl ? (
+              <img
+                alt=""
+                className="chart-title__icon"
+                src={data.subredditIconUrl}
+              />
+            ) : null}
+            <span>r/{data.subredditName}</span>
+          </div>
+          <p className="chart-title__meta">{timeframeLabel}</p>
         </div>
       </div>
 
-      <div className="chart-controls">
+      <div className="chart-controls chart-controls--desktop">
         <div className="chart-section-menu" ref={sectionMenuRef}>
           <button
             aria-controls={`${activeTab}-panel`}
@@ -735,6 +763,7 @@ function ChartHeader({
                 : 'section-menu-button'
             }
             onClick={() => {
+              setMobileControlsOpen(false);
               setSettingsOpen(false);
               setSectionMenuOpen((open) => !open);
             }}
@@ -830,6 +859,7 @@ function ChartHeader({
                 : 'chart-menu-button'
             }
             onClick={() => {
+              setMobileControlsOpen(false);
               setSectionMenuOpen(false);
               setSettingsOpen((open) => !open);
             }}
@@ -895,6 +925,139 @@ function ChartHeader({
             </div>
           ) : null}
         </div>
+      </div>
+
+      <div className="chart-mobile-controls" ref={mobileControlsRef}>
+        <button
+          aria-expanded={mobileControlsOpen}
+          aria-haspopup="true"
+          aria-label="Chart navigation and settings"
+          className={
+            mobileControlsOpen
+              ? 'chart-mobile-controls__button chart-mobile-controls__button--open'
+              : 'chart-mobile-controls__button'
+          }
+          onClick={() => {
+            setSectionMenuOpen(false);
+            setSettingsOpen(false);
+            setMobileControlsOpen((open) => !open);
+          }}
+          type="button"
+        >
+          <span>{activeTabLabel}</span>
+          <svg
+            aria-hidden="true"
+            className="chart-mobile-controls__icon"
+            viewBox="0 0 12 12"
+          >
+            <path
+              d="M3 4.5 6 7.5l3-3"
+              fill="none"
+              stroke="currentColor"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth="1.6"
+            />
+          </svg>
+        </button>
+
+        {mobileControlsOpen ? (
+          <div className="chart-mobile-controls__menu">
+            <div
+              className="chart-mobile-controls__group"
+              aria-label="Bubble stats sections"
+              role="menu"
+            >
+              <button
+                aria-checked={activeTab === 'posts'}
+                className={
+                  activeTab === 'posts'
+                    ? 'chart-section-menu__item chart-section-menu__item--active'
+                    : 'chart-section-menu__item'
+                }
+                onClick={() => handleSectionSelect('posts')}
+                role="menuitemradio"
+                type="button"
+              >
+                Posts
+              </button>
+              <button
+                aria-checked={activeTab === 'comments'}
+                className={
+                  activeTab === 'comments'
+                    ? 'chart-section-menu__item chart-section-menu__item--active'
+                    : 'chart-section-menu__item'
+                }
+                onClick={() => handleSectionSelect('comments')}
+                role="menuitemradio"
+                type="button"
+              >
+                Comments
+              </button>
+              <button
+                aria-checked={activeTab === 'contributors'}
+                className={
+                  activeTab === 'contributors'
+                    ? 'chart-section-menu__item chart-section-menu__item--active'
+                    : 'chart-section-menu__item'
+                }
+                onClick={() => handleSectionSelect('contributors')}
+                role="menuitemradio"
+                type="button"
+              >
+                Contributors
+              </button>
+              <button
+                aria-checked={activeTab === 'stats'}
+                className={
+                  activeTab === 'stats'
+                    ? 'chart-section-menu__item chart-section-menu__item--active'
+                    : 'chart-section-menu__item'
+                }
+                onClick={() => handleSectionSelect('stats')}
+                role="menuitemradio"
+                type="button"
+              >
+                Stats
+              </button>
+            </div>
+
+            <div className="chart-mobile-controls__group" aria-label="Chart settings" role="group">
+              <button
+                aria-checked={zoomEnabled}
+                className={
+                  zoomEnabled
+                    ? 'chart-settings__switch chart-settings__switch--on'
+                    : 'chart-settings__switch'
+                }
+                onClick={() => onZoomEnabledChange(!zoomEnabled)}
+                role="switch"
+                type="button"
+              >
+                <span>Zoom</span>
+                <span className="chart-settings__switch-track" aria-hidden="true">
+                  <span className="chart-settings__switch-thumb" />
+                </span>
+              </button>
+              <button
+                aria-checked={currentUserRippleEnabled}
+                className={
+                  currentUserRippleEnabled
+                    ? 'chart-settings__switch chart-settings__switch--on'
+                    : 'chart-settings__switch'
+                }
+                onClick={() => onCurrentUserRippleEnabledChange(!currentUserRippleEnabled)}
+                role="switch"
+                type="button"
+              >
+                <span>My bubbles</span>
+                <span className="chart-settings__switch-track" aria-hidden="true">
+                  <span className="chart-settings__switch-thumb" />
+                </span>
+              </button>
+            </div>
+          </div>
+        ) : null}
       </div>
     </header>
   );
@@ -1303,21 +1466,21 @@ function createBubbleOption(
 
   const option: EChartsCoreOption = {
     grid: {
-      top: 24,
-      right: 16,
-      bottom: 28,
-      left: 42,
+      top: 34,
+      right: 28,
+      bottom: 40,
+      left: 48,
       containLabel: true,
     },
     tooltip: {
       trigger: 'item',
       confine: true,
       borderWidth: 0,
-      backgroundColor: 'rgb(243, 244, 245)',
+      backgroundColor: CHART_TOOLTIP_BACKGROUND_COLOR,
       textStyle: {
         color: '#0f1419',
       },
-      extraCssText: 'border-radius:8px;box-shadow:0 12px 30px rgba(15,23,42,0.14);padding:0;',
+      extraCssText: CHART_TOOLTIP_EXTRA_CSS,
       formatter(params: { data?: unknown }) {
         const datum = getBubbleDatum(params.data);
         if (!datum) {
@@ -1351,17 +1514,23 @@ function createBubbleOption(
       splitLine: {
         show: true,
         lineStyle: {
-          type: 'dashed',
-          color: '#e3ece8',
+          type: 'solid',
+          color: CHART_GRID_LINE_COLOR,
         },
       },
       axisLine: {
         show: true,
         lineStyle: {
-          color: '#9ab0a8',
+          color: CHART_AXIS_LINE_COLOR,
         },
       },
+      axisTick: {
+        show: false,
+      },
       axisLabel: {
+        color: CHART_AXIS_LABEL_COLOR,
+        fontSize: 12,
+        fontWeight: 600,
         margin: 14,
         formatter: (value: number, tickIndex: number) =>
           formatXAxisLabel(
@@ -1380,21 +1549,34 @@ function createBubbleOption(
       name: 'Upvotes',
       nameLocation: 'middle',
       nameGap: 40,
+      nameTextStyle: {
+        color: CHART_AXIS_NAME_COLOR,
+        fontSize: 12,
+        fontWeight: 700,
+      },
       type: 'value',
       min: minScore,
       minInterval: 1,
       splitLine: {
         show: true,
         lineStyle: {
-          type: 'dashed',
-          color: '#e3ece8',
+          type: 'solid',
+          color: CHART_GRID_LINE_COLOR,
         },
       },
       axisLine: {
         show: true,
         lineStyle: {
-          color: '#9ab0a8',
+          color: CHART_AXIS_LINE_COLOR,
         },
+      },
+      axisTick: {
+        show: false,
+      },
+      axisLabel: {
+        color: CHART_AXIS_LABEL_COLOR,
+        fontSize: 12,
+        fontWeight: 600,
       },
     },
     series: [
@@ -1408,15 +1590,15 @@ function createBubbleOption(
           borderColor: SOAP_BUBBLE_BORDER_COLOR,
           borderWidth: 1.5,
           color: getPostBubbleColor,
-          opacity: 0.6,
+          opacity: 0.82,
         },
         emphasis: {
           scale: 1.35,
           itemStyle: {
             borderColor: SOAP_BUBBLE_EMPHASIS_BORDER_COLOR,
             borderWidth: 1.5,
-            opacity: 0.9,
-            shadowBlur: 8,
+            opacity: 0.96,
+            shadowBlur: 14,
             shadowColor: SOAP_BUBBLE_EMPHASIS_SHADOW_COLOR,
           },
         },
@@ -1459,21 +1641,21 @@ function createCommentsOption(
   const commentGroups = groupCommentsByPost(data);
   const option: EChartsCoreOption = {
     grid: {
-      top: 24,
-      right: 16,
-      bottom: 28,
-      left: 42,
+      top: 34,
+      right: 28,
+      bottom: 40,
+      left: 48,
       containLabel: true,
     },
     tooltip: {
       trigger: 'item',
       confine: true,
       borderWidth: 0,
-      backgroundColor: 'rgb(243, 244, 245)',
+      backgroundColor: CHART_TOOLTIP_BACKGROUND_COLOR,
       textStyle: {
         color: '#0f1419',
       },
-      extraCssText: 'border-radius:8px;box-shadow:0 12px 30px rgba(15,23,42,0.14);padding:0;',
+      extraCssText: CHART_TOOLTIP_EXTRA_CSS,
       formatter(params: { data?: unknown }) {
         const datum = getCommentBubbleDatum(params.data);
         if (!datum) {
@@ -1506,17 +1688,23 @@ function createCommentsOption(
       splitLine: {
         show: true,
         lineStyle: {
-          type: 'dashed',
-          color: '#e3ece8',
+          type: 'solid',
+          color: CHART_GRID_LINE_COLOR,
         },
       },
       axisLine: {
         show: true,
         lineStyle: {
-          color: '#9ab0a8',
+          color: CHART_AXIS_LINE_COLOR,
         },
       },
+      axisTick: {
+        show: false,
+      },
       axisLabel: {
+        color: CHART_AXIS_LABEL_COLOR,
+        fontSize: 12,
+        fontWeight: 600,
         margin: 14,
         formatter: (value: number, tickIndex: number) =>
           formatXAxisLabel(
@@ -1535,21 +1723,34 @@ function createCommentsOption(
       name: 'Upvotes',
       nameLocation: 'middle',
       nameGap: 40,
+      nameTextStyle: {
+        color: CHART_AXIS_NAME_COLOR,
+        fontSize: 12,
+        fontWeight: 700,
+      },
       type: 'value',
       min: minScore,
       minInterval: 1,
       splitLine: {
         show: true,
         lineStyle: {
-          type: 'dashed',
-          color: '#e3ece8',
+          type: 'solid',
+          color: CHART_GRID_LINE_COLOR,
         },
       },
       axisLine: {
         show: true,
         lineStyle: {
-          color: '#9ab0a8',
+          color: CHART_AXIS_LINE_COLOR,
         },
+      },
+      axisTick: {
+        show: false,
+      },
+      axisLabel: {
+        color: CHART_AXIS_LABEL_COLOR,
+        fontSize: 12,
+        fontWeight: 600,
       },
     },
     series: commentGroups.flatMap((group) => {
@@ -1571,7 +1772,7 @@ function createCommentsOption(
             borderColor: SOAP_BUBBLE_BORDER_COLOR,
             borderWidth: 1,
             color: groupColor,
-            opacity: 0.6,
+            opacity: 0.78,
           },
           emphasis: {
             focus: 'series',
@@ -1579,14 +1780,14 @@ function createCommentsOption(
             itemStyle: {
               borderColor: SOAP_BUBBLE_EMPHASIS_BORDER_COLOR,
               borderWidth: 1.5,
-              opacity: 0.9,
-              shadowBlur: 8,
+              opacity: 0.96,
+              shadowBlur: 14,
               shadowColor: SOAP_BUBBLE_EMPHASIS_SHADOW_COLOR,
             },
           },
           blur: {
             itemStyle: {
-              opacity: 0.12,
+              opacity: 0.16,
             },
           },
         },
@@ -1640,21 +1841,21 @@ function createContributorsOption(
   };
   const option: EChartsCoreOption = {
     grid: {
-      top: 24,
-      right: 16,
-      bottom: 32,
-      left: 42,
+      top: 34,
+      right: 28,
+      bottom: 44,
+      left: 52,
       containLabel: true,
     },
     tooltip: {
       trigger: 'item',
       confine: true,
       borderWidth: 0,
-      backgroundColor: 'rgb(243, 244, 245)',
+      backgroundColor: CHART_TOOLTIP_BACKGROUND_COLOR,
       textStyle: {
         color: '#0f1419',
       },
-      extraCssText: 'border-radius:8px;box-shadow:0 12px 30px rgba(15,23,42,0.14);padding:0;',
+      extraCssText: CHART_TOOLTIP_EXTRA_CSS,
       formatter(params: { data?: unknown }) {
         const datum = getContributorBubbleDatum(params.data);
         if (!datum) {
@@ -1684,6 +1885,11 @@ function createContributorsOption(
       name: 'Comment Upvotes',
       nameLocation: 'middle',
       nameGap: 30,
+      nameTextStyle: {
+        color: CHART_AXIS_NAME_COLOR,
+        fontSize: 12,
+        fontWeight: 700,
+      },
       type: 'value',
       min: minCommentScore,
       max: maxCommentScore,
@@ -1691,21 +1897,34 @@ function createContributorsOption(
       splitLine: {
         show: true,
         lineStyle: {
-          type: 'dashed',
-          color: '#e3ece8',
+          type: 'solid',
+          color: CHART_GRID_LINE_COLOR,
         },
       },
       axisLine: {
         show: true,
         lineStyle: {
-          color: '#9ab0a8',
+          color: CHART_AXIS_LINE_COLOR,
         },
+      },
+      axisTick: {
+        show: false,
+      },
+      axisLabel: {
+        color: CHART_AXIS_LABEL_COLOR,
+        fontSize: 12,
+        fontWeight: 600,
       },
     },
     yAxis: {
       name: 'Post Upvotes',
       nameLocation: 'middle',
       nameGap: 40,
+      nameTextStyle: {
+        color: CHART_AXIS_NAME_COLOR,
+        fontSize: 12,
+        fontWeight: 700,
+      },
       type: 'value',
       min: minPostScore,
       max: maxPostScore,
@@ -1713,15 +1932,23 @@ function createContributorsOption(
       splitLine: {
         show: true,
         lineStyle: {
-          type: 'dashed',
-          color: '#e3ece8',
+          type: 'solid',
+          color: CHART_GRID_LINE_COLOR,
         },
       },
       axisLine: {
         show: true,
         lineStyle: {
-          color: '#9ab0a8',
+          color: CHART_AXIS_LINE_COLOR,
         },
+      },
+      axisTick: {
+        show: false,
+      },
+      axisLabel: {
+        color: CHART_AXIS_LABEL_COLOR,
+        fontSize: 12,
+        fontWeight: 600,
       },
     },
     series: [
@@ -1739,15 +1966,15 @@ function createContributorsOption(
           borderColor: SOAP_BUBBLE_BORDER_COLOR,
           borderWidth: 1.5,
           color: getContributorBubbleColor,
-          opacity: 0.6,
+          opacity: 0.82,
         },
         emphasis: {
           scale: 1.35,
           itemStyle: {
             borderColor: SOAP_BUBBLE_EMPHASIS_BORDER_COLOR,
             borderWidth: 2,
-            opacity: 0.9,
-            shadowBlur: 8,
+            opacity: 0.96,
+            shadowBlur: 14,
             shadowColor: SOAP_BUBBLE_EMPHASIS_SHADOW_COLOR,
           },
         },
@@ -2090,7 +2317,7 @@ function isSubredditKarmaBucket(
 }
 
 function getKarmaBucketColor(bucket: SubredditKarmaBucket | null): string {
-  return bucket === null ? CHART_COLOR_FALLBACK : getChartPaletteColor(bucket);
+  return bucket === null ? CHART_UNKNOWN_BUCKET_COLOR : getChartPaletteColor(bucket);
 }
 
 function getCommentGroupColor(postId: string): string {
@@ -2172,6 +2399,13 @@ function formatTimeframeDatePhrase(timeframe: TimeframePostData): string {
   return timeframe.startDate === timeframe.endDate
     ? `on ${startDate}`
     : `from ${startDate} through ${endDate}`;
+}
+
+function formatTimeframeDateRangeLabel(timeframe: TimeframePostData): string {
+  const startDate = formatDateOnly(timeframe.startDate);
+  const endDate = formatDateOnly(timeframe.endDate);
+
+  return timeframe.startDate === timeframe.endDate ? startDate : `${startDate} - ${endDate}`;
 }
 
 function formatDateOnly(value: string): string {
