@@ -21,16 +21,9 @@ export function ChartEntry() {
     };
   }, []);
 
-  return (
-    <>
-      <App />
-      {webViewMode === 'inline' ? <ExpandChartButton /> : null}
-    </>
-  );
-}
-
-function ExpandChartButton() {
-  const handleClick = (event: ReactMouseEvent<HTMLButtonElement>) => {
+  const handleRequestExpandedMode = (
+    event: ReactMouseEvent<HTMLButtonElement>,
+  ) => {
     try {
       requestExpandedMode(event.nativeEvent, 'game');
     } catch (error) {
@@ -38,11 +31,11 @@ function ExpandChartButton() {
     }
   };
 
-  return (
-    <button className="expand-chart-button" onClick={handleClick} type="button">
-      Expand
-    </button>
-  );
+  if (webViewMode === 'inline') {
+    return <App onRequestExpandedMode={handleRequestExpandedMode} />;
+  }
+
+  return <App />;
 }
 
 function readWebViewMode(): WebViewMode {

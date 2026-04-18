@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import type { MouseEvent as ReactMouseEvent } from 'react';
 
 import type {
   CommentsChartDataResponse,
@@ -17,9 +18,13 @@ import { useApiResource } from './hooks/useApiResource';
 import { useChartPreferences } from './hooks/useChartPreferences';
 import { useResolvedTheme } from './hooks/useResolvedTheme';
 import { useTooltipAvatarFallback } from './hooks/useTooltipAvatarFallback';
-import type { DataState, ResolvedTheme, TabName } from './types';
+import type { DataState, ResolvedTheme, TabName, ThemeMode } from './types';
 
-export function App() {
+type AppProps = {
+  onRequestExpandedMode?: (event: ReactMouseEvent<HTMLButtonElement>) => void;
+};
+
+export function App({ onRequestExpandedMode }: AppProps) {
   const [activeTab, setActiveTab] = useState<TabName>('posts');
   const [chartPreferences, setChartPreferences] = useChartPreferences();
   const { zoomEnabled, currentUserRippleEnabled, themeMode } = chartPreferences;
@@ -71,36 +76,37 @@ export function App() {
   }
 
   const { data: postsData } = postsState;
+  const chartHeaderProps = {
+    data: postsData,
+    activeTab,
+    onTabChange: setActiveTab,
+    zoomEnabled,
+    onZoomEnabledChange: (nextZoomEnabled: boolean) =>
+      setChartPreferences((preferences) => ({
+        ...preferences,
+        zoomEnabled: nextZoomEnabled,
+      })),
+    currentUserRippleEnabled,
+    onCurrentUserRippleEnabledChange: (
+      nextCurrentUserRippleEnabled: boolean,
+    ) =>
+      setChartPreferences((preferences) => ({
+        ...preferences,
+        currentUserRippleEnabled: nextCurrentUserRippleEnabled,
+      })),
+    themeMode,
+    onThemeModeChange: (nextThemeMode: ThemeMode) =>
+      setChartPreferences((preferences) => ({
+        ...preferences,
+        themeMode: nextThemeMode,
+      })),
+    ...(onRequestExpandedMode ? { onRequestExpandedMode } : {}),
+  };
 
   return (
     <main className="app-shell">
       <section className="chart-region" aria-label="Bubbles Never Lie">
-        <ChartHeader
-          data={postsData}
-          activeTab={activeTab}
-          onTabChange={setActiveTab}
-          zoomEnabled={zoomEnabled}
-          onZoomEnabledChange={(nextZoomEnabled) =>
-            setChartPreferences((preferences) => ({
-              ...preferences,
-              zoomEnabled: nextZoomEnabled,
-            }))
-          }
-          currentUserRippleEnabled={currentUserRippleEnabled}
-          onCurrentUserRippleEnabledChange={(nextCurrentUserRippleEnabled) =>
-            setChartPreferences((preferences) => ({
-              ...preferences,
-              currentUserRippleEnabled: nextCurrentUserRippleEnabled,
-            }))
-          }
-          themeMode={themeMode}
-          onThemeModeChange={(nextThemeMode) =>
-            setChartPreferences((preferences) => ({
-              ...preferences,
-              themeMode: nextThemeMode,
-            }))
-          }
-        />
+        <ChartHeader {...chartHeaderProps} />
 
         {activeTab === 'posts' ? (
           <PostsPanel

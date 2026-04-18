@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import type { MouseEvent as ReactMouseEvent } from 'react';
 
 import type { ChartResponseMetadata } from '../../shared/api';
 import type { ChartPreferences, TabName, ThemeMode } from '../types';
@@ -17,6 +18,7 @@ type ChartHeaderProps = {
   onCurrentUserRippleEnabledChange: (enabled: boolean) => void;
   themeMode: ThemeMode;
   onThemeModeChange: (themeMode: ThemeMode) => void;
+  onRequestExpandedMode?: (event: ReactMouseEvent<HTMLButtonElement>) => void;
 };
 
 type ChartSetting = {
@@ -42,6 +44,7 @@ export function ChartHeader({
   onCurrentUserRippleEnabledChange,
   themeMode,
   onThemeModeChange,
+  onRequestExpandedMode,
 }: ChartHeaderProps) {
   const [openMenu, setOpenMenu] = useState<OpenMenu>(null);
   const sectionMenuRef = useRef<HTMLDivElement | null>(null);
@@ -103,6 +106,13 @@ export function ChartHeader({
 
   const handleSectionSelect = (tab: TabName) => {
     onTabChange(tab);
+    setOpenMenu(null);
+  };
+
+  const handleRequestExpandedMode = (
+    event: ReactMouseEvent<HTMLButtonElement>,
+  ) => {
+    onRequestExpandedMode?.(event);
     setOpenMenu(null);
   };
 
@@ -204,6 +214,9 @@ export function ChartHeader({
                 settings={settings}
                 themeMode={themeMode}
                 onThemeModeChange={onThemeModeChange}
+                {...(onRequestExpandedMode
+                  ? { onRequestExpandedMode: handleRequestExpandedMode }
+                  : {})}
               />
             </div>
           ) : null}
@@ -251,6 +264,9 @@ export function ChartHeader({
                 settings={settings}
                 themeMode={themeMode}
                 onThemeModeChange={onThemeModeChange}
+                {...(onRequestExpandedMode
+                  ? { onRequestExpandedMode: handleRequestExpandedMode }
+                  : {})}
               />
             </div>
           </div>
@@ -264,13 +280,27 @@ function SettingsMenuContent({
   settings,
   themeMode,
   onThemeModeChange,
+  onRequestExpandedMode,
 }: {
   settings: ChartSetting[];
   themeMode: ThemeMode;
   onThemeModeChange: (themeMode: ThemeMode) => void;
+  onRequestExpandedMode?: (event: ReactMouseEvent<HTMLButtonElement>) => void;
 }) {
   return (
     <>
+      {onRequestExpandedMode ? (
+        <>
+          <button
+            className="chart-settings__action"
+            onClick={onRequestExpandedMode}
+            type="button"
+          >
+            Expand
+          </button>
+          <div className="chart-settings__divider" />
+        </>
+      ) : null}
       <SettingsSwitches settings={settings} />
       <div className="chart-settings__divider" />
       <div className="chart-theme-control" aria-label="Theme">
