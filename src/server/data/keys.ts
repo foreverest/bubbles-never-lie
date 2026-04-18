@@ -7,6 +7,8 @@ export type DataKeys = {
   postCreatedAtIndex: string;
   comments: string;
   commentCreatedAtIndex: string;
+  commentRefreshPostQueue: string;
+  commentRefreshCommentQueue: string;
   contributors: string;
 };
 
@@ -18,6 +20,8 @@ export const getDataKeys = (subredditName: string): DataKeys => {
     postCreatedAtIndex: `${baseKey}:posts:createdAt`,
     comments: `${baseKey}:comments`,
     commentCreatedAtIndex: `${baseKey}:comments:createdAt`,
+    commentRefreshPostQueue: `${baseKey}:comments:refresh:posts`,
+    commentRefreshCommentQueue: `${baseKey}:comments:refresh:comments`,
     contributors: `${baseKey}:contributors`,
   };
 };

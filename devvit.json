@@ -47,10 +47,11 @@
       },
       "refreshCommentCache": {
         "endpoint": "/internal/cache/refresh-comment-cache",
-        "cron": "*/30 * * * *"
+        "cron": "0 * * * *"
       },
-      "refreshCommentCacheChunk": {
-        "endpoint": "/internal/cache/refresh-comment-cache-chunk"
+      "refreshCommentCacheQueue": {
+        "endpoint": "/internal/cache/refresh-comment-cache-queue",
+        "cron": "* * * * *"
       },
       "refreshContributorCache": {
         "endpoint": "/internal/cache/refresh-contributor-cache",

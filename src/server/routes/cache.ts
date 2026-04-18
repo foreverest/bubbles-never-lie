@@ -1,11 +1,7 @@
 import { context } from '@devvit/web/server';
-import { Hono, type HonoRequest } from 'hono';
+import { Hono } from 'hono';
 import { refreshContributorCache } from '../core/contributor-cache';
-import {
-  refreshCommentCache,
-  refreshCommentCacheChunk,
-  type CommentCacheChunkRefreshData,
-} from '../core/comment-cache';
+import { processCommentCacheQueue, refreshCommentCache } from '../core/comment-cache';
 import { refreshPostCache } from '../core/post-cache';
 import { refreshCurrentSubredditIconCache } from '../core/subreddit-icons';
 import { getCacheRefreshSubredditNames } from '../core/subreddits';
@@ -14,10 +10,11 @@ import { createLogger } from '../logging/logger';
 export const cache = new Hono();
 const cachePostsLogger = createLogger('cache:posts');
 const cacheCommentsLogger = createLogger('cache:comments');
-const cacheCommentChunkLogger = createLogger('cache:comments-chunk');
+const cacheCommentQueueLogger = createLogger('cache:comments-queue');
 const cacheContributorsLogger = createLogger('cache:contributors');
 const cacheSubredditIconsLogger = createLogger('cache:subreddit-icons');
 const cacheAppLogger = createLogger('cache:app');
+const COMMENT_QUEUE_WORKER_ROUTE_DURATION_MS = 25 * 1000;
 
 cache.post('/refresh-post-cache', async (c) => {
   cachePostsLogger.info('Received post cache refresh request', createContextLogMetadata());
@@ -70,8 +67,7 @@ cache.post('/refresh-comment-cache', async (c) => {
       results: results.map(({ subredditName, result }) => ({
         subredditName,
         parentPostCount: result.parentPostCount,
-        scheduledPostCount: result.scheduledPostCount,
-        scheduledJobCount: result.scheduledJobCount,
+        enqueuedPostCount: result.enqueuedPostCount,
       })),
     });
     return c.json(
@@ -98,39 +94,40 @@ cache.post('/refresh-comment-cache', async (c) => {
   }
 });
 
-cache.post('/refresh-comment-cache-chunk', async (c) => {
-  cacheCommentChunkLogger.info(
-    'Received comment cache chunk refresh request',
+cache.post('/refresh-comment-cache-queue', async (c) => {
+  cacheCommentQueueLogger.info(
+    'Received comment cache queue refresh request',
     createContextLogMetadata()
   );
 
   try {
-    const data = await readCommentCacheChunkRefreshData(c.req);
-    cacheCommentChunkLogger.info('Starting comment cache chunk refresh request', {
-      ...createContextLogMetadata(),
-      subredditName: data.subredditName,
-      postCount: data.postIds.length,
-    });
-    const result = await refreshCommentCacheChunk(data);
+    const results = await processCommentCacheQueuesForCurrentSubreddits();
 
-    cacheCommentChunkLogger.info('Completed comment cache chunk refresh request', {
+    cacheCommentQueueLogger.info('Completed comment cache queue refresh request', {
       ...createContextLogMetadata(),
-      subredditName: data.subredditName,
-      refreshedPostCount: result.refreshedPostCount,
-      failedPostCount: result.failedPostCount,
-      fetchedCommentCount: result.fetchedCommentCount,
-      cachedCommentCount: result.cachedCommentCount,
+      subredditCount: results.length,
+      results: results.map(({ subredditName, result }) => ({
+        subredditName,
+        processedPostCount: result.processedPostCount,
+        processedCommentParentCount: result.processedCommentParentCount,
+        failedItemCount: result.failedItemCount,
+        invalidQueueItemCount: result.invalidQueueItemCount,
+        fetchedCommentCount: result.fetchedCommentCount,
+        cachedCommentCount: result.cachedCommentCount,
+        enqueuedCommentParentCount: result.enqueuedCommentParentCount,
+        queueEmpty: result.queueEmpty,
+      })),
     });
     return c.json(
       {
         status: 'ok',
-        result,
+        results,
       },
       200
     );
   } catch (error) {
     const message = getErrorMessage(error);
-    cacheCommentChunkLogger.error('Comment cache chunk refresh request failed', {
+    cacheCommentQueueLogger.error('Comment cache queue refresh request failed', {
       ...createContextLogMetadata(),
       error: message,
     });
@@ -328,8 +325,7 @@ const refreshCommentCachesForCurrentSubreddits = async () => {
       cacheCommentsLogger.info('Refreshed comment cache for subreddit', {
         subredditName,
         parentPostCount: result.parentPostCount,
-        scheduledPostCount: result.scheduledPostCount,
-        scheduledJobCount: result.scheduledJobCount,
+        enqueuedPostCount: result.enqueuedPostCount,
       });
     } catch (error) {
       const message = getErrorMessage(error);
@@ -343,6 +339,71 @@ const refreshCommentCachesForCurrentSubreddits = async () => {
 
   if (failures.length > 0) {
     throw new Error(`Unable to refresh comment cache for ${failures.join(', ')}`);
+  }
+
+  return results;
+};
+
+const processCommentCacheQueuesForCurrentSubreddits = async () => {
+  const subredditNames = getCacheRefreshSubredditNames(context.subredditName);
+  const startedAt = Date.now();
+  cacheCommentQueueLogger.info('Processing comment cache queues for subreddits', {
+    ...createContextLogMetadata(),
+    subredditNames,
+  });
+  const results: Array<{
+    subredditName: string;
+    result: Awaited<ReturnType<typeof processCommentCacheQueue>>;
+  }> = [];
+  const failures: string[] = [];
+
+  for (const subredditName of subredditNames) {
+    const elapsedMs = Date.now() - startedAt;
+    const remainingDurationMs = Math.max(0, COMMENT_QUEUE_WORKER_ROUTE_DURATION_MS - elapsedMs);
+
+    if (remainingDurationMs <= 0) {
+      cacheCommentQueueLogger.info(
+        'Skipping comment cache queue because route budget is exhausted',
+        {
+          subredditName,
+        }
+      );
+      break;
+    }
+
+    try {
+      cacheCommentQueueLogger.info('Processing comment cache queue for subreddit', {
+        subredditName,
+        remainingDurationMs,
+      });
+      const result = await processCommentCacheQueue({
+        subredditName,
+        maxDurationMs: remainingDurationMs,
+      });
+      results.push({ subredditName, result });
+      cacheCommentQueueLogger.info('Processed comment cache queue for subreddit', {
+        subredditName,
+        processedPostCount: result.processedPostCount,
+        processedCommentParentCount: result.processedCommentParentCount,
+        failedItemCount: result.failedItemCount,
+        invalidQueueItemCount: result.invalidQueueItemCount,
+        fetchedCommentCount: result.fetchedCommentCount,
+        cachedCommentCount: result.cachedCommentCount,
+        enqueuedCommentParentCount: result.enqueuedCommentParentCount,
+        queueEmpty: result.queueEmpty,
+      });
+    } catch (error) {
+      const message = getErrorMessage(error);
+      cacheCommentQueueLogger.warn('Comment cache queue processing failed for subreddit', {
+        subredditName,
+        error: message,
+      });
+      failures.push(`r/${subredditName}: ${message}`);
+    }
+  }
+
+  if (failures.length > 0) {
+    throw new Error(`Unable to process comment cache queue for ${failures.join(', ')}`);
   }
 
   return results;
@@ -388,34 +449,6 @@ const refreshContributorCachesForCurrentSubreddits = async () => {
 
   return results;
 };
-
-const readCommentCacheChunkRefreshData = async (
-  req: HonoRequest
-): Promise<CommentCacheChunkRefreshData> => {
-  const body = await req.json().catch(() => null);
-  const data = isRecord(body) && 'data' in body ? body.data : body;
-
-  if (!isCommentCacheChunkRefreshData(data)) {
-    cacheCommentChunkLogger.warn('Invalid comment cache chunk refresh payload', {
-      ...createContextLogMetadata(),
-    });
-    throw new Error('Invalid comment cache chunk refresh payload.');
-  }
-
-  return data;
-};
-
-const isCommentCacheChunkRefreshData = (value: unknown): value is CommentCacheChunkRefreshData =>
-  isRecord(value) &&
-  typeof value.subredditName === 'string' &&
-  Array.isArray(value.postIds) &&
-  value.postIds.every(isPostId);
-
-const isPostId = (value: unknown): value is `t3_${string}` =>
-  typeof value === 'string' && value.startsWith('t3_') && value.length > 3;
-
-const isRecord = (value: unknown): value is Record<string, unknown> =>
-  value !== null && typeof value === 'object' && !Array.isArray(value);
 
 const createContextLogMetadata = (): Record<string, unknown> => ({
   currentSubredditName: context.subredditName,

@@ -1,17 +1,24 @@
-import { reddit, scheduler } from '@devvit/web/server';
+import { reddit, redis } from '@devvit/web/server';
 import type { Comment } from '@devvit/web/server';
 import { resolveUserAvatarUrl, type ChartComment } from '../../shared/api';
-import { createBubbleStatsDataLayer } from '../data';
+import { createBubbleStatsDataLayer, getDataKeys, type BubbleStatsDataLayer } from '../data';
 import type { CommentEntity, HydratedComment } from '../data';
 import { createLogger } from '../logging/logger';
 import { readLatestCachedPostIds } from './post-cache';
 
 const logger = createLogger('comment-cache');
 const COMMENT_REFRESH_PARENT_POST_LIMIT = 1000;
-const COMMENT_REFRESH_POST_CHUNK_SIZE = 50;
-const COMMENT_REFRESH_CHUNK_JOB_DELAY_MS = 60 * 1000;
-export const COMMENT_REFRESH_CHUNK_JOB_NAME = 'refreshCommentCacheChunk';
+const COMMENT_REFRESH_COMMENT_LIMIT = 1000;
+const COMMENT_REFRESH_PAGE_SIZE = 100;
+export const COMMENT_REFRESH_QUEUE_WORKER_DURATION_MS = 25 * 1000;
 const COMMENT_PREVIEW_LENGTH = 20;
+const REDIS_QUEUE_CHUNK_SIZE = 100;
+
+type PostId = `t3_${string}`;
+type CommentId = `t1_${string}`;
+type CommentQueueMember = `${PostId}:${CommentId}`;
+type CommentRefreshQueueRedisClient = Pick<typeof redis, 'del' | 'zAdd' | 'zRange' | 'zRem'>;
+type CommentRefreshRedditClient = Pick<typeof reddit, 'getComments'>;
 
 export type CommentCacheReadOptions = {
   subredditName: string;
@@ -29,28 +36,64 @@ export type CommentCountReadResult = {
 
 export type CommentCacheRefreshResult = {
   parentPostCount: number;
-  scheduledPostCount: number;
-  scheduledJobCount: number;
-  scheduledJobIds: string[];
+  enqueuedPostCount: number;
   generatedAt: string;
 };
 
-export type CommentCacheChunkRefreshData = {
+export type CommentCacheQueueProcessOptions = {
   subredditName: string;
-  postIds: `t3_${string}`[];
+  maxDurationMs?: number;
 };
 
-export type CommentCacheChunkRefreshResult = {
-  refreshedPostCount: number;
-  failedPostCount: number;
+export type CommentCacheQueueProcessResult = {
+  processedPostCount: number;
+  processedCommentParentCount: number;
+  failedItemCount: number;
+  invalidQueueItemCount: number;
   fetchedCommentCount: number;
   cachedCommentCount: number;
+  enqueuedCommentParentCount: number;
+  queueEmpty: boolean;
   generatedAt: string;
 };
 
-type PostCommentsRefreshResult = {
+export type CommentCacheRefreshDependencies = {
+  redisClient?: CommentRefreshQueueRedisClient;
+  readParentPostIds?: (subredditName: string) => Promise<PostId[]>;
+  now?: () => number;
+};
+
+export type CommentCacheQueueProcessDependencies = {
+  redisClient?: CommentRefreshQueueRedisClient;
+  redditClient?: CommentRefreshRedditClient;
+  dataLayer?: BubbleStatsDataLayer;
+  now?: () => number;
+};
+
+type CommentRefreshQueueKeys = {
+  postQueue: string;
+  commentQueue: string;
+};
+
+type CommentQueueItem =
+  | {
+      kind: 'post';
+      postId: PostId;
+    }
+  | {
+      kind: 'comment';
+      postId: PostId;
+      commentId: CommentId;
+    }
+  | {
+      kind: 'invalid';
+      member: string;
+    };
+
+type QueueItemRefreshResult = {
   fetchedCommentCount: number;
   cachedCommentCount: number;
+  enqueuedCommentParentCount: number;
   failed: boolean;
 };
 
@@ -88,66 +131,44 @@ export const readCommentCountForTimeframe = async ({
 };
 
 export const refreshCommentCache = async (
-  subredditName: string
+  subredditName: string,
+  {
+    redisClient = redis,
+    readParentPostIds = readCommentParentPostIds,
+    now = Date.now,
+  }: CommentCacheRefreshDependencies = {}
 ): Promise<CommentCacheRefreshResult> => {
-  logger.info('Refreshing comment cache', { subredditName });
+  logger.info('Seeding comment cache refresh queues', { subredditName });
 
   try {
-    const parentPostIds = await readCommentParentPostIds(subredditName);
-    const postIdChunks = chunkItems(parentPostIds, COMMENT_REFRESH_POST_CHUNK_SIZE);
-    const firstRunAt = Date.now() + COMMENT_REFRESH_CHUNK_JOB_DELAY_MS;
-    const scheduledJobIds: string[] = [];
+    const parentPostIds = await readParentPostIds(subredditName);
+    const queueKeys = getCommentRefreshQueueKeys(subredditName);
 
-    logger.info('Scheduling comment cache refresh chunks', {
-      subredditName,
-      parentPostCount: parentPostIds.length,
-      parentPostLimit: COMMENT_REFRESH_PARENT_POST_LIMIT,
-      chunkCount: postIdChunks.length,
-      chunkSize: COMMENT_REFRESH_POST_CHUNK_SIZE,
-    });
-
-    for (const [chunkIndex, postIds] of postIdChunks.entries()) {
-      const runAt = new Date(firstRunAt + chunkIndex * COMMENT_REFRESH_CHUNK_JOB_DELAY_MS);
-      const jobId = await scheduler.runJob({
-        name: COMMENT_REFRESH_CHUNK_JOB_NAME,
-        data: {
-          subredditName,
-          postIds,
-        },
-        runAt,
-      });
-
-      logger.debug('Scheduled comment cache refresh chunk', {
-        subredditName,
-        chunkIndex,
-        postCount: postIds.length,
-        runAt: runAt.toISOString(),
-        jobId,
-      });
-
-      scheduledJobIds.push(jobId);
-    }
+    await redisClient.del(queueKeys.postQueue, queueKeys.commentQueue);
+    const enqueuedPostCount = await enqueueQueueItems(
+      redisClient,
+      queueKeys.postQueue,
+      parentPostIds,
+      now()
+    );
 
     const result = {
       parentPostCount: parentPostIds.length,
-      scheduledPostCount: postIdChunks.reduce((total, postIds) => total + postIds.length, 0),
-      scheduledJobCount: scheduledJobIds.length,
-      scheduledJobIds,
-      generatedAt: new Date().toISOString(),
+      enqueuedPostCount,
+      generatedAt: new Date(now()).toISOString(),
     };
 
-    logger.info('Scheduled comment cache refresh chunks', {
+    logger.info('Seeded comment cache refresh queues', {
       subredditName,
       parentPostCount: result.parentPostCount,
       parentPostLimit: COMMENT_REFRESH_PARENT_POST_LIMIT,
-      scheduledPostCount: result.scheduledPostCount,
-      scheduledJobCount: result.scheduledJobCount,
+      enqueuedPostCount: result.enqueuedPostCount,
       generatedAt: result.generatedAt,
     });
 
     return result;
   } catch (error) {
-    logger.error('Comment cache refresh failed', {
+    logger.error('Comment cache refresh queue seed failed', {
       subredditName,
       error: getErrorMessage(error),
     });
@@ -155,58 +176,102 @@ export const refreshCommentCache = async (
   }
 };
 
-export const refreshCommentCacheChunk = async ({
-  subredditName,
-  postIds,
-}: CommentCacheChunkRefreshData): Promise<CommentCacheChunkRefreshResult> => {
-  logger.info('Refreshing comment cache chunk', {
+export const processCommentCacheQueue = async (
+  {
     subredditName,
-    postCount: postIds.length,
-  });
+    maxDurationMs = COMMENT_REFRESH_QUEUE_WORKER_DURATION_MS,
+  }: CommentCacheQueueProcessOptions,
+  {
+    redisClient = redis,
+    redditClient = reddit,
+    dataLayer = createBubbleStatsDataLayer(subredditName),
+    now = Date.now,
+  }: CommentCacheQueueProcessDependencies = {}
+): Promise<CommentCacheQueueProcessResult> => {
+  logger.info('Processing comment cache refresh queue', { subredditName, maxDurationMs });
+
+  const startedAt = now();
+  const queueKeys = getCommentRefreshQueueKeys(subredditName);
+  const result: CommentCacheQueueProcessResult = {
+    processedPostCount: 0,
+    processedCommentParentCount: 0,
+    failedItemCount: 0,
+    invalidQueueItemCount: 0,
+    fetchedCommentCount: 0,
+    cachedCommentCount: 0,
+    enqueuedCommentParentCount: 0,
+    queueEmpty: false,
+    generatedAt: new Date(startedAt).toISOString(),
+  };
 
   try {
-    const dataLayer = createBubbleStatsDataLayer(subredditName);
-    const refreshResults: PostCommentsRefreshResult[] = [];
+    while (now() - startedAt < maxDurationMs) {
+      const item = await dequeueNextCommentRefreshItem(redisClient, queueKeys);
 
-    for (const postId of postIds) {
-      refreshResults.push(await refreshPostComments(dataLayer, postId));
+      if (!item) {
+        result.queueEmpty = true;
+        break;
+      }
+
+      if (item.kind === 'invalid') {
+        result.invalidQueueItemCount += 1;
+        logger.warn('Skipped invalid comment refresh queue item', {
+          subredditName,
+          member: item.member,
+        });
+        continue;
+      }
+
+      const refreshResult = await refreshQueuedCommentParent({
+        dataLayer,
+        item,
+        queueKeys,
+        redditClient,
+        redisClient,
+        now,
+      });
+
+      if (item.kind === 'post') {
+        result.processedPostCount += 1;
+      } else {
+        result.processedCommentParentCount += 1;
+      }
+
+      if (refreshResult.failed) {
+        result.failedItemCount += 1;
+      }
+
+      result.fetchedCommentCount += refreshResult.fetchedCommentCount;
+      result.cachedCommentCount += refreshResult.cachedCommentCount;
+      result.enqueuedCommentParentCount += refreshResult.enqueuedCommentParentCount;
     }
 
-    const result = {
-      refreshedPostCount: postIds.length,
-      failedPostCount: refreshResults.filter((refreshResult) => refreshResult.failed).length,
-      fetchedCommentCount: sumRefreshCount(
-        refreshResults,
-        (refreshResult) => refreshResult.fetchedCommentCount
-      ),
-      cachedCommentCount: sumRefreshCount(
-        refreshResults,
-        (refreshResult) => refreshResult.cachedCommentCount
-      ),
-      generatedAt: new Date().toISOString(),
-    };
+    result.generatedAt = new Date(now()).toISOString();
 
-    logger.info('Refreshed comment cache chunk', {
+    logger.info('Processed comment cache refresh queue', {
       subredditName,
-      refreshedPostCount: result.refreshedPostCount,
-      failedPostCount: result.failedPostCount,
+      processedPostCount: result.processedPostCount,
+      processedCommentParentCount: result.processedCommentParentCount,
+      failedItemCount: result.failedItemCount,
+      invalidQueueItemCount: result.invalidQueueItemCount,
       fetchedCommentCount: result.fetchedCommentCount,
       cachedCommentCount: result.cachedCommentCount,
+      enqueuedCommentParentCount: result.enqueuedCommentParentCount,
+      queueEmpty: result.queueEmpty,
       generatedAt: result.generatedAt,
     });
 
     return result;
   } catch (error) {
-    logger.error('Comment cache chunk refresh failed', {
+    logger.error('Comment cache refresh queue processing failed', {
       subredditName,
-      postCount: postIds.length,
       error: getErrorMessage(error),
     });
     throw error;
   }
 };
 
-const readCommentParentPostIds = async (subredditName: string): Promise<`t3_${string}`[]> => {
+const readCommentParentPostIds = async (subredditName: string): Promise<PostId[]> => {
   const cachedPostIds = await readLatestCachedPostIds({
     subredditName,
     limit: COMMENT_REFRESH_PARENT_POST_LIMIT,
@@ -215,44 +280,165 @@ const readCommentParentPostIds = async (subredditName: string): Promise<`t3_${st
   return cachedPostIds.postIds;
 };
 
-const refreshPostComments = async (
-  dataLayer: ReturnType<typeof createBubbleStatsDataLayer>,
-  postId: `t3_${string}`
-): Promise<PostCommentsRefreshResult> => {
+const getCommentRefreshQueueKeys = (subredditName: string): CommentRefreshQueueKeys => {
+  const keys = getDataKeys(subredditName);
+
+  return {
+    postQueue: keys.commentRefreshPostQueue,
+    commentQueue: keys.commentRefreshCommentQueue,
+  };
+};
+
+const enqueueQueueItems = async (
+  redisClient: CommentRefreshQueueRedisClient,
+  queueKey: string,
+  items: string[],
+  nowMs: number
+): Promise<number> => {
+  if (items.length === 0) {
+    return 0;
+  }
+
+  const baseScore = nowMs * 1000;
+  let enqueuedItemCount = 0;
+
+  for (let start = 0; start < items.length; start += REDIS_QUEUE_CHUNK_SIZE) {
+    const chunk = items.slice(start, start + REDIS_QUEUE_CHUNK_SIZE);
+
+    enqueuedItemCount += await redisClient.zAdd(
+      queueKey,
+      ...chunk.map((member, index) => ({
+        member,
+        score: baseScore + start + index,
+      }))
+    );
+  }
+
+  return enqueuedItemCount;
+};
+
+const dequeueNextCommentRefreshItem = async (
+  redisClient: CommentRefreshQueueRedisClient,
+  queueKeys: CommentRefreshQueueKeys
+): Promise<CommentQueueItem | null> => {
+  const commentMember = await dequeueQueueMember(redisClient, queueKeys.commentQueue);
+
+  if (commentMember) {
+    return parseCommentQueueMember(commentMember);
+  }
+
+  const postMember = await dequeueQueueMember(redisClient, queueKeys.postQueue);
+
+  if (!postMember) {
+    return null;
+  }
+
+  return isPostId(postMember)
+    ? { kind: 'post', postId: postMember }
+    : { kind: 'invalid', member: postMember };
+};
+
+const dequeueQueueMember = async (
+  redisClient: CommentRefreshQueueRedisClient,
+  queueKey: string
+): Promise<string | null> => {
+  const nextItems = await redisClient.zRange(queueKey, 0, 0, { by: 'rank' });
+  const nextItem = nextItems[0];
+
+  if (!nextItem) {
+    return null;
+  }
+
+  await redisClient.zRem(queueKey, [nextItem.member]);
+
+  return nextItem.member;
+};
+
+const parseCommentQueueMember = (member: string): CommentQueueItem => {
+  const [postId, commentId, extra] = member.split(':');
+
+  if (!extra && isPostId(postId) && isCommentId(commentId)) {
+    return {
+      kind: 'comment',
+      postId,
+      commentId,
+    };
+  }
+
+  return {
+    kind: 'invalid',
+    member,
+  };
+};
+
+const refreshQueuedCommentParent = async ({
+  dataLayer,
+  item,
+  queueKeys,
+  redditClient,
+  redisClient,
+  now,
+}: {
+  dataLayer: BubbleStatsDataLayer;
+  item: Exclude<CommentQueueItem, { kind: 'invalid' }>;
+  queueKeys: CommentRefreshQueueKeys;
+  redditClient: CommentRefreshRedditClient;
+  redisClient: CommentRefreshQueueRedisClient;
+  now: () => number;
+}): Promise<QueueItemRefreshResult> => {
   try {
-    const comments = await reddit
+    const comments = await redditClient
       .getComments({
-        postId,
-        limit: 1000,
-        pageSize: 100,
+        postId: item.postId,
+        ...(item.kind === 'comment' ? { commentId: item.commentId } : {}),
+        limit: COMMENT_REFRESH_COMMENT_LIMIT,
+        pageSize: COMMENT_REFRESH_PAGE_SIZE,
       })
       .all();
-    logger.debug('Fetched comments for post', {
-      postId,
+
+    logger.debug('Fetched comments for comment cache queue item', {
+      postId: item.postId,
+      commentId: item.kind === 'comment' ? item.commentId : undefined,
       fetchedCommentCount: comments.length,
     });
+
     const commentEntities = comments.map(toCommentEntity);
 
     await dataLayer.comments.upsertMany(commentEntities);
 
+    const enqueuedCommentParentCount = await enqueueQueueItems(
+      redisClient,
+      queueKeys.commentQueue,
+      comments
+        .map((comment) => createCommentQueueMember(comment.postId, comment.id))
+        .filter((member): member is CommentQueueMember => member !== null),
+      now()
+    );
+
     return {
       fetchedCommentCount: comments.length,
       cachedCommentCount: commentEntities.length,
+      enqueuedCommentParentCount,
       failed: false,
     };
   } catch (error) {
-    logger.warn('Unable to refresh comments for post', {
-      postId,
+    logger.warn('Unable to refresh comments for comment cache queue item', {
+      postId: item.postId,
+      commentId: item.kind === 'comment' ? item.commentId : undefined,
       error: getErrorMessage(error),
     });
 
     return {
       fetchedCommentCount: 0,
       cachedCommentCount: 0,
+      enqueuedCommentParentCount: 0,
       failed: true,
     };
   }
 };
+
+const createCommentQueueMember = (postId: string, commentId: string): CommentQueueMember | null =>
+  isPostId(postId) && isCommentId(commentId) ? `${postId}:${commentId}` : null;
 
 const toCommentEntity = (comment: Comment): CommentEntity => ({
   id: comment.id,
@@ -286,20 +472,11 @@ const createCommentPreview = (body: string): string => {
   return `${symbols.slice(0, COMMENT_PREVIEW_LENGTH - 3).join('')}...`;
 };
 
-const sumRefreshCount = (
-  results: PostCommentsRefreshResult[],
-  readCount: (result: PostCommentsRefreshResult) => number
-): number => results.reduce((total, result) => total + readCount(result), 0);
+const isPostId = (value: unknown): value is PostId =>
+  typeof value === 'string' && value.startsWith('t3_') && value.length > 3;
 
-const chunkItems = <Item>(items: Item[], size: number): Item[][] => {
-  const chunks: Item[][] = [];
-
-  for (let index = 0; index < items.length; index += size) {
-    chunks.push(items.slice(index, index + size));
-  }
-
-  return chunks;
-};
+const isCommentId = (value: unknown): value is CommentId =>
+  typeof value === 'string' && value.startsWith('t1_') && value.length > 3;
 
 const getErrorMessage = (error: unknown): string =>
   error instanceof Error ? error.message : String(error);
