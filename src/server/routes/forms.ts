@@ -47,7 +47,6 @@ const createFormLogMetadata = (values: unknown): Record<string, unknown> => {
     startYear: data.startYear,
     startMonth: data.startMonth,
     startDay: data.startDay,
-    startHour: data.startHour,
     durationDays: data.durationDays,
     timeZone: data.timeZone,
   };

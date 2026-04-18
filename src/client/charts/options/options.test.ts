@@ -16,6 +16,8 @@ const metadata: ChartResponseMetadata = {
     startIso: '2024-02-29T00:00:00.000Z',
     endIso: '2024-03-01T00:00:00.000Z',
     createdAt: '2024-02-28T12:00:00.000Z',
+    timeZone: 'UTC',
+    durationDays: 1,
   },
   generatedAt: '2024-02-29T12:00:00.000Z',
 };

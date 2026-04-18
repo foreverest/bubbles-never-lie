@@ -33,6 +33,14 @@
     white-space: nowrap;
   }
 
+  .chart-title__meta-desktop {
+    display: none;
+  }
+
+  .chart-title__meta-mobile {
+    display: inline;
+  }
+
   .chart-title--with-icon .chart-title__meta {
     margin-left: 35px;
   }

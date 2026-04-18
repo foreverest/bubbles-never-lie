@@ -9,21 +9,38 @@ const DATE_ONLY_FORMATTER = new Intl.DateTimeFormat('en-US', {
 });
 
 type RelativeAgeLabelStyle = 'short' | 'long';
+type TimeframeDateRangeLabels = {
+  compactLabel: string;
+  fullLabel: string;
+};
 
 export function formatTimeframeDatePhrase(timeframe: TimeframePostData): string {
   const startDate = formatDateOnly(timeframe.startDate);
   const endDate = formatDateOnly(timeframe.endDate);
+  const timeZoneLabel = formatTimeZoneLabel(timeframe.timeZone);
 
   return timeframe.startDate === timeframe.endDate
-    ? `on ${startDate}`
-    : `from ${startDate} through ${endDate}`;
+    ? `on ${startDate} in ${timeZoneLabel}`
+    : `from ${startDate} through ${endDate} in ${timeZoneLabel}`;
 }
 
 export function formatTimeframeDateRangeLabel(timeframe: TimeframePostData): string {
+  return formatTimeframeDateRangeLabels(timeframe).fullLabel;
+}
+
+export function formatTimeframeDateRangeLabels(
+  timeframe: TimeframePostData
+): TimeframeDateRangeLabels {
   const startDate = formatDateOnly(timeframe.startDate);
   const endDate = formatDateOnly(timeframe.endDate);
+  const compactDateRange =
+    timeframe.startDate === timeframe.endDate ? startDate : `${startDate} - ${endDate}`;
+  const timeZoneLabel = formatTimeZoneLabel(timeframe.timeZone);
 
-  return timeframe.startDate === timeframe.endDate ? startDate : `${startDate} - ${endDate}`;
+  return {
+    compactLabel: compactDateRange,
+    fullLabel: `${compactDateRange} in ${timeZoneLabel}`,
+  };
 }
 
 export function formatDateOnly(value: string): string {
@@ -47,6 +64,10 @@ export function formatDateOnly(value: string): string {
   }
 
   return DATE_ONLY_FORMATTER.format(date);
+}
+
+export function formatTimeZoneLabel(timeZone: string): string {
+  return timeZone.replaceAll('_', ' ');
 }
 
 export function formatRelativeAge(

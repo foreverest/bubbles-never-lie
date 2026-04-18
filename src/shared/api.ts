@@ -14,9 +14,8 @@ export type TimeframePostData = {
   startIso: string;
   endIso: string;
   createdAt: string;
-  timeZone?: string;
-  startHour?: number;
-  durationDays?: number;
+  timeZone: string;
+  durationDays: number;
   dataSourceSubredditName?: string;
 };
 

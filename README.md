@@ -30,11 +30,10 @@ Use the subreddit menu item named "Create bubble stats post". The app opens a sh
 
 - A post title.
 - A start year, month, and day.
-- A start hour.
 - A timezone.
 - A chart length from 1 to 7 days.
 
-The form defaults to the current date, hour 0, the current timezone when available, and a 1-day chart length. When the form is submitted, the app creates a new Reddit post and opens it.
+The form defaults to the current date in UTC, the UTC timezone, and a 1-day chart length. The selected day starts at midnight in the selected timezone. When the form is submitted, the app creates a new Reddit post and opens it.
 
 ## How to read the chart
 

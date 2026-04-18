@@ -14,7 +14,6 @@ export type DateRange = {
   startIso: string;
   endIso: string;
   timeZone: string;
-  startHour: number;
   durationDays: number;
 };
 
@@ -24,7 +23,6 @@ export type TimeframeFormValues = {
   startYear?: SelectValue;
   startMonth?: SelectValue;
   startDay?: SelectValue;
-  startHour?: SelectValue;
   timeZone?: SelectValue;
   durationDays?: SelectValue;
   title?: string;
@@ -51,23 +49,20 @@ type DateParts = {
 };
 
 type TimeframeParts = DateParts & {
-  startHour: number;
   timeZone: string;
   durationDays: number;
 };
 
-export const defaultTimeframeFormValues = (timeZoneHint?: string): TimeframeFormValues => {
-  const timeZone = resolveCurrentTimeZone(timeZoneHint);
-  const currentDate = getDatePartsInTimeZone(new Date(), timeZone);
-  const year = clamp(currentDate.year, minYear, getMaxYear(timeZone));
+export const defaultTimeframeFormValues = (): TimeframeFormValues => {
+  const currentDate = getDatePartsInTimeZone(new Date(), defaultTimeZone);
+  const year = clamp(currentDate.year, minYear, getMaxYear(defaultTimeZone));
   const day = Math.min(currentDate.day, getDaysInMonth(year, currentDate.month));
 
   return {
     startYear: [String(year)],
     startMonth: [String(currentDate.month)],
     startDay: [String(day)],
-    startHour: [String(defaultStartHour)],
-    timeZone: [timeZone],
+    timeZone: [defaultTimeZone],
     durationDays: [String(defaultDurationDays)],
   };
 };
@@ -75,7 +70,7 @@ export const defaultTimeframeFormValues = (timeZoneHint?: string): TimeframeForm
 export const createTimeframeForm = (options: TimeframeFormOptions = {}): Form => {
   const currentTimeZone = resolveCurrentTimeZone(options.currentTimeZone);
   const maxYear = getMaxYear(currentTimeZone);
-  const defaultValues = options.defaultValues ?? defaultTimeframeFormValues(currentTimeZone);
+  const defaultValues = options.defaultValues ?? defaultTimeframeFormValues();
   const fields: Form['fields'] = [
     {
       type: 'string',
@@ -123,14 +118,6 @@ export const createTimeframeForm = (options: TimeframeFormOptions = {}): Form =>
     },
     {
       type: 'select',
-      name: 'startHour',
-      label: 'Hour',
-      required: true,
-      defaultValue: readDefaultSelectValue(defaultValues.startHour),
-      options: createRangeOptions(0, 23),
-    },
-    {
-      type: 'select',
       name: 'timeZone',
       label: 'Timezone',
       required: true,
@@ -159,7 +146,7 @@ export const createTimeframeForm = (options: TimeframeFormOptions = {}): Form =>
   return {
     title: 'Create bubble stats post',
     description:
-      'Choose the starting date and hour. The chart samples the newest subreddit posts and filters them to that range.',
+      'Choose the starting date and timezone. The chart samples the newest subreddit posts and filters them to that range.',
     acceptLabel: 'Create post',
     cancelLabel: 'Cancel',
     fields,
@@ -173,7 +160,6 @@ export const parseFormDateRange = (values: TimeframeFormValues): DateRange => {
     year: parseSelectNumber(values.startYear, 'year', minYear, getMaxYear(timeZone)),
     month: parseSelectNumber(values.startMonth, 'month', 1, 12),
     day: parseSelectNumber(values.startDay, 'day', 1, 31),
-    startHour: parseSelectNumber(values.startHour, 'hour', 0, 23),
     timeZone,
     durationDays: parseSelectNumber(values.durationDays, 'chart length', 1, 7),
   });
@@ -209,8 +195,14 @@ export const readTimeframePostData = (
     typeof data.endDate !== 'string' ||
     typeof data.startIso !== 'string' ||
     typeof data.endIso !== 'string' ||
-    typeof data.createdAt !== 'string'
+    typeof data.createdAt !== 'string' ||
+    typeof data.timeZone !== 'string' ||
+    typeof data.durationDays !== 'number'
   ) {
+    return null;
+  }
+
+  if ('startHour' in postDataValue) {
     return null;
   }
 
@@ -226,8 +218,6 @@ export const readTimeframePostData = (
   const startIso = tryParseIsoDate(data.startIso);
   const endIso = tryParseIsoDate(data.endIso);
   const createdAt = tryParseIsoDate(data.createdAt);
-  const isTimeZoneRange =
-    data.timeZone !== undefined || data.startHour !== undefined || data.durationDays !== undefined;
 
   if (
     !start ||
@@ -240,44 +230,33 @@ export const readTimeframePostData = (
     return null;
   }
 
-  if (isTimeZoneRange) {
-    if (
-      typeof data.timeZone !== 'string' ||
-      typeof data.startHour !== 'number' ||
-      typeof data.durationDays !== 'number' ||
-      !Number.isInteger(data.startHour) ||
-      !Number.isInteger(data.durationDays) ||
-      data.startHour < 0 ||
-      data.startHour > 23 ||
-      data.durationDays < 1 ||
-      data.durationDays > 7 ||
-      !isValidTimeZone(data.timeZone)
-    ) {
-      return null;
-    }
+  if (
+    !Number.isInteger(data.durationDays) ||
+    data.durationDays < 1 ||
+    data.durationDays > 7 ||
+    !isValidTimeZone(data.timeZone)
+  ) {
+    return null;
+  }
 
-    const startDateParts = tryParseDateParts(data.startDate);
-    if (!startDateParts) {
-      return null;
-    }
+  const startDateParts = tryParseDateParts(data.startDate);
+  if (!startDateParts) {
+    return null;
+  }
 
-    const range = tryCreateDateRangeFromParts({
-      ...startDateParts,
-      startHour: data.startHour,
-      timeZone: data.timeZone,
-      durationDays: data.durationDays,
-    });
+  const range = tryCreateDateRangeFromParts({
+    ...startDateParts,
+    timeZone: data.timeZone,
+    durationDays: data.durationDays,
+  });
 
-    if (
-      !range ||
-      range.startDate !== data.startDate ||
-      range.endDate !== data.endDate ||
-      range.startIso !== data.startIso ||
-      range.endIso !== data.endIso
-    ) {
-      return null;
-    }
-  } else if (start.getTime() !== startIso.getTime() || end.getTime() !== endIso.getTime()) {
+  if (
+    !range ||
+    range.startDate !== data.startDate ||
+    range.endDate !== data.endDate ||
+    range.startIso !== data.startIso ||
+    range.endIso !== data.endIso
+  ) {
     return null;
   }
 
@@ -288,13 +267,9 @@ export const readTimeframePostData = (
     startIso: data.startIso,
     endIso: data.endIso,
     createdAt: data.createdAt,
+    timeZone: data.timeZone,
+    durationDays: data.durationDays,
   };
-
-  if (isTimeZoneRange) {
-    validatedPostData.timeZone = data.timeZone;
-    validatedPostData.startHour = data.startHour;
-    validatedPostData.durationDays = data.durationDays;
-  }
 
   if (data.dataSourceSubredditName === TEST_DATA_SOURCE_SUBREDDIT_NAME) {
     validatedPostData.dataSourceSubredditName = data.dataSourceSubredditName;
@@ -302,8 +277,8 @@ export const readTimeframePostData = (
 
   return {
     postData: validatedPostData,
-    start: isTimeZoneRange ? startIso : start,
-    end: isTimeZoneRange ? endIso : end,
+    start: startIso,
+    end: endIso,
     createdAt,
   };
 };
@@ -329,7 +304,6 @@ const createDateRangeFromParts = (parts: TimeframeParts): DateRange => {
   const endExclusiveDate = addCalendarDays(parts, parts.durationDays);
   const endExclusive = zonedDateTimeToUtc({
     ...endExclusiveDate,
-    startHour: parts.startHour,
     timeZone: parts.timeZone,
     durationDays: parts.durationDays,
   });
@@ -341,7 +315,6 @@ const createDateRangeFromParts = (parts: TimeframeParts): DateRange => {
     startIso: start.toISOString(),
     endIso: end.toISOString(),
     timeZone: parts.timeZone,
-    startHour: parts.startHour,
     durationDays: parts.durationDays,
   };
 };
@@ -424,11 +397,30 @@ const createRangeOptions = (
   });
 
 const createTimeZoneOptions = (currentTimeZone: string): { label: string; value: string }[] => {
-  const timeZones = new Set([defaultTimeZone, ...getSupportedTimeZones(), currentTimeZone]);
-  return [...timeZones].sort().map((timeZone) => ({
-    label: timeZone.replaceAll('_', ' '),
-    value: timeZone,
-  }));
+  const orderedTimeZones = [
+    defaultTimeZone,
+    ...(currentTimeZone === defaultTimeZone ? [] : [currentTimeZone]),
+    ...getSupportedTimeZones().sort(),
+  ];
+  const seenTimeZones = new Set<string>();
+
+  return orderedTimeZones.flatMap((timeZone) => {
+    if (seenTimeZones.has(timeZone)) {
+      return [];
+    }
+
+    seenTimeZones.add(timeZone);
+
+    return [
+      {
+        label:
+          timeZone === currentTimeZone
+            ? `${formatTimeZoneLabel(timeZone)} (your timezone)`
+            : formatTimeZoneLabel(timeZone),
+        value: timeZone,
+      },
+    ];
+  });
 };
 
 const getSupportedTimeZones = (): string[] => {
@@ -438,6 +430,8 @@ const getSupportedTimeZones = (): string[] => {
 
   return Intl.supportedValuesOf('timeZone');
 };
+
+const formatTimeZoneLabel = (timeZone: string): string => timeZone.replaceAll('_', ' ');
 
 const parseSelectNumber = (
   value: SelectValue,
@@ -509,7 +503,7 @@ const isValidTimeZone = (timeZone: string): boolean => {
 };
 
 const zonedDateTimeToUtc = (parts: TimeframeParts): Date => {
-  const naiveUtc = Date.UTC(parts.year, parts.month - 1, parts.day, parts.startHour);
+  const naiveUtc = Date.UTC(parts.year, parts.month - 1, parts.day, defaultStartHour);
   let utc = naiveUtc;
 
   for (let iteration = 0; iteration < 3; iteration += 1) {
@@ -530,7 +524,7 @@ const zonedDateTimeToUtc = (parts: TimeframeParts): Date => {
     actualParts.year !== parts.year ||
     actualParts.month !== parts.month ||
     actualParts.day !== parts.day ||
-    actualParts.hour !== parts.startHour
+    actualParts.hour !== defaultStartHour
   ) {
     throw new Error('Selected start time does not exist in that timezone.');
   }

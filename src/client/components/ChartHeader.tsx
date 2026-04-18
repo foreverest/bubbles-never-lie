@@ -3,7 +3,7 @@ import { useEffect, useRef, useState } from 'react';
 import type { ChartResponseMetadata } from '../../shared/api';
 import type { ChartPreferences, TabName, ThemeMode } from '../types';
 import { TABS, getTabLabel } from '../types';
-import { formatTimeframeDateRangeLabel } from '../utils/date';
+import { formatTimeframeDateRangeLabels } from '../utils/date';
 
 type OpenMenu = 'sections' | 'settings' | 'mobile' | null;
 
@@ -48,7 +48,7 @@ export function ChartHeader({
   const settingsRef = useRef<HTMLDivElement | null>(null);
   const mobileControlsRef = useRef<HTMLDivElement | null>(null);
   const activeTabLabel = getTabLabel(activeTab);
-  const timeframeLabel = formatTimeframeDateRangeLabel(data.timeframe);
+  const timeframeLabel = formatTimeframeDateRangeLabels(data.timeframe);
   const activePanelId = TABS.find((tab) => tab.name === activeTab)?.panelId ?? `${activeTab}-panel`;
   const settings: ChartSetting[] = [
     {
@@ -116,7 +116,14 @@ export function ChartHeader({
             ) : null}
             <span>r/{data.subredditName}</span>
           </div>
-          <p className="chart-title__meta">{timeframeLabel}</p>
+          <p
+            aria-label={timeframeLabel.fullLabel}
+            className="chart-title__meta"
+            title={timeframeLabel.fullLabel}
+          >
+            <span className="chart-title__meta-desktop">{timeframeLabel.fullLabel}</span>
+            <span className="chart-title__meta-mobile">{timeframeLabel.compactLabel}</span>
+          </p>
         </div>
       </div>
 
