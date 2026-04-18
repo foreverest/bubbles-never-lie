@@ -30,8 +30,8 @@ export function PostsChart({
     [currentUsername, data.posts]
   );
   const helpDetails = useMemo(
-    () => createPostsChartHelpDetails(data.posts.length),
-    [data.posts.length]
+    () => createPostsChartHelpDetails(),
+    []
   );
   const handleChartInit = useCallback((chart: EChartsInstance) => {
     const handleChartClick = (params: ChartEventParams) => {

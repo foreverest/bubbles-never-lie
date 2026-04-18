@@ -8,14 +8,10 @@ export type ChartHelpItem = {
 
 export type ChartHelpDetails = {
   items: ChartHelpItem[];
-  totalBubbles: number;
-  totalBubblesLabel: string;
 };
 
-export function createPostsChartHelpDetails(
-  totalBubbles: number
-): ChartHelpDetails {
-  return createChartHelpDetails(totalBubbles, [
+export function createPostsChartHelpDetails(): ChartHelpDetails {
+  return createChartHelpDetails([
     {
       kind: 'x-axis',
       label: 'X axis',
@@ -39,10 +35,8 @@ export function createPostsChartHelpDetails(
   ]);
 }
 
-export function createCommentsChartHelpDetails(
-  totalBubbles: number
-): ChartHelpDetails {
-  return createChartHelpDetails(totalBubbles, [
+export function createCommentsChartHelpDetails(): ChartHelpDetails {
+  return createChartHelpDetails([
     {
       kind: 'x-axis',
       label: 'X axis',
@@ -61,10 +55,8 @@ export function createCommentsChartHelpDetails(
   ]);
 }
 
-export function createContributorsChartHelpDetails(
-  totalBubbles: number
-): ChartHelpDetails {
-  return createChartHelpDetails(totalBubbles, [
+export function createContributorsChartHelpDetails(): ChartHelpDetails {
+  return createChartHelpDetails([
     {
       kind: 'x-axis',
       label: 'X axis',
@@ -88,19 +80,8 @@ export function createContributorsChartHelpDetails(
   ]);
 }
 
-function createChartHelpDetails(
-  totalBubbles: number,
-  items: ChartHelpItem[]
-): ChartHelpDetails {
+function createChartHelpDetails(items: ChartHelpItem[]): ChartHelpDetails {
   return {
     items,
-    totalBubbles,
-    totalBubblesLabel: formatTotalBubbles(totalBubbles),
   };
-}
-
-function formatTotalBubbles(totalBubbles: number): string {
-  const bubbleLabel = totalBubbles === 1 ? 'bubble' : 'bubbles';
-
-  return `${totalBubbles.toLocaleString()} total ${bubbleLabel}`;
 }

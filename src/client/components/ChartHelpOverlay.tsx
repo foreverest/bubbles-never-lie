@@ -126,16 +126,6 @@ export function ChartHelpOverlay({ details }: { details: ChartHelpDetails }) {
               </div>
             ))}
           </div>
-
-          <div className="chart-help__divider" />
-          <p className="chart-help__total">
-            <span className="chart-help__total-value">
-              {details.totalBubbles.toLocaleString()}
-            </span>
-            <span>
-              {details.totalBubbles === 1 ? 'total bubble' : 'total bubbles'}
-            </span>
-          </p>
         </div>
       ) : null}
     </div>

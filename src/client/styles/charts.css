@@ -126,26 +126,3 @@
   line-height: 1.25;
   overflow-wrap: anywhere;
 }
-
-.chart-help__divider {
-  height: 1px;
-  margin: 12px 0 10px;
-  background: var(--color-border);
-}
-
-.chart-help__total {
-  display: flex;
-  align-items: baseline;
-  gap: 6px;
-  margin: 0;
-  color: var(--color-muted);
-  font-size: 0.82rem;
-  font-weight: 700;
-  line-height: 1.2;
-}
-
-.chart-help__total-value {
-  color: var(--color-text);
-  font-size: 1rem;
-  font-weight: 850;
-}

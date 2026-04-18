@@ -6,11 +6,9 @@ import {
   createPostsChartHelpDetails,
 } from './help';
 
-test('posts chart help describes all visual encodings and total bubbles', () => {
-  const details = createPostsChartHelpDetails(1234);
+test('posts chart help describes all visual encodings', () => {
+  const details = createPostsChartHelpDetails();
 
-  expect(details.totalBubbles).toBe(1234);
-  expect(details.totalBubblesLabel).toBe('1,234 total bubbles');
   expect(details.items.map((item) => item.kind)).toEqual([
     'x-axis',
     'y-axis',
@@ -26,9 +24,8 @@ test('posts chart help describes all visual encodings and total bubbles', () => 
 });
 
 test('comments chart help omits bubble size and describes parent-post color', () => {
-  const details = createCommentsChartHelpDetails(7);
+  const details = createCommentsChartHelpDetails();
 
-  expect(details.totalBubblesLabel).toBe('7 total bubbles');
   expect(details.items.map((item) => item.kind)).toEqual([
     'x-axis',
     'y-axis',
@@ -42,9 +39,8 @@ test('comments chart help omits bubble size and describes parent-post color', ()
 });
 
 test('contributors chart help maps axes to comment and post upvotes', () => {
-  const details = createContributorsChartHelpDetails(1);
+  const details = createContributorsChartHelpDetails();
 
-  expect(details.totalBubblesLabel).toBe('1 total bubble');
   expect(details.items.map((item) => item.kind)).toEqual([
     'x-axis',
     'y-axis',

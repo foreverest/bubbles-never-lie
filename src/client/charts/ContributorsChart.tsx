@@ -32,8 +32,8 @@ export function ContributorsChart({
     [currentUsername, data.contributors]
   );
   const helpDetails = useMemo(
-    () => createContributorsChartHelpDetails(data.contributors.length),
-    [data.contributors.length]
+    () => createContributorsChartHelpDetails(),
+    []
   );
   const handleChartInit = useCallback((chart: EChartsInstance) => {
     const handleChartClick = (params: ChartEventParams) => {
