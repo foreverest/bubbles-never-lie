@@ -1,4 +1,4 @@
-const DEV_SUBREDDIT_NAME = 'bubble_stats_dev';
+const DEV_SUBREDDIT_NAME = 'bubblesneverlie_dev';
 export const TEST_DATA_SOURCE_SUBREDDIT_NAME = 'redditstock';
 
 export const normalizeSubredditName = (subredditName: string): string =>
@@ -10,7 +10,9 @@ export const isDevSubreddit = (subredditName: string): boolean =>
 export const canUseTestDataSource = (subredditName: string): boolean =>
   isDevSubreddit(subredditName);
 
-export const getCacheRefreshSubredditNames = (subredditName: string): string[] => {
+export const getCacheRefreshSubredditNames = (
+  subredditName: string
+): string[] => {
   const normalizedSubredditName = normalizeSubredditName(subredditName);
 
   return isDevSubreddit(subredditName)
@@ -30,5 +32,7 @@ export const resolveChartDataSubredditName = (
     : normalizedSubredditName;
 };
 
-export const shouldUseSyntheticContributorKarma = (subredditName: string): boolean =>
+export const shouldUseSyntheticContributorKarma = (
+  subredditName: string
+): boolean =>
   normalizeSubredditName(subredditName) === TEST_DATA_SOURCE_SUBREDDIT_NAME;

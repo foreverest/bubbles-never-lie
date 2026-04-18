@@ -37,7 +37,8 @@ export const refreshContributorCache = async (
       }),
     ]);
     const usernames = getUniqueRefreshableContributorNames(posts, comments);
-    const useSyntheticContributorKarma = shouldUseSyntheticContributorKarma(subredditName);
+    const useSyntheticContributorKarma =
+      shouldUseSyntheticContributorKarma(subredditName);
 
     logger.info('Loaded contributor cache candidates', {
       subredditName,
@@ -51,7 +52,11 @@ export const refreshContributorCache = async (
       usernames,
       CONTRIBUTOR_METADATA_CONCURRENCY,
       async (username) =>
-        await getContributorEntity(username, fetchedAt, useSyntheticContributorKarma)
+        await getContributorEntity(
+          username,
+          fetchedAt,
+          useSyntheticContributorKarma
+        )
     );
 
     await dataLayer.contributors.upsertMany(refreshedContributors);
@@ -142,7 +147,10 @@ const getUniqueRefreshableContributorNames = (
 ): string[] =>
   Array.from(
     new Set(
-      [...posts.map((post) => post.authorName), ...comments.map((comment) => comment.authorName)]
+      [
+        ...posts.map((post) => post.authorName),
+        ...comments.map((comment) => comment.authorName),
+      ]
         .map((username) => username.trim())
         .filter((username) => username !== '' && username !== '[deleted]')
     )

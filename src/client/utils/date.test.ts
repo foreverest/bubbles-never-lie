@@ -37,7 +37,9 @@ test('formats single-day and range timeframe labels', () => {
   const start = new Date(baseTimeframe.startIso);
   const end = new Date(baseTimeframe.endIso);
 
-  expect(formatTimeframeDatePhrase(baseTimeframe)).toBe(`on ${localDateFormatter.format(start)}`);
+  expect(formatTimeframeDatePhrase(baseTimeframe)).toBe(
+    `on ${localDateFormatter.format(start)}`
+  );
   expect(formatTimeframeDateRangeLabel(baseTimeframe)).toBe(
     `${localDateTimeFormatter.format(start)} - ${localDateTimeFormatter.format(end)}`
   );
@@ -68,10 +70,14 @@ test('formats relative ages with short and long labels', () => {
   vi.setSystemTime(new Date('2024-02-29T12:00:00.000Z'));
 
   try {
-    expect(formatRelativeAge(new Date('2024-02-29T11:00:00.000Z'))).toBe('1 hr. ago');
-    expect(formatRelativeAge(new Date('2024-02-28T12:00:00.000Z'), { labelStyle: 'long' })).toBe(
-      '1 day ago'
+    expect(formatRelativeAge(new Date('2024-02-29T11:00:00.000Z'))).toBe(
+      '1 hr. ago'
     );
+    expect(
+      formatRelativeAge(new Date('2024-02-28T12:00:00.000Z'), {
+        labelStyle: 'long',
+      })
+    ).toBe('1 day ago');
   } finally {
     vi.useRealTimers();
   }

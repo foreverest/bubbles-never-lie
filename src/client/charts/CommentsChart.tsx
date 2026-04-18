@@ -5,11 +5,18 @@ import { ChartHelpOverlay } from '../components/ChartHelpOverlay';
 import { useCurrentUsername } from '../hooks/useCurrentUsername';
 import type { ResolvedTheme } from '../types';
 import { openRedditUrl } from '../utils/navigation';
-import { getCommentGroupSeriesId, isCommentBubbleDatum, toCommentBubbleDatum } from './data';
+import {
+  getCommentGroupSeriesId,
+  isCommentBubbleDatum,
+  toCommentBubbleDatum,
+} from './data';
 import type { EChartsInstance } from './echarts';
 import { createCommentsChartHelpDetails } from './help';
 import { createCommentsOption } from './options/comments';
-import { COMMENT_BUBBLE_SIZE, COMMENT_GROUP_EMPHASIZED_BUBBLE_SIZE } from './sizing';
+import {
+  COMMENT_BUBBLE_SIZE,
+  COMMENT_GROUP_EMPHASIZED_BUBBLE_SIZE,
+} from './sizing';
 import { readVisibleTimeRange } from './timeAxis';
 import type { ChartEventParams, CommentBubbleDatum } from './types';
 import { useEChart } from './useEChart';
@@ -28,7 +35,10 @@ export function CommentsChart({
   const emphasizedCommentGroupRef = useRef<string | null>(null);
   const currentUsername = useCurrentUsername();
   const chartData = useMemo<CommentBubbleDatum[]>(
-    () => data.comments.map((comment) => toCommentBubbleDatum(comment, currentUsername)),
+    () =>
+      data.comments.map((comment) =>
+        toCommentBubbleDatum(comment, currentUsername)
+      ),
     [currentUsername, data.comments]
   );
   const helpDetails = useMemo(
@@ -148,7 +158,14 @@ export function CommentsChart({
       ),
       true
     );
-  }, [chartData, chartRef, currentUserRippleEnabled, data, resolvedTheme, zoomEnabled]);
+  }, [
+    chartData,
+    chartRef,
+    currentUserRippleEnabled,
+    data,
+    resolvedTheme,
+    zoomEnabled,
+  ]);
 
   return (
     <div className="chart-stage-shell">

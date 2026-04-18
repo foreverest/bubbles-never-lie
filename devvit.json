@@ -1,13 +1,16 @@
 {
   "$schema": "https://developers.reddit.com/schema/config-file.v1.json",
-  "name": "bubble-stats",
+  "name": "bubblesneverlie",
   "post": {
     "dir": "dist/client",
     "entrypoints": {
       "default": {
-        "entry": "app.html",
+        "entry": "splash.html",
         "height": "tall",
         "inline": true
+      },
+      "game": {
+        "entry": "game.html"
       }
     }
   },
@@ -37,7 +40,7 @@
     "timeframeForm": "/internal/form/create-chart-submit"
   },
   "triggers": {
-    "onAppInstall": "/internal/cache/refresh-app-cache"
+    "onAppInstall": "/internal/triggers/on-app-install"
   },
   "scheduler": {
     "tasks": {
@@ -68,6 +71,6 @@
     "build": "vite build"
   },
   "dev": {
-    "subreddit": "bubble_stats_dev"
+    "subreddit": "bubblesneverlie_dev"
   }
 }

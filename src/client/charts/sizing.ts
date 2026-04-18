@@ -17,7 +17,10 @@ export function getContributorBubbleSize(
   return getScaledBubbleSize(count / maxContributionCount);
 }
 
-export function getPostBubbleSize(commentCount: number, maxCommentCount: number): number {
+export function getPostBubbleSize(
+  commentCount: number,
+  maxCommentCount: number
+): number {
   const count = Math.max(0, commentCount);
 
   if (maxCommentCount <= 0) {

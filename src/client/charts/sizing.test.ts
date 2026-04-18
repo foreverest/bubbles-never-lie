@@ -1,6 +1,10 @@
 import { expect, test } from 'vitest';
 
-import { getContributorBubbleSize, getPostBubbleSize, getScaledBubbleSize } from './sizing';
+import {
+  getContributorBubbleSize,
+  getPostBubbleSize,
+  getScaledBubbleSize,
+} from './sizing';
 
 test('clamps scaled bubble sizes', () => {
   expect(getScaledBubbleSize(-1)).toBe(10);

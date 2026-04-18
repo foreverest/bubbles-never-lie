@@ -62,7 +62,8 @@ export function toContributorBubbleDatum(
     value: [contributor.commentScore, contributor.postScore, contributionCount],
     contributorName: contributor.contributorName,
     contributorAvatarUrl: contributor.contributorAvatarUrl,
-    contributorSubredditKarmaBucket: contributor.contributorSubredditKarmaBucket,
+    contributorSubredditKarmaBucket:
+      contributor.contributorSubredditKarmaBucket,
     postCount: contributor.postCount,
     commentCount: contributor.commentCount,
     contributionCount,
@@ -73,7 +74,9 @@ export function toContributorBubbleDatum(
   };
 }
 
-export function groupCommentsByPost(data: CommentBubbleDatum[]): CommentGroup[] {
+export function groupCommentsByPost(
+  data: CommentBubbleDatum[]
+): CommentGroup[] {
   const groups = new Map<string, CommentGroup>();
 
   data.forEach((datum) => {
@@ -105,15 +108,21 @@ export function isPostBubbleDatum(value: unknown): value is PostBubbleDatum {
   return hasDatumKind(value, 'post');
 }
 
-export function isCommentBubbleDatum(value: unknown): value is CommentBubbleDatum {
+export function isCommentBubbleDatum(
+  value: unknown
+): value is CommentBubbleDatum {
   return hasDatumKind(value, 'comment');
 }
 
-export function isContributorBubbleDatum(value: unknown): value is ContributorBubbleDatum {
+export function isContributorBubbleDatum(
+  value: unknown
+): value is ContributorBubbleDatum {
   return hasDatumKind(value, 'contributor');
 }
 
-export function isSubredditKarmaBucket(value: unknown): value is SubredditKarmaBucket | null {
+export function isSubredditKarmaBucket(
+  value: unknown
+): value is SubredditKarmaBucket | null {
   return (
     value === null ||
     (typeof value === 'number' &&
@@ -123,7 +132,9 @@ export function isSubredditKarmaBucket(value: unknown): value is SubredditKarmaB
   );
 }
 
-export function normalizeUsername(username: string | null | undefined): string | null {
+export function normalizeUsername(
+  username: string | null | undefined
+): string | null {
   if (typeof username !== 'string') {
     return null;
   }
@@ -137,7 +148,8 @@ export function getCurrentUserDatumFields(
   username: string,
   currentUsername: string | null
 ): CurrentUserDatumFields {
-  const isCurrentUser = currentUsername !== null && normalizeUsername(username) === currentUsername;
+  const isCurrentUser =
+    currentUsername !== null && normalizeUsername(username) === currentUsername;
 
   return { isCurrentUser };
 }
@@ -145,7 +157,10 @@ export function getCurrentUserDatumFields(
 function hasDatumKind<Kind extends 'post' | 'comment' | 'contributor'>(
   value: unknown,
   kind: Kind
-): value is Extract<PostBubbleDatum | CommentBubbleDatum | ContributorBubbleDatum, { kind: Kind }> {
+): value is Extract<
+  PostBubbleDatum | CommentBubbleDatum | ContributorBubbleDatum,
+  { kind: Kind }
+> {
   return Boolean(
     value &&
     typeof value === 'object' &&

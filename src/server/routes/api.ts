@@ -12,14 +12,23 @@ import {
   readContributorCountForTimeframe,
   readContributorsForTimeframe,
 } from '../core/contributor-chart';
-import { readCommentCountForTimeframe, readCommentsForTimeframe } from '../core/comment-cache';
-import { readPostCountForTimeframe, readPostsForTimeframe } from '../core/post-cache';
+import {
+  readCommentCountForTimeframe,
+  readCommentsForTimeframe,
+} from '../core/comment-cache';
+import {
+  readPostCountForTimeframe,
+  readPostsForTimeframe,
+} from '../core/post-cache';
 import { readCachedSubredditIconUrl } from '../core/subreddit-icons';
 import { resolveChartDataSubredditName } from '../core/subreddits';
 import type { ValidatedTimeframePostData } from '../core/timeframe';
 import { readTimeframePostData } from '../core/timeframe';
 import { createLogger, type ComponentLogger } from '../logging/logger';
-import { createChartDataCacheKey, type ChartDataCacheEndpoint } from './chart-response-cache';
+import {
+  createChartDataCacheKey,
+  type ChartDataCacheEndpoint,
+} from './chart-response-cache';
 
 export const api = new Hono();
 const postsApiLogger = createLogger('posts-api');
@@ -27,12 +36,16 @@ const commentsApiLogger = createLogger('comments-api');
 const contributorsApiLogger = createLogger('contributors-api');
 const statsApiLogger = createLogger('stats-api');
 const chartDataCacheTtlSeconds = 30;
-const missingTimeframeMessage = 'This post is missing a bubble stats date range.';
-const postsErrorMessage = 'Unable to load subreddit post chart data. Try again shortly.';
-const commentsErrorMessage = 'Unable to load subreddit comment chart data. Try again shortly.';
+const missingTimeframeMessage =
+  'This post is missing a bubble stats date range.';
+const postsErrorMessage =
+  'Unable to load subreddit post chart data. Try again shortly.';
+const commentsErrorMessage =
+  'Unable to load subreddit comment chart data. Try again shortly.';
 const contributorsErrorMessage =
   'Unable to load subreddit contributor chart data. Try again shortly.';
-const statsErrorMessage = 'Unable to load subreddit stats data. Try again shortly.';
+const statsErrorMessage =
+  'Unable to load subreddit stats data. Try again shortly.';
 
 api.get('/posts', async (c) => {
   const logger = postsApiLogger;
@@ -40,7 +53,10 @@ api.get('/posts', async (c) => {
   logger.info('Received posts chart data request', createRequestLogMetadata());
 
   if (!chartContext) {
-    logger.warn('Missing timeframe for posts chart data request', createRequestLogMetadata());
+    logger.warn(
+      'Missing timeframe for posts chart data request',
+      createRequestLogMetadata()
+    );
 
     return c.json<ErrorResponse>(
       {
@@ -52,19 +68,24 @@ api.get('/posts', async (c) => {
   }
 
   try {
-    const response = await readCachedChartDataResponse('posts', chartContext, logger, async () => {
-      const cachedPosts = await readPostsForTimeframe({
-        subredditName: chartContext.subredditName,
-        startTime: chartContext.startTime,
-        endTime: chartContext.endTime,
-      });
+    const response = await readCachedChartDataResponse(
+      'posts',
+      chartContext,
+      logger,
+      async () => {
+        const cachedPosts = await readPostsForTimeframe({
+          subredditName: chartContext.subredditName,
+          startTime: chartContext.startTime,
+          endTime: chartContext.endTime,
+        });
 
-      return {
-        ...(await createChartMetadata(chartContext)),
-        type: 'posts-chart-data',
-        posts: cachedPosts.posts,
-      };
-    });
+        return {
+          ...(await createChartMetadata(chartContext)),
+          type: 'posts-chart-data',
+          posts: cachedPosts.posts,
+        };
+      }
+    );
 
     logger.info('Loaded posts chart data', {
       ...createChartLogMetadata(chartContext),
@@ -92,10 +113,16 @@ api.get('/posts', async (c) => {
 api.get('/comments', async (c) => {
   const logger = commentsApiLogger;
   const chartContext = readChartContext();
-  logger.info('Received comments chart data request', createRequestLogMetadata());
+  logger.info(
+    'Received comments chart data request',
+    createRequestLogMetadata()
+  );
 
   if (!chartContext) {
-    logger.warn('Missing timeframe for comments chart data request', createRequestLogMetadata());
+    logger.warn(
+      'Missing timeframe for comments chart data request',
+      createRequestLogMetadata()
+    );
 
     return c.json<ErrorResponse>(
       {
@@ -152,7 +179,10 @@ api.get('/comments', async (c) => {
 api.get('/contributors', async (c) => {
   const logger = contributorsApiLogger;
   const chartContext = readChartContext();
-  logger.info('Received contributors chart data request', createRequestLogMetadata());
+  logger.info(
+    'Received contributors chart data request',
+    createRequestLogMetadata()
+  );
 
   if (!chartContext) {
     logger.warn(
@@ -218,7 +248,10 @@ api.get('/stats', async (c) => {
   logger.info('Received stats data request', createRequestLogMetadata());
 
   if (!chartContext) {
-    logger.warn('Missing timeframe for stats data request', createRequestLogMetadata());
+    logger.warn(
+      'Missing timeframe for stats data request',
+      createRequestLogMetadata()
+    );
 
     return c.json<ErrorResponse>(
       {
@@ -230,32 +263,37 @@ api.get('/stats', async (c) => {
   }
 
   try {
-    const response = await readCachedChartDataResponse('stats', chartContext, logger, async () => {
-      const [posts, comments, contributors] = await Promise.all([
-        readPostCountForTimeframe({
-          subredditName: chartContext.subredditName,
-          startTime: chartContext.startTime,
-          endTime: chartContext.endTime,
-        }),
-        readCommentCountForTimeframe({
-          subredditName: chartContext.subredditName,
-          startTime: chartContext.startTime,
-          endTime: chartContext.endTime,
-        }),
-        readContributorCountForTimeframe({
-          subredditName: chartContext.subredditName,
-          startTime: chartContext.startTime,
-          endTime: chartContext.endTime,
-        }),
-      ]);
+    const response = await readCachedChartDataResponse(
+      'stats',
+      chartContext,
+      logger,
+      async () => {
+        const [posts, comments, contributors] = await Promise.all([
+          readPostCountForTimeframe({
+            subredditName: chartContext.subredditName,
+            startTime: chartContext.startTime,
+            endTime: chartContext.endTime,
+          }),
+          readCommentCountForTimeframe({
+            subredditName: chartContext.subredditName,
+            startTime: chartContext.startTime,
+            endTime: chartContext.endTime,
+          }),
+          readContributorCountForTimeframe({
+            subredditName: chartContext.subredditName,
+            startTime: chartContext.startTime,
+            endTime: chartContext.endTime,
+          }),
+        ]);
 
-      return {
-        type: 'stats-data',
-        postCount: posts.postCount,
-        commentCount: comments.commentCount,
-        contributorCount: contributors.contributorCount,
-      };
-    });
+        return {
+          type: 'stats-data',
+          postCount: posts.postCount,
+          commentCount: comments.commentCount,
+          contributorCount: contributors.contributorCount,
+        };
+      }
+    );
 
     logger.info('Loaded stats data', {
       ...createChartLogMetadata(chartContext),
@@ -302,7 +340,9 @@ type CacheableJsonValue =
   | CacheableJsonValue[]
   | { [key: string]: CacheableJsonValue };
 
-const readCachedChartDataResponse = async <Response extends CacheableChartDataResponse>(
+const readCachedChartDataResponse = async <
+  Response extends CacheableChartDataResponse,
+>(
   endpoint: ChartDataCacheEndpoint,
   chartContext: ChartContext,
   logger: ComponentLogger,

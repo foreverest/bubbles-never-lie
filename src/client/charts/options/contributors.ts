@@ -15,7 +15,8 @@ import {
   getChartTheme,
 } from './common';
 
-const CURRENT_USER_CONTRIBUTOR_RIPPLE_SERIES_ID = 'current-user-contributor-ripple';
+const CURRENT_USER_CONTRIBUTOR_RIPPLE_SERIES_ID =
+  'current-user-contributor-ripple';
 const CONTRIBUTOR_ENCODE = {
   x: 0,
   y: 1,
@@ -28,15 +29,30 @@ export function createContributorsOption(
   resolvedTheme: ResolvedTheme = 'light'
 ): EChartsCoreOption {
   const chartTheme = getChartTheme(resolvedTheme);
-  const minCommentScore = Math.min(0, ...data.map((datum) => datum.commentScore));
-  const maxCommentScore = Math.max(0, ...data.map((datum) => datum.commentScore));
+  const minCommentScore = Math.min(
+    0,
+    ...data.map((datum) => datum.commentScore)
+  );
+  const maxCommentScore = Math.max(
+    0,
+    ...data.map((datum) => datum.commentScore)
+  );
   const minPostScore = Math.min(0, ...data.map((datum) => datum.postScore));
   const maxPostScore = Math.max(0, ...data.map((datum) => datum.postScore));
-  const maxContributionCount = Math.max(0, ...data.map((datum) => datum.contributionCount));
+  const maxContributionCount = Math.max(
+    0,
+    ...data.map((datum) => datum.contributionCount)
+  );
   const currentUserData = data.filter((datum) => datum.isCurrentUser);
-  const getContributorSymbolSize = (_value: unknown, params?: { data?: unknown }) => {
+  const getContributorSymbolSize = (
+    _value: unknown,
+    params?: { data?: unknown }
+  ) => {
     const datum = isContributorBubbleDatum(params?.data) ? params.data : null;
-    return getContributorBubbleSize(datum?.contributionCount ?? 0, maxContributionCount);
+    return getContributorBubbleSize(
+      datum?.contributionCount ?? 0,
+      maxContributionCount
+    );
   };
   const getContributorBubbleColor = (params: { data?: unknown }) => {
     const datum = isContributorBubbleDatum(params.data) ? params.data : null;
@@ -52,7 +68,9 @@ export function createContributorsOption(
     grid: createChartGrid({ bottom: 44, left: 52 }),
     tooltip: createChartTooltip((params) => {
       const datum = isContributorBubbleDatum(params.data) ? params.data : null;
-      return datum ? renderContributorTooltip(datum, chartTheme.tooltipVariant) : '';
+      return datum
+        ? renderContributorTooltip(datum, chartTheme.tooltipVariant)
+        : '';
     }, chartTheme),
     xAxis: createValueAxis(
       {

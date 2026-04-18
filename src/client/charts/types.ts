@@ -1,4 +1,7 @@
-import type { CommentBodyPreviewKind, SubredditKarmaBucket } from '../../shared/api';
+import type {
+  CommentBodyPreviewKind,
+  SubredditKarmaBucket,
+} from '../../shared/api';
 
 export type CurrentUserDatumFields = {
   isCurrentUser: boolean;
@@ -56,5 +59,7 @@ export type TimeRange = {
 
 export type ChartEventParams = { data?: unknown };
 export type GetVisibleTimeRange = () => TimeRange | null;
-export type SymbolSizeOption = number | ((_value: unknown, params?: ChartEventParams) => number);
+export type SymbolSizeOption =
+  | number
+  | ((_value: unknown, params?: ChartEventParams) => number);
 export type RippleColorOption = string | ((params: ChartEventParams) => string);

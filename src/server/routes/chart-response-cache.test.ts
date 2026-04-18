@@ -1,6 +1,9 @@
 import assert from 'node:assert/strict';
 import { test } from 'vitest';
-import { createChartDataCacheKey, type ChartDataCacheKeyOptions } from './chart-response-cache';
+import {
+  createChartDataCacheKey,
+  type ChartDataCacheKeyOptions,
+} from './chart-response-cache';
 
 const baseOptions: ChartDataCacheKeyOptions = {
   endpoint: 'posts',
@@ -18,8 +21,14 @@ test('chart data cache keys distinguish endpoint, post, subreddit, and timeframe
     createChartDataCacheKey({ ...baseOptions, postId: 't3_other_chart' }),
     createChartDataCacheKey({ ...baseOptions, postId: undefined }),
     createChartDataCacheKey({ ...baseOptions, subredditName: 'OtherSub' }),
-    createChartDataCacheKey({ ...baseOptions, startTime: baseOptions.startTime + 1 }),
-    createChartDataCacheKey({ ...baseOptions, endTime: baseOptions.endTime + 1 }),
+    createChartDataCacheKey({
+      ...baseOptions,
+      startTime: baseOptions.startTime + 1,
+    }),
+    createChartDataCacheKey({
+      ...baseOptions,
+      endTime: baseOptions.endTime + 1,
+    }),
   ];
 
   assert.equal(new Set(keys).size, keys.length);

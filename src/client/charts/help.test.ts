@@ -11,7 +11,12 @@ test('posts chart help describes all visual encodings and total bubbles', () => 
 
   expect(details.totalBubbles).toBe(1234);
   expect(details.totalBubblesLabel).toBe('1,234 total bubbles');
-  expect(details.items.map((item) => item.kind)).toEqual(['x-axis', 'y-axis', 'size', 'color']);
+  expect(details.items.map((item) => item.kind)).toEqual([
+    'x-axis',
+    'y-axis',
+    'size',
+    'color',
+  ]);
   expect(details.items.map((item) => item.description)).toEqual([
     'Post creation time',
     'Post upvotes',
@@ -24,7 +29,11 @@ test('comments chart help omits bubble size and describes parent-post color', ()
   const details = createCommentsChartHelpDetails(7);
 
   expect(details.totalBubblesLabel).toBe('7 total bubbles');
-  expect(details.items.map((item) => item.kind)).toEqual(['x-axis', 'y-axis', 'color']);
+  expect(details.items.map((item) => item.kind)).toEqual([
+    'x-axis',
+    'y-axis',
+    'color',
+  ]);
   expect(details.items.map((item) => item.description)).toEqual([
     'Comment creation time',
     'Comment upvotes',
@@ -36,7 +45,12 @@ test('contributors chart help maps axes to comment and post upvotes', () => {
   const details = createContributorsChartHelpDetails(1);
 
   expect(details.totalBubblesLabel).toBe('1 total bubble');
-  expect(details.items.map((item) => item.kind)).toEqual(['x-axis', 'y-axis', 'size', 'color']);
+  expect(details.items.map((item) => item.kind)).toEqual([
+    'x-axis',
+    'y-axis',
+    'size',
+    'color',
+  ]);
   expect(details.items.map((item) => item.description)).toEqual([
     'Total comment upvotes',
     'Total post upvotes',

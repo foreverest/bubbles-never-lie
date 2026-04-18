@@ -1,7 +1,11 @@
 import type { ResolvedTheme } from '../../types';
 import type { EChartsCoreOption } from '../echarts';
 import { formatXAxisLabel } from '../timeAxis';
-import type { GetVisibleTimeRange, RippleColorOption, SymbolSizeOption } from '../types';
+import type {
+  GetVisibleTimeRange,
+  RippleColorOption,
+  SymbolSizeOption,
+} from '../types';
 
 export const SOAP_BUBBLE_FILL_ALPHA = 0.9;
 export const COMMENT_BUBBLE_FILL_ALPHA = 0.94;
@@ -34,7 +38,8 @@ const CHART_THEMES: Record<ResolvedTheme, ChartTheme> = {
     axisNameColor: '#697780',
     tooltipBackgroundColor: '#ffffff',
     tooltipTextColor: '#0f1419',
-    tooltipExtraCss: 'border-radius:8px;box-shadow:0 18px 44px rgba(15,23,42,0.18);padding:0;',
+    tooltipExtraCss:
+      'border-radius:8px;box-shadow:0 18px 44px rgba(15,23,42,0.18);padding:0;',
     tooltipVariant: 'light',
     bubbleBorderColor: 'rgba(255, 255, 255, 0.88)',
     bubbleEmphasisBorderColor: 'rgba(255, 255, 255, 0.98)',
@@ -49,7 +54,8 @@ const CHART_THEMES: Record<ResolvedTheme, ChartTheme> = {
     axisNameColor: '#b7c2bd',
     tooltipBackgroundColor: '#151b19',
     tooltipTextColor: '#eef3ef',
-    tooltipExtraCss: 'border-radius:8px;box-shadow:0 18px 44px rgba(0,0,0,0.42);padding:0;',
+    tooltipExtraCss:
+      'border-radius:8px;box-shadow:0 18px 44px rgba(0,0,0,0.42);padding:0;',
     tooltipVariant: 'dark',
     bubbleBorderColor: 'rgba(238, 243, 239, 0.72)',
     bubbleEmphasisBorderColor: 'rgba(255, 255, 255, 0.95)',
@@ -70,7 +76,12 @@ const CURRENT_USER_RIPPLE_EFFECT = {
 } as const;
 
 export function createChartGrid(
-  overrides: Partial<{ top: number; right: number; bottom: number; left: number }> = {}
+  overrides: Partial<{
+    top: number;
+    right: number;
+    bottom: number;
+    left: number;
+  }> = {}
 ) {
   return {
     top: 24,
@@ -83,7 +94,9 @@ export function createChartGrid(
   };
 }
 
-export function getChartTheme(resolvedTheme: ResolvedTheme = 'light'): ChartTheme {
+export function getChartTheme(
+  resolvedTheme: ResolvedTheme = 'light'
+): ChartTheme {
   return CHART_THEMES[resolvedTheme];
 }
 
@@ -271,7 +284,10 @@ export function createCurrentUserRippleSeries({
   };
 }
 
-export function enableSingleAxisZoom(option: EChartsCoreOption, minSpan = 10): void {
+export function enableSingleAxisZoom(
+  option: EChartsCoreOption,
+  minSpan = 10
+): void {
   option.dataZoom = createSingleAxisDataZoom(minSpan);
 }
 

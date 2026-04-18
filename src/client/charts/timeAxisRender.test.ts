@@ -40,7 +40,14 @@ test('renders both time-axis edge labels on narrow time charts', () => {
   });
 
   try {
-    chart.setOption(createPostsOption([toPostBubbleDatum(post, 'alice')], chartData, false, false));
+    chart.setOption(
+      createPostsOption(
+        [toPostBubbleDatum(post, 'alice')],
+        chartData,
+        false,
+        false
+      )
+    );
 
     const renderedText = chart.renderToSVGString().replace(/<[^>]+>/g, ' ');
 

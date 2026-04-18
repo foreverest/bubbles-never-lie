@@ -40,7 +40,11 @@ export function useApiResource<Data>({
 
     async function loadData() {
       try {
-        const data = await fetchApiData<Data>(path, fallbackMessage, controller.signal);
+        const data = await fetchApiData<Data>(
+          path,
+          fallbackMessage,
+          controller.signal
+        );
         setState({ status: 'ready', data });
       } catch (error) {
         if (controller.signal.aborted) {

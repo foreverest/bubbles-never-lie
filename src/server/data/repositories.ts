@@ -1,11 +1,19 @@
-import { contributorEntityCodec, commentEntityCodec, postEntityCodec } from './codecs';
+import {
+  contributorEntityCodec,
+  commentEntityCodec,
+  postEntityCodec,
+} from './codecs';
 import { getDataKeys } from './keys';
 import {
   createRedisHashRepository,
   createRedisTimeIndexedRepository,
   type RedisDataClient,
 } from './redis-repository';
-import type { ContributorRepository, CommentRepository, PostRepository } from './types';
+import type {
+  ContributorRepository,
+  CommentRepository,
+  PostRepository,
+} from './types';
 
 export const createPostRepository = (
   subredditName: string,

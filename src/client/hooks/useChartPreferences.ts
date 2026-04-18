@@ -3,7 +3,8 @@ import type { Dispatch, SetStateAction } from 'react';
 
 import type { ChartPreferences, ThemeMode } from '../types';
 
-export const CHART_PREFERENCES_STORAGE_KEY = 'bubble-stats:chart-preferences:v1';
+export const CHART_PREFERENCES_STORAGE_KEY =
+  'bubble-stats:chart-preferences:v1';
 
 export const DEFAULT_CHART_PREFERENCES: ChartPreferences = {
   zoomEnabled: false,
@@ -58,7 +59,9 @@ function readStoredChartPreferences(): ChartPreferences {
   }
 
   try {
-    const storedPreferences = window.localStorage.getItem(CHART_PREFERENCES_STORAGE_KEY);
+    const storedPreferences = window.localStorage.getItem(
+      CHART_PREFERENCES_STORAGE_KEY
+    );
     if (!storedPreferences) {
       return DEFAULT_CHART_PREFERENCES;
     }
@@ -75,7 +78,10 @@ function writeStoredChartPreferences(preferences: ChartPreferences): void {
   }
 
   try {
-    window.localStorage.setItem(CHART_PREFERENCES_STORAGE_KEY, JSON.stringify(preferences));
+    window.localStorage.setItem(
+      CHART_PREFERENCES_STORAGE_KEY,
+      JSON.stringify(preferences)
+    );
   } catch {
     // localStorage can be unavailable in embedded or privacy-restricted browsers.
   }

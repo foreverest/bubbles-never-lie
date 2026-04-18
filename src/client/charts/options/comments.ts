@@ -42,7 +42,9 @@ export function createCommentsOption(
     grid: createChartGrid(),
     tooltip: createChartTooltip((params) => {
       const datum = isCommentBubbleDatum(params.data) ? params.data : null;
-      return datum ? renderCommentTooltip(datum, chartTheme.tooltipVariant) : '';
+      return datum
+        ? renderCommentTooltip(datum, chartTheme.tooltipVariant)
+        : '';
     }, chartTheme),
     xAxis: createTimeXAxis(startTime, endTime, getVisibleTimeRange, chartTheme),
     yAxis: {
@@ -54,7 +56,9 @@ export function createCommentsOption(
         getCommentGroupColor(group.postId),
         COMMENT_BUBBLE_FILL_ALPHA
       );
-      const currentUserComments = group.comments.filter((datum) => datum.isCurrentUser);
+      const currentUserComments = group.comments.filter(
+        (datum) => datum.isCurrentUser
+      );
 
       return [
         {

@@ -1,6 +1,9 @@
 import { reddit, redis } from '@devvit/web/server';
 import { createLogger } from '../logging/logger';
-import { normalizeSubredditName, TEST_DATA_SOURCE_SUBREDDIT_NAME } from './subreddits';
+import {
+  normalizeSubredditName,
+  TEST_DATA_SOURCE_SUBREDDIT_NAME,
+} from './subreddits';
 
 const logger = createLogger('subreddit-icons');
 const SUBREDDIT_ICON_URL_KEY_PREFIX = 'bubble-stats:subreddits:icon-url';
@@ -13,7 +16,9 @@ export type SubredditIconRefreshResult = {
   fetchedAt: string;
 };
 
-export const readCachedSubredditIconUrl = async (subredditName: string): Promise<string | null> => {
+export const readCachedSubredditIconUrl = async (
+  subredditName: string
+): Promise<string | null> => {
   const normalizedSubredditName = normalizeSubredditName(subredditName);
 
   if (normalizedSubredditName === TEST_DATA_SOURCE_SUBREDDIT_NAME) {
@@ -37,7 +42,9 @@ export const refreshCurrentSubredditIconCache = async (
 
   try {
     const fetchedAt = new Date().toISOString();
-    const subredditIconUrl = await fetchSubredditIconUrl(normalizedSubredditName);
+    const subredditIconUrl = await fetchSubredditIconUrl(
+      normalizedSubredditName
+    );
 
     await redis.hSet(getSubredditIconUrlKey(normalizedSubredditName), {
       subredditIconUrl: subredditIconUrl ?? '',
@@ -63,7 +70,9 @@ export const refreshCurrentSubredditIconCache = async (
   }
 };
 
-const fetchSubredditIconUrl = async (subredditName: string): Promise<string | null> => {
+const fetchSubredditIconUrl = async (
+  subredditName: string
+): Promise<string | null> => {
   if (subredditName === TEST_DATA_SOURCE_SUBREDDIT_NAME) {
     logger.debug('Using test data source subreddit icon', { subredditName });
     return TEST_DATA_SOURCE_SUBREDDIT_ICON_URL;
@@ -81,7 +90,9 @@ const fetchSubredditIconUrl = async (subredditName: string): Promise<string | nu
   return normalizeFetchedIconUrl(styles.icon);
 };
 
-const normalizeFetchedIconUrl = (iconUrl: string | undefined): string | null => {
+const normalizeFetchedIconUrl = (
+  iconUrl: string | undefined
+): string | null => {
   const normalized = iconUrl?.trim().replaceAll('&amp;', '&') ?? '';
 
   return normalized === '' ? null : normalized;

@@ -6,7 +6,9 @@ const TIME_EDGE_TOLERANCE_MS = 1_000;
 
 export function readVisibleTimeRange(chart: EChartsInstance): TimeRange | null {
   const option = chart.getOption() as { dataZoom?: unknown };
-  const dataZoomOptions = Array.isArray(option.dataZoom) ? option.dataZoom : [option.dataZoom];
+  const dataZoomOptions = Array.isArray(option.dataZoom)
+    ? option.dataZoom
+    : [option.dataZoom];
   const dataZoomOption = dataZoomOptions.find(isDataZoomRangeOption);
 
   return dataZoomOption
@@ -41,7 +43,9 @@ export function formatXAxisLabel(
     : echarts.time.format(value, '{HH}:{mm}', false);
 }
 
-function isDataZoomRangeOption(value: unknown): value is { startValue: number; endValue: number } {
+function isDataZoomRangeOption(
+  value: unknown
+): value is { startValue: number; endValue: number } {
   if (!value || typeof value !== 'object') {
     return false;
   }

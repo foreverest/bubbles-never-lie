@@ -53,7 +53,10 @@ type TimeframeParts = ZonedDateParts & {
 export const defaultTimeframeFormValues = (): TimeframeFormValues => {
   const currentDate = getDatePartsInTimeZone(new Date(), defaultTimeZone);
   const year = clamp(currentDate.year, minYear, getMaxYear(defaultTimeZone));
-  const day = Math.min(currentDate.day, getDaysInMonth(year, currentDate.month));
+  const day = Math.min(
+    currentDate.day,
+    getDaysInMonth(year, currentDate.month)
+  );
 
   return {
     startYear: [String(year)],
@@ -64,7 +67,9 @@ export const defaultTimeframeFormValues = (): TimeframeFormValues => {
   };
 };
 
-export const createTimeframeForm = (options: TimeframeFormOptions = {}): Form => {
+export const createTimeframeForm = (
+  options: TimeframeFormOptions = {}
+): Form => {
   const currentTimeZone = resolveCurrentTimeZone(options.currentTimeZone);
   const maxYear = getMaxYear(currentTimeZone);
   const defaultValues = options.defaultValues ?? defaultTimeframeFormValues();
@@ -127,7 +132,11 @@ export const createTimeframeForm = (options: TimeframeFormOptions = {}): Form =>
       label: 'Chart length',
       required: true,
       defaultValue: readDefaultSelectValue(defaultValues.durationDays),
-      options: createRangeOptions(1, 7, (value) => `${value} ${value === 1 ? 'day' : 'days'}`),
+      options: createRangeOptions(
+        1,
+        7,
+        (value) => `${value} ${value === 1 ? 'day' : 'days'}`
+      ),
     },
   ];
 
@@ -154,7 +163,12 @@ export const parseFormDateRange = (values: TimeframeFormValues): DateRange => {
   const timeZone = parseTimeZone(values.timeZone);
 
   return createDateRangeFromParts({
-    year: parseSelectNumber(values.startYear, 'year', minYear, getMaxYear(timeZone)),
+    year: parseSelectNumber(
+      values.startYear,
+      'year',
+      minYear,
+      getMaxYear(timeZone)
+    ),
     month: parseSelectNumber(values.startMonth, 'month', 1, 12),
     day: parseSelectNumber(values.startDay, 'day', 1, 31),
     timeZone,
@@ -226,13 +240,17 @@ export const normalizeTitle = (value: string | undefined): string => {
   return title || 'Subreddit bubble stats';
 };
 
-export const resolveCurrentTimeZone = (timeZoneHint: string | undefined): string => {
+export const resolveCurrentTimeZone = (
+  timeZoneHint: string | undefined
+): string => {
   if (timeZoneHint && isValidTimeZone(timeZoneHint)) {
     return timeZoneHint;
   }
 
   const runtimeTimeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
-  return runtimeTimeZone && isValidTimeZone(runtimeTimeZone) ? runtimeTimeZone : defaultTimeZone;
+  return runtimeTimeZone && isValidTimeZone(runtimeTimeZone)
+    ? runtimeTimeZone
+    : defaultTimeZone;
 };
 
 const createDateRangeFromParts = (parts: TimeframeParts): DateRange => {
@@ -253,7 +271,9 @@ const createDateRangeFromParts = (parts: TimeframeParts): DateRange => {
 
 const tryParseIsoDate = (value: string): Date | null => {
   const date = new Date(value);
-  return Number.isNaN(date.getTime()) || date.toISOString() !== value ? null : date;
+  return Number.isNaN(date.getTime()) || date.toISOString() !== value
+    ? null
+    : date;
 };
 
 const createRangeOptions = (
@@ -266,7 +286,9 @@ const createRangeOptions = (
     return { label: createLabel(value), value: String(value) };
   });
 
-const createTimeZoneOptions = (currentTimeZone: string): { label: string; value: string }[] => {
+const createTimeZoneOptions = (
+  currentTimeZone: string
+): { label: string; value: string }[] => {
   const orderedTimeZones = [
     defaultTimeZone,
     ...(currentTimeZone === defaultTimeZone ? [] : [currentTimeZone]),
@@ -301,7 +323,8 @@ const getSupportedTimeZones = (): string[] => {
   return Intl.supportedValuesOf('timeZone');
 };
 
-const formatTimeZoneLabel = (timeZone: string): string => timeZone.replaceAll('_', ' ');
+const formatTimeZoneLabel = (timeZone: string): string =>
+  timeZone.replaceAll('_', ' ');
 
 const parseSelectNumber = (
   value: SelectValue,
@@ -312,7 +335,11 @@ const parseSelectNumber = (
   const selectedValue = readSingleSelectValue(value, fieldLabel);
   const selectedNumber = Number(selectedValue);
 
-  if (!Number.isInteger(selectedNumber) || selectedNumber < min || selectedNumber > max) {
+  if (
+    !Number.isInteger(selectedNumber) ||
+    selectedNumber < min ||
+    selectedNumber > max
+  ) {
     throw new Error(`Select a valid ${fieldLabel}.`);
   }
 
@@ -329,9 +356,13 @@ const parseTimeZone = (value: SelectValue): string => {
   return timeZone;
 };
 
-const readSingleSelectValue = (value: SelectValue, fieldLabel: string): string => {
+const readSingleSelectValue = (
+  value: SelectValue,
+  fieldLabel: string
+): string => {
   const selectedValue = Array.isArray(value) ? value[0] : value;
-  const normalized = typeof selectedValue === 'string' ? selectedValue.trim() : '';
+  const normalized =
+    typeof selectedValue === 'string' ? selectedValue.trim() : '';
 
   if (!normalized) {
     throw new Error(`Select a ${fieldLabel}.`);
@@ -373,7 +404,12 @@ const isValidTimeZone = (timeZone: string): boolean => {
 };
 
 const zonedDateTimeToUtc = (parts: ZonedDateParts): Date => {
-  const naiveUtc = Date.UTC(parts.year, parts.month - 1, parts.day, defaultStartHour);
+  const naiveUtc = Date.UTC(
+    parts.year,
+    parts.month - 1,
+    parts.day,
+    defaultStartHour
+  );
   let utc = naiveUtc;
 
   for (let iteration = 0; iteration < 3; iteration += 1) {
@@ -454,7 +490,9 @@ const getDateTimePartsInTimeZone = (
 };
 
 const addCalendarDays = (parts: DateParts, days: number): DateParts => {
-  const date = new Date(Date.UTC(parts.year, parts.month - 1, parts.day + days));
+  const date = new Date(
+    Date.UTC(parts.year, parts.month - 1, parts.day + days)
+  );
   return {
     year: date.getUTCFullYear(),
     month: date.getUTCMonth() + 1,

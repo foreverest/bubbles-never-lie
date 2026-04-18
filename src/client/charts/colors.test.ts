@@ -12,7 +12,9 @@ import {
 test('converts hex colors to RGB and RGBA', () => {
   expect(hexToRgb('#267c8c')).toEqual({ red: 38, green: 124, blue: 140 });
   expect(hexToRgb('invalid')).toBe(null);
-  expect(toRgba({ red: 38, green: 124, blue: 140 }, 0.5)).toBe('rgba(38, 124, 140, 0.5)');
+  expect(toRgba({ red: 38, green: 124, blue: 140 }, 0.5)).toBe(
+    'rgba(38, 124, 140, 0.5)'
+  );
 });
 
 test('maps karma buckets and invalid palette indexes to stable colors', () => {

@@ -7,6 +7,32 @@
   pointer-events: auto;
 }
 
+.expand-chart-button {
+  position: fixed;
+  right: 12px;
+  bottom: 12px;
+  z-index: 10;
+  min-width: 84px;
+  height: 36px;
+  padding: 0 14px;
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  color: var(--color-surface);
+  background: var(--color-accent-strong);
+  cursor: pointer;
+  font-size: 0.84rem;
+  font-weight: 800;
+  letter-spacing: 0;
+  box-shadow: var(--shadow-menu);
+}
+
+.expand-chart-button:hover,
+.expand-chart-button:focus-visible {
+  background: var(--color-accent);
+  outline: 2px solid var(--color-focus-ring);
+  outline-offset: 2px;
+}
+
 .chart-controls--desktop {
   display: flex;
 }

@@ -1,7 +1,11 @@
 import assert from 'node:assert/strict';
 import type { Comment } from '@devvit/web/server';
 import { test } from 'vitest';
-import { createBubbleStatsDataLayer, getDataKeys, type RedisDataClient } from '../data';
+import {
+  createBubbleStatsDataLayer,
+  getDataKeys,
+  type RedisDataClient,
+} from '../data';
 import {
   processCommentCacheQueue,
   refreshCommentCache,
@@ -23,7 +27,10 @@ class FakeRedisClient implements RedisDataClient {
     return fields.map((field) => hash?.get(field) ?? null);
   }
 
-  async hSet(key: string, fieldValues: { [field: string]: string }): Promise<number> {
+  async hSet(
+    key: string,
+    fieldValues: { [field: string]: string }
+  ): Promise<number> {
     const hash = this.hashes.get(key) ?? new Map<string, string>();
     let addedFieldCount = 0;
 
@@ -46,7 +53,10 @@ class FakeRedisClient implements RedisDataClient {
     });
   }
 
-  async zAdd(key: string, ...members: Array<{ member: string; score: number }>): Promise<number> {
+  async zAdd(
+    key: string,
+    ...members: Array<{ member: string; score: number }>
+  ): Promise<number> {
     const sortedSet = this.sortedSets.get(key) ?? new Map<string, number>();
     let addedMemberCount = 0;
 
@@ -71,7 +81,9 @@ class FakeRedisClient implements RedisDataClient {
     const sortedMembers = this.readSortedSet(key);
 
     if (options?.by === 'rank') {
-      const rankedMembers = options.reverse ? sortedMembers.toReversed() : sortedMembers;
+      const rankedMembers = options.reverse
+        ? sortedMembers.toReversed()
+        : sortedMembers;
       const startRank = Number(start);
       const stopRank = Number(stop);
       const endRank = stopRank < 0 ? rankedMembers.length + stopRank : stopRank;
@@ -82,7 +94,9 @@ class FakeRedisClient implements RedisDataClient {
     const startScore = Number(start);
     const stopScore = Number(stop);
 
-    return sortedMembers.filter(({ score }) => score >= startScore && score <= stopScore);
+    return sortedMembers.filter(
+      ({ score }) => score >= startScore && score <= stopScore
+    );
   }
 
   async zRem(key: string, members: string[]): Promise<number> {
@@ -133,7 +147,9 @@ class FakeRedditClient {
 
     return {
       all: async () => {
-        const response = this.responses.get(createResponseKey(options.postId, options.commentId));
+        const response = this.responses.get(
+          createResponseKey(options.postId, options.commentId)
+        );
 
         if (response instanceof Error) {
           throw response;
@@ -149,7 +165,10 @@ test('refreshCommentCache resets queues and seeds post ids with timestamp batch 
   const redisClient = new FakeRedisClient();
   const keys = getDataKeys('ExampleSub');
 
-  await redisClient.zAdd(keys.commentRefreshPostQueue, { member: 't3_stale', score: 1 });
+  await redisClient.zAdd(keys.commentRefreshPostQueue, {
+    member: 't3_stale',
+    score: 1,
+  });
   await redisClient.zAdd(keys.commentRefreshCommentQueue, {
     member: 't3_stale:t1_comment',
     score: 1,
@@ -171,7 +190,10 @@ test('refreshCommentCache resets queues and seeds post ids with timestamp batch 
     { member: 't3_post_2', score: 1_000_001 },
     { member: 't3_post_1', score: 1_000_002 },
   ]);
-  assert.deepEqual(redisClient.readSortedSet(keys.commentRefreshCommentQueue), []);
+  assert.deepEqual(
+    redisClient.readSortedSet(keys.commentRefreshCommentQueue),
+    []
+  );
 });
 
 test('processCommentCacheQueue prefers comment queue items before post queue items', async () => {
@@ -184,14 +206,21 @@ test('processCommentCacheQueue prefers comment queue items before post queue ite
     member: 't3_post_1:t1_parent',
     score: 1,
   });
-  await redisClient.zAdd(keys.commentRefreshPostQueue, { member: 't3_post_2', score: 1 });
-  redditClient.setResponse('t3_post_1', 't1_parent', [createComment('t1_child', 't3_post_1')]);
+  await redisClient.zAdd(keys.commentRefreshPostQueue, {
+    member: 't3_post_2',
+    score: 1,
+  });
+  redditClient.setResponse('t3_post_1', 't1_parent', [
+    createComment('t1_child', 't3_post_1'),
+  ]);
 
   const result = await processCommentCacheQueue(
     { subredditName: 'ExampleSub', maxDurationMs: 25_000 },
     {
-      redisClient: redisClient as CommentCacheQueueProcessDependencies['redisClient'],
-      redditClient: redditClient as unknown as CommentCacheQueueProcessDependencies['redditClient'],
+      redisClient:
+        redisClient as CommentCacheQueueProcessDependencies['redisClient'],
+      redditClient:
+        redditClient as unknown as CommentCacheQueueProcessDependencies['redditClient'],
       dataLayer,
       now: createNow([0, 0, 0, 30_000]),
     }
@@ -215,7 +244,10 @@ test('processCommentCacheQueue caches post comments and fetches child comments w
   const dataLayer = createBubbleStatsDataLayer('ExampleSub', redisClient);
   const keys = getDataKeys('ExampleSub');
 
-  await redisClient.zAdd(keys.commentRefreshPostQueue, { member: 't3_post_1', score: 1 });
+  await redisClient.zAdd(keys.commentRefreshPostQueue, {
+    member: 't3_post_1',
+    score: 1,
+  });
   redditClient.setResponse('t3_post_1', undefined, [
     createComment('t1_parent', 't3_post_1', 'Parent body'),
   ]);
@@ -226,13 +258,18 @@ test('processCommentCacheQueue caches post comments and fetches child comments w
   const result = await processCommentCacheQueue(
     { subredditName: 'ExampleSub', maxDurationMs: 25_000 },
     {
-      redisClient: redisClient as CommentCacheQueueProcessDependencies['redisClient'],
-      redditClient: redditClient as unknown as CommentCacheQueueProcessDependencies['redditClient'],
+      redisClient:
+        redisClient as CommentCacheQueueProcessDependencies['redisClient'],
+      redditClient:
+        redditClient as unknown as CommentCacheQueueProcessDependencies['redditClient'],
       dataLayer,
       now: () => 0,
     }
   );
-  const cachedComments = await dataLayer.comments.getByIds(['t1_parent', 't1_child']);
+  const cachedComments = await dataLayer.comments.getByIds([
+    't1_parent',
+    't1_child',
+  ]);
 
   assert.deepEqual(
     redditClient.calls.map(({ postId, commentId }) => ({ postId, commentId })),
@@ -276,7 +313,10 @@ test('processCommentCacheQueue stores typed media comment previews before trunca
   const dataLayer = createBubbleStatsDataLayer('ExampleSub', redisClient);
   const keys = getDataKeys('ExampleSub');
 
-  await redisClient.zAdd(keys.commentRefreshPostQueue, { member: 't3_post_1', score: 1 });
+  await redisClient.zAdd(keys.commentRefreshPostQueue, {
+    member: 't3_post_1',
+    score: 1,
+  });
   redditClient.setResponse('t3_post_1', undefined, [
     createComment('t1_gif', 't3_post_1', '![gif](giphy|VCn7Example)'),
     createComment(
@@ -291,8 +331,10 @@ test('processCommentCacheQueue stores typed media comment previews before trunca
   await processCommentCacheQueue(
     { subredditName: 'ExampleSub', maxDurationMs: 25_000 },
     {
-      redisClient: redisClient as CommentCacheQueueProcessDependencies['redisClient'],
-      redditClient: redditClient as unknown as CommentCacheQueueProcessDependencies['redditClient'],
+      redisClient:
+        redisClient as CommentCacheQueueProcessDependencies['redisClient'],
+      redditClient:
+        redditClient as unknown as CommentCacheQueueProcessDependencies['redditClient'],
       dataLayer,
       now: () => 0,
     }
@@ -313,8 +355,16 @@ test('processCommentCacheQueue stores typed media comment previews before trunca
     [
       { id: 't1_gif', bodyPreview: '', bodyPreviewKind: 'gif' },
       { id: 't1_image', bodyPreview: '', bodyPreviewKind: 'image' },
-      { id: 't1_literal_gif', bodyPreview: 'GIF comment', bodyPreviewKind: 'text' },
-      { id: 't1_long_text', bodyPreview: 'abcdefghijklmnopq...', bodyPreviewKind: 'text' },
+      {
+        id: 't1_literal_gif',
+        bodyPreview: 'GIF comment',
+        bodyPreviewKind: 'text',
+      },
+      {
+        id: 't1_long_text',
+        bodyPreview: 'abcdefghijklmnopq...',
+        bodyPreviewKind: 'text',
+      },
     ]
   );
 });
@@ -329,13 +379,18 @@ test('processCommentCacheQueue skips malformed comment queue members', async () 
     member: 'malformed-comment-item',
     score: 1,
   });
-  await redisClient.zAdd(keys.commentRefreshPostQueue, { member: 't3_post_1', score: 1 });
+  await redisClient.zAdd(keys.commentRefreshPostQueue, {
+    member: 't3_post_1',
+    score: 1,
+  });
 
   const result = await processCommentCacheQueue(
     { subredditName: 'ExampleSub', maxDurationMs: 25_000 },
     {
-      redisClient: redisClient as CommentCacheQueueProcessDependencies['redisClient'],
-      redditClient: redditClient as unknown as CommentCacheQueueProcessDependencies['redditClient'],
+      redisClient:
+        redisClient as CommentCacheQueueProcessDependencies['redisClient'],
+      redditClient:
+        redditClient as unknown as CommentCacheQueueProcessDependencies['redditClient'],
       dataLayer,
       now: createNow([0, 0, 30_000]),
     }
@@ -359,14 +414,22 @@ test('processCommentCacheQueue skips failed fetches and continues with later que
     { member: 't3_fail', score: 1 },
     { member: 't3_ok', score: 2 }
   );
-  redditClient.setResponse('t3_fail', undefined, new Error('reddit unavailable'));
-  redditClient.setResponse('t3_ok', undefined, [createComment('t1_ok', 't3_ok')]);
+  redditClient.setResponse(
+    't3_fail',
+    undefined,
+    new Error('reddit unavailable')
+  );
+  redditClient.setResponse('t3_ok', undefined, [
+    createComment('t1_ok', 't3_ok'),
+  ]);
 
   const result = await processCommentCacheQueue(
     { subredditName: 'ExampleSub', maxDurationMs: 25_000 },
     {
-      redisClient: redisClient as CommentCacheQueueProcessDependencies['redisClient'],
-      redditClient: redditClient as unknown as CommentCacheQueueProcessDependencies['redditClient'],
+      redisClient:
+        redisClient as CommentCacheQueueProcessDependencies['redisClient'],
+      redditClient:
+        redditClient as unknown as CommentCacheQueueProcessDependencies['redditClient'],
       dataLayer,
       now: () => 0,
     }
@@ -387,7 +450,11 @@ test('processCommentCacheQueue skips failed fetches and continues with later que
   assert.equal(result.queueEmpty, true);
 });
 
-const createComment = (id: `t1_${string}`, postId: `t3_${string}`, body = `Body ${id}`): Comment =>
+const createComment = (
+  id: `t1_${string}`,
+  postId: `t3_${string}`,
+  body = `Body ${id}`
+): Comment =>
   ({
     id,
     postId,
@@ -398,8 +465,10 @@ const createComment = (id: `t1_${string}`, postId: `t3_${string}`, body = `Body 
     permalink: `/r/example/comments/${postId}/${id}`,
   }) as unknown as Comment;
 
-const createResponseKey = (postId: `t3_${string}`, commentId: `t1_${string}` | undefined): string =>
-  `${postId}:${commentId ?? ''}`;
+const createResponseKey = (
+  postId: `t3_${string}`,
+  commentId: `t1_${string}` | undefined
+): string => `${postId}:${commentId ?? ''}`;
 
 const createNow = (values: number[]): (() => number) => {
   let index = 0;

@@ -15,7 +15,9 @@ const logger = createLogger('menu:create-chart');
 
 menu.post('/create-chart', async (c) => {
   await c.req.json<MenuItemRequest>();
-  const currentTimeZone = resolveCurrentTimeZone(context.metadata[timeZoneHeader]?.values[0]);
+  const currentTimeZone = resolveCurrentTimeZone(
+    context.metadata[timeZoneHeader]?.values[0]
+  );
   const defaults = defaultTimeframeFormValues();
   const formDefaults = {
     title: 'Subreddit bubble stats',

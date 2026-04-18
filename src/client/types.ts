@@ -24,7 +24,11 @@ export type ChartPreferences = {
 export const TABS: readonly TabDefinition[] = [
   { name: 'posts', label: 'Posts', panelId: 'posts-panel' },
   { name: 'comments', label: 'Comments', panelId: 'comments-panel' },
-  { name: 'contributors', label: 'Contributors', panelId: 'contributors-panel' },
+  {
+    name: 'contributors',
+    label: 'Contributors',
+    panelId: 'contributors-panel',
+  },
   { name: 'stats', label: 'Stats', panelId: 'stats-panel' },
 ];
 

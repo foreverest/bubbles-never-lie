@@ -1,6 +1,10 @@
 import { reddit } from '@devvit/web/server';
 import type { Post } from '@devvit/web/server';
-import { resolveUserAvatarUrl, type ChartPost, type SubredditKarmaBucket } from '../../shared/api';
+import {
+  resolveUserAvatarUrl,
+  type ChartPost,
+  type SubredditKarmaBucket,
+} from '../../shared/api';
 import { createBubbleStatsDataLayer } from '../data';
 import type { ContributorEntity, HydratedPost, PostEntity } from '../data';
 import { createLogger } from '../logging/logger';
@@ -52,12 +56,18 @@ export const readPostsForTimeframe = async ({
 }: PostCacheReadOptions): Promise<PostCacheReadResult> => {
   const dataLayer = createBubbleStatsDataLayer(subredditName);
   const posts = await dataLayer.posts.getInTimeRange({ startTime, endTime });
-  const hydratedPosts = await dataLayer.hydratePostRelations(posts, { author: true });
-  const authorKarmaBuckets = createContributorKarmaBuckets(getUniquePostAuthors(hydratedPosts));
+  const hydratedPosts = await dataLayer.hydratePostRelations(posts, {
+    author: true,
+  });
+  const authorKarmaBuckets = createContributorKarmaBuckets(
+    getUniquePostAuthors(hydratedPosts)
+  );
 
   return {
     posts: hydratedPosts
-      .map((post) => toChartPost(post, authorKarmaBuckets.get(post.authorName) ?? null))
+      .map((post) =>
+        toChartPost(post, authorKarmaBuckets.get(post.authorName) ?? null)
+      )
       .sort((a, b) => Date.parse(a.createdAt) - Date.parse(b.createdAt)),
   };
 };
@@ -75,7 +85,9 @@ export const readPostCountForTimeframe = async ({
   };
 };
 
-export const refreshPostCache = async (subredditName: string): Promise<PostCacheRefreshResult> => {
+export const refreshPostCache = async (
+  subredditName: string
+): Promise<PostCacheRefreshResult> => {
   logger.info('Refreshing post cache', { subredditName });
 
   try {
@@ -123,9 +135,9 @@ export const readCachedPostIdsForTimeframe = async ({
   endTime,
 }: CachedPostIdReadOptions): Promise<CachedPostIdReadResult> => {
   const dataLayer = createBubbleStatsDataLayer(subredditName);
-  const postIds = (await dataLayer.posts.getIdsInTimeRange({ startTime, endTime })).filter(
-    isPostId
-  );
+  const postIds = (
+    await dataLayer.posts.getIdsInTimeRange({ startTime, endTime })
+  ).filter(isPostId);
 
   return {
     postIds,

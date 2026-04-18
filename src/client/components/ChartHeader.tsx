@@ -49,7 +49,8 @@ export function ChartHeader({
   const mobileControlsRef = useRef<HTMLDivElement | null>(null);
   const activeTabLabel = getTabLabel(activeTab);
   const timeframeLabel = formatTimeframeDateRangeLabels(data.timeframe);
-  const activePanelId = TABS.find((tab) => tab.name === activeTab)?.panelId ?? `${activeTab}-panel`;
+  const activePanelId =
+    TABS.find((tab) => tab.name === activeTab)?.panelId ?? `${activeTab}-panel`;
   const settings: ChartSetting[] = [
     {
       key: 'zoomEnabled',
@@ -61,7 +62,8 @@ export function ChartHeader({
       key: 'currentUserRippleEnabled',
       label: 'My bubbles',
       enabled: currentUserRippleEnabled,
-      onToggle: () => onCurrentUserRippleEnabledChange(!currentUserRippleEnabled),
+      onToggle: () =>
+        onCurrentUserRippleEnabledChange(!currentUserRippleEnabled),
     },
   ];
 
@@ -108,11 +110,19 @@ export function ChartHeader({
     <header className="chart-header">
       <div className="chart-header__main">
         <div
-          className={data.subredditIconUrl ? 'chart-title chart-title--with-icon' : 'chart-title'}
+          className={
+            data.subredditIconUrl
+              ? 'chart-title chart-title--with-icon'
+              : 'chart-title'
+          }
         >
           <div className="chart-title__name">
             {data.subredditIconUrl ? (
-              <img alt="" className="chart-title__icon" src={data.subredditIconUrl} />
+              <img
+                alt=""
+                className="chart-title__icon"
+                src={data.subredditIconUrl}
+              />
             ) : null}
             <span>r/{data.subredditName}</span>
           </div>
@@ -121,8 +131,12 @@ export function ChartHeader({
             className="chart-title__meta"
             title={timeframeLabel.fullLabel}
           >
-            <span className="chart-title__meta-desktop">{timeframeLabel.compactLabel}</span>
-            <span className="chart-title__meta-mobile">{timeframeLabel.compactLabel}</span>
+            <span className="chart-title__meta-desktop">
+              {timeframeLabel.compactLabel}
+            </span>
+            <span className="chart-title__meta-mobile">
+              {timeframeLabel.compactLabel}
+            </span>
           </p>
         </div>
       </div>
@@ -139,7 +153,9 @@ export function ChartHeader({
                 ? 'section-menu-button section-menu-button--open'
                 : 'section-menu-button'
             }
-            onClick={() => setOpenMenu((menu) => (menu === 'sections' ? null : 'sections'))}
+            onClick={() =>
+              setOpenMenu((menu) => (menu === 'sections' ? null : 'sections'))
+            }
             type="button"
           >
             <span>{activeTabLabel}</span>
@@ -152,7 +168,10 @@ export function ChartHeader({
               aria-label="Bubble stats sections"
               role="menu"
             >
-              <TabItems activeTab={activeTab} onTabSelect={handleSectionSelect} />
+              <TabItems
+                activeTab={activeTab}
+                onTabSelect={handleSectionSelect}
+              />
             </div>
           ) : null}
         </div>
@@ -167,14 +186,20 @@ export function ChartHeader({
                 ? 'chart-menu-button chart-menu-button--open'
                 : 'chart-menu-button'
             }
-            onClick={() => setOpenMenu((menu) => (menu === 'settings' ? null : 'settings'))}
+            onClick={() =>
+              setOpenMenu((menu) => (menu === 'settings' ? null : 'settings'))
+            }
             type="button"
           >
             <SettingsIcon />
           </button>
 
           {openMenu === 'settings' ? (
-            <div className="chart-settings__menu" aria-label="Chart settings" role="group">
+            <div
+              className="chart-settings__menu"
+              aria-label="Chart settings"
+              role="group"
+            >
               <SettingsMenuContent
                 settings={settings}
                 themeMode={themeMode}
@@ -195,7 +220,9 @@ export function ChartHeader({
               ? 'chart-mobile-controls__button chart-mobile-controls__button--open'
               : 'chart-mobile-controls__button'
           }
-          onClick={() => setOpenMenu((menu) => (menu === 'mobile' ? null : 'mobile'))}
+          onClick={() =>
+            setOpenMenu((menu) => (menu === 'mobile' ? null : 'mobile'))
+          }
           type="button"
         >
           <span>{activeTabLabel}</span>
@@ -209,10 +236,17 @@ export function ChartHeader({
               aria-label="Bubble stats sections"
               role="menu"
             >
-              <TabItems activeTab={activeTab} onTabSelect={handleSectionSelect} />
+              <TabItems
+                activeTab={activeTab}
+                onTabSelect={handleSectionSelect}
+              />
             </div>
 
-            <div className="chart-mobile-controls__group" aria-label="Chart settings" role="group">
+            <div
+              className="chart-mobile-controls__group"
+              aria-label="Chart settings"
+              role="group"
+            >
               <SettingsMenuContent
                 settings={settings}
                 themeMode={themeMode}
@@ -335,7 +369,11 @@ function ChevronIcon({ className }: { className: string }) {
 
 function SettingsIcon() {
   return (
-    <svg aria-hidden="true" className="chart-menu-button__icon" viewBox="0 0 20 20">
+    <svg
+      aria-hidden="true"
+      className="chart-menu-button__icon"
+      viewBox="0 0 20 20"
+    >
       <path
         d="M8.9 2.5h2.2l.4 2.1c.4.1.8.3 1.1.5l1.8-1.2L16 5.5l-1.2 1.8c.2.4.4.7.5 1.1l2.1.4v2.3l-2.1.4c-.1.4-.3.8-.5 1.1l1.2 1.8-1.6 1.6-1.8-1.2c-.4.2-.7.4-1.1.5l-.4 2.1H8.9l-.4-2.1c-.4-.1-.8-.3-1.1-.5l-1.8 1.2L4 14.5l1.2-1.8c-.2-.4-.4-.7-.5-1.1l-2.1-.4V8.9l2.1-.4c.1-.4.3-.8.5-1.1L4 5.5l1.6-1.6 1.8 1.2c.4-.2.7-.4 1.1-.5l.4-2.1Z"
         fill="none"
@@ -343,7 +381,14 @@ function SettingsIcon() {
         strokeLinejoin="round"
         strokeWidth="1.6"
       />
-      <circle cx="10" cy="10" fill="none" r="2.7" stroke="currentColor" strokeWidth="1.6" />
+      <circle
+        cx="10"
+        cy="10"
+        fill="none"
+        r="2.7"
+        stroke="currentColor"
+        strokeWidth="1.6"
+      />
     </svg>
   );
 }

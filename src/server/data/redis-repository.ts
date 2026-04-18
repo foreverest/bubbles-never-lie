@@ -1,10 +1,17 @@
 import { redis } from '@devvit/web/server';
 import type { EntityCodec } from './codecs';
-import type { EntityRepository, TimeIndexedEntityRepository, TimeRange } from './types';
+import type {
+  EntityRepository,
+  TimeIndexedEntityRepository,
+  TimeRange,
+} from './types';
 
 const REDIS_CHUNK_SIZE = 100;
 
-export type RedisDataClient = Pick<typeof redis, 'hGet' | 'hMGet' | 'hSet' | 'zAdd' | 'zRange'>;
+export type RedisDataClient = Pick<
+  typeof redis,
+  'hGet' | 'hMGet' | 'hSet' | 'zAdd' | 'zRange'
+>;
 
 type RedisHashRepositoryOptions<Entity> = {
   redisClient?: RedisDataClient;
@@ -13,10 +20,11 @@ type RedisHashRepositoryOptions<Entity> = {
   getId(entity: Entity): string;
 };
 
-type RedisTimeIndexedRepositoryOptions<Entity> = RedisHashRepositoryOptions<Entity> & {
-  indexKey: string;
-  getCreatedAt(entity: Entity): string;
-};
+type RedisTimeIndexedRepositoryOptions<Entity> =
+  RedisHashRepositoryOptions<Entity> & {
+    indexKey: string;
+    getCreatedAt(entity: Entity): string;
+  };
 
 export const createRedisHashRepository = <Entity>({
   redisClient = redis,
@@ -111,10 +119,18 @@ export const createRedisTimeIndexedRepository = <Entity>({
     }
   };
 
-  const getIdsInTimeRange = async ({ startTime, endTime }: TimeRange): Promise<string[]> => {
-    const indexedEntities = await redisClient.zRange(indexKey, startTime, endTime, {
-      by: 'score',
-    });
+  const getIdsInTimeRange = async ({
+    startTime,
+    endTime,
+  }: TimeRange): Promise<string[]> => {
+    const indexedEntities = await redisClient.zRange(
+      indexKey,
+      startTime,
+      endTime,
+      {
+        by: 'score',
+      }
+    );
 
     return indexedEntities.map((entity) => entity.member);
   };
@@ -179,7 +195,9 @@ const readCreatedAtScore = <Entity>(
   const score = Date.parse(getCreatedAt(entity));
 
   if (!Number.isFinite(score)) {
-    throw new Error(`Unable to index entity ${getId(entity)}: invalid createdAt.`);
+    throw new Error(
+      `Unable to index entity ${getId(entity)}: invalid createdAt.`
+    );
   }
 
   return score;

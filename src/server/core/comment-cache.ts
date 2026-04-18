@@ -5,7 +5,11 @@ import {
   type ChartComment,
   type CommentBodyPreviewKind,
 } from '../../shared/api';
-import { createBubbleStatsDataLayer, getDataKeys, type BubbleStatsDataLayer } from '../data';
+import {
+  createBubbleStatsDataLayer,
+  getDataKeys,
+  type BubbleStatsDataLayer,
+} from '../data';
 import type { CommentEntity, HydratedComment } from '../data';
 import { createLogger } from '../logging/logger';
 import { readLatestCachedPostIds } from './post-cache';
@@ -21,7 +25,10 @@ const REDIS_QUEUE_CHUNK_SIZE = 100;
 type PostId = `t3_${string}`;
 type CommentId = `t1_${string}`;
 type CommentQueueMember = `${PostId}:${CommentId}`;
-type CommentRefreshQueueRedisClient = Pick<typeof redis, 'del' | 'zAdd' | 'zRange' | 'zRem'>;
+type CommentRefreshQueueRedisClient = Pick<
+  typeof redis,
+  'del' | 'zAdd' | 'zRange' | 'zRem'
+>;
 type CommentRefreshRedditClient = Pick<typeof reddit, 'getComments'>;
 
 export type CommentCacheReadOptions = {
@@ -102,7 +109,10 @@ type QueueItemRefreshResult = {
 };
 
 type CommentWithAuthor = HydratedComment<{ author: true }>;
-type CommentBodyPreview = Pick<CommentEntity, 'bodyPreview' | 'bodyPreviewKind'>;
+type CommentBodyPreview = Pick<
+  CommentEntity,
+  'bodyPreview' | 'bodyPreviewKind'
+>;
 
 export const readCommentsForTimeframe = async ({
   subredditName,
@@ -110,7 +120,10 @@ export const readCommentsForTimeframe = async ({
   endTime,
 }: CommentCacheReadOptions): Promise<CommentCacheReadResult> => {
   const dataLayer = createBubbleStatsDataLayer(subredditName);
-  const comments = await dataLayer.comments.getInTimeRange({ startTime, endTime });
+  const comments = await dataLayer.comments.getInTimeRange({
+    startTime,
+    endTime,
+  });
   const hydratedComments = await dataLayer.hydrateCommentRelations(comments, {
     author: true,
   });
@@ -128,7 +141,10 @@ export const readCommentCountForTimeframe = async ({
   endTime,
 }: CommentCacheReadOptions): Promise<CommentCountReadResult> => {
   const dataLayer = createBubbleStatsDataLayer(subredditName);
-  const comments = await dataLayer.comments.getInTimeRange({ startTime, endTime });
+  const comments = await dataLayer.comments.getInTimeRange({
+    startTime,
+    endTime,
+  });
 
   return {
     commentCount: comments.length,
@@ -193,7 +209,10 @@ export const processCommentCacheQueue = async (
     now = Date.now,
   }: CommentCacheQueueProcessDependencies = {}
 ): Promise<CommentCacheQueueProcessResult> => {
-  logger.info('Processing comment cache refresh queue', { subredditName, maxDurationMs });
+  logger.info('Processing comment cache refresh queue', {
+    subredditName,
+    maxDurationMs,
+  });
 
   const startedAt = now();
   const queueKeys = getCommentRefreshQueueKeys(subredditName);
@@ -248,7 +267,8 @@ export const processCommentCacheQueue = async (
 
       result.fetchedCommentCount += refreshResult.fetchedCommentCount;
       result.cachedCommentCount += refreshResult.cachedCommentCount;
-      result.enqueuedCommentParentCount += refreshResult.enqueuedCommentParentCount;
+      result.enqueuedCommentParentCount +=
+        refreshResult.enqueuedCommentParentCount;
     }
 
     result.generatedAt = new Date(now()).toISOString();
@@ -276,7 +296,9 @@ export const processCommentCacheQueue = async (
   }
 };
 
-const readCommentParentPostIds = async (subredditName: string): Promise<PostId[]> => {
+const readCommentParentPostIds = async (
+  subredditName: string
+): Promise<PostId[]> => {
   const cachedPostIds = await readLatestCachedPostIds({
     subredditName,
     limit: COMMENT_REFRESH_PARENT_POST_LIMIT,
@@ -285,7 +307,9 @@ const readCommentParentPostIds = async (subredditName: string): Promise<PostId[]
   return cachedPostIds.postIds;
 };
 
-const getCommentRefreshQueueKeys = (subredditName: string): CommentRefreshQueueKeys => {
+const getCommentRefreshQueueKeys = (
+  subredditName: string
+): CommentRefreshQueueKeys => {
   const keys = getDataKeys(subredditName);
 
   return {
@@ -326,7 +350,10 @@ const dequeueNextCommentRefreshItem = async (
   redisClient: CommentRefreshQueueRedisClient,
   queueKeys: CommentRefreshQueueKeys
 ): Promise<CommentQueueItem | null> => {
-  const commentMember = await dequeueQueueMember(redisClient, queueKeys.commentQueue);
+  const commentMember = await dequeueQueueMember(
+    redisClient,
+    queueKeys.commentQueue
+  );
 
   if (commentMember) {
     return parseCommentQueueMember(commentMember);
@@ -442,7 +469,10 @@ const refreshQueuedCommentParent = async ({
   }
 };
 
-const createCommentQueueMember = (postId: string, commentId: string): CommentQueueMember | null =>
+const createCommentQueueMember = (
+  postId: string,
+  commentId: string
+): CommentQueueMember | null =>
   isPostId(postId) && isCommentId(commentId) ? `${postId}:${commentId}` : null;
 
 const toCommentEntity = (comment: Comment): CommentEntity => {
@@ -499,7 +529,8 @@ const truncateCommentPreview = (normalized: string): string => {
   return `${symbols.slice(0, COMMENT_PREVIEW_LENGTH - 3).join('')}...`;
 };
 
-const normalizeCommentBody = (body: string): string => body.replace(/\s+/g, ' ').trim();
+const normalizeCommentBody = (body: string): string =>
+  body.replace(/\s+/g, ' ').trim();
 
 const getMediaOnlyCommentPreviewKind = (
   normalized: string
@@ -527,7 +558,10 @@ const isGiphyMarkdownComment = (normalized: string): boolean => {
     return true;
   }
 
-  return isUrlWithHost(target, (host) => host === 'giphy.com' || host.endsWith('.giphy.com'));
+  return isUrlWithHost(
+    target,
+    (host) => host === 'giphy.com' || host.endsWith('.giphy.com')
+  );
 };
 
 const isImageUrlComment = (normalized: string): boolean =>
@@ -539,11 +573,17 @@ const isImageUrlComment = (normalized: string): boolean =>
     return /\.(?:avif|jpe?g|png|webp)$/iu.test(url.pathname);
   });
 
-const isUrlWithHost = (value: string, predicate: (host: string, url: URL) => boolean): boolean => {
+const isUrlWithHost = (
+  value: string,
+  predicate: (host: string, url: URL) => boolean
+): boolean => {
   try {
     const url = new URL(value);
 
-    return (url.protocol === 'https:' || url.protocol === 'http:') && predicate(url.hostname, url);
+    return (
+      (url.protocol === 'https:' || url.protocol === 'http:') &&
+      predicate(url.hostname, url)
+    );
   } catch {
     return false;
   }

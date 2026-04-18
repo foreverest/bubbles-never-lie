@@ -31,9 +31,15 @@ test('normalizes invalid chart preference values to defaults', () => {
 });
 
 test('preserves valid theme modes when normalizing chart preferences', () => {
-  expect(normalizeChartPreferences({ themeMode: 'system' }).themeMode).toBe('system');
-  expect(normalizeChartPreferences({ themeMode: 'light' }).themeMode).toBe('light');
-  expect(normalizeChartPreferences({ themeMode: 'dark' }).themeMode).toBe('dark');
+  expect(normalizeChartPreferences({ themeMode: 'system' }).themeMode).toBe(
+    'system'
+  );
+  expect(normalizeChartPreferences({ themeMode: 'light' }).themeMode).toBe(
+    'light'
+  );
+  expect(normalizeChartPreferences({ themeMode: 'dark' }).themeMode).toBe(
+    'dark'
+  );
 });
 
 test('resolves system theme mode from preferred color scheme', () => {

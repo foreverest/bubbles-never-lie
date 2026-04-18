@@ -60,10 +60,21 @@ export function ContributorsChart({
     }
 
     chart.setOption(
-      createContributorsOption(chartData, zoomEnabled, currentUserRippleEnabled, resolvedTheme),
+      createContributorsOption(
+        chartData,
+        zoomEnabled,
+        currentUserRippleEnabled,
+        resolvedTheme
+      ),
       true
     );
-  }, [chartData, chartRef, currentUserRippleEnabled, resolvedTheme, zoomEnabled]);
+  }, [
+    chartData,
+    chartRef,
+    currentUserRippleEnabled,
+    resolvedTheme,
+    zoomEnabled,
+  ]);
 
   return (
     <div className="chart-stage-shell">

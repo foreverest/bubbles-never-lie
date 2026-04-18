@@ -45,7 +45,10 @@ test('uses info as the default log level', () => {
   logger.info('Loaded comments');
 
   assert.equal(log.mock.calls.length, 1);
-  assert.match(String(log.mock.calls[0]?.[0]), /\[INFO\] \[comments-api\] Loaded comments$/);
+  assert.match(
+    String(log.mock.calls[0]?.[0]),
+    /\[INFO\] \[comments-api\] Loaded comments$/
+  );
 });
 
 test('suppresses logs below the configured level', () => {
@@ -62,8 +65,14 @@ test('suppresses logs below the configured level', () => {
   assert.equal(log.mock.calls.length, 0);
   assert.equal(warn.mock.calls.length, 1);
   assert.equal(error.mock.calls.length, 1);
-  assert.match(String(warn.mock.calls[0]?.[0]), /\[WARN\] \[cache:posts\] Retrying refresh$/);
-  assert.match(String(error.mock.calls[0]?.[0]), /\[ERROR\] \[cache:posts\] Refresh failed$/);
+  assert.match(
+    String(warn.mock.calls[0]?.[0]),
+    /\[WARN\] \[cache:posts\] Retrying refresh$/
+  );
+  assert.match(
+    String(error.mock.calls[0]?.[0]),
+    /\[ERROR\] \[cache:posts\] Refresh failed$/
+  );
 });
 
 test('silent suppresses all output', () => {

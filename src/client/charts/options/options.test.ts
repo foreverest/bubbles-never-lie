@@ -51,11 +51,20 @@ test('posts option toggles zoom and current-user ripple series', () => {
 test('posts option applies dark mode and dark chart chrome without changing data colors', () => {
   const datum = toPostBubbleDatum(post, 'alice');
   const lightOption = createPostsOption([datum], metadata, false, false);
-  const darkOption = createPostsOption([datum], metadata, false, false, undefined, 'dark');
+  const darkOption = createPostsOption(
+    [datum],
+    metadata,
+    false,
+    false,
+    undefined,
+    'dark'
+  );
   const darkTheme = getChartTheme('dark');
 
   expect(readOptionField(darkOption, 'darkMode')).toBe(true);
-  expect(readOptionField(darkOption, 'backgroundColor')).toBe(darkTheme.backgroundColor);
+  expect(readOptionField(darkOption, 'backgroundColor')).toBe(
+    darkTheme.backgroundColor
+  );
 
   const grid = readObject(readOptionField(darkOption, 'grid'));
   expect(grid).toMatchObject({
@@ -86,7 +95,9 @@ test('posts option applies dark mode and dark chart chrome without changing data
   expect(tooltip.backgroundColor).toBe(darkTheme.tooltipBackgroundColor);
   expect(readObject(tooltip.textStyle).color).toBe(darkTheme.tooltipTextColor);
 
-  expect(readFirstSeriesColor(lightOption, datum)).toBe(readFirstSeriesColor(darkOption, datum));
+  expect(readFirstSeriesColor(lightOption, datum)).toBe(
+    readFirstSeriesColor(darkOption, datum)
+  );
 });
 
 test('contributors option uses dual-axis zoom when enabled', () => {
@@ -131,13 +142,15 @@ test('time charts use a narrow axis media override without changing contributors
     },
   ];
 
-  expect(readOptionField(createPostsOption([datum], metadata, false, false), 'media')).toEqual(
-    expectedMedia
-  );
-  expect(readOptionField(createCommentsOption([], metadata, false, false), 'media')).toEqual(
-    expectedMedia
-  );
-  expect(readOptionField(createContributorsOption([], false, false), 'media')).toBe(undefined);
+  expect(
+    readOptionField(createPostsOption([datum], metadata, false, false), 'media')
+  ).toEqual(expectedMedia);
+  expect(
+    readOptionField(createCommentsOption([], metadata, false, false), 'media')
+  ).toEqual(expectedMedia);
+  expect(
+    readOptionField(createContributorsOption([], false, false), 'media')
+  ).toBe(undefined);
 });
 
 function readOptionField(option: unknown, key: string): unknown {

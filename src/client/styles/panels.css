@@ -21,7 +21,11 @@
   border: 1px solid var(--color-border);
   border-radius: 8px;
   background:
-    linear-gradient(180deg, var(--color-stats-card-start), var(--color-stats-card-end)),
+    linear-gradient(
+      180deg,
+      var(--color-stats-card-start),
+      var(--color-stats-card-end)
+    ),
     var(--color-surface);
 }
 

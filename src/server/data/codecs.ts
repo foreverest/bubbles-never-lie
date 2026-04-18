@@ -93,7 +93,9 @@ export const contributorEntityCodec: EntityCodec<ContributorEntity> = {
   serialize: JSON.stringify,
 };
 
-const parseJsonRecord = (value: string | null | undefined): Record<string, unknown> | null => {
+const parseJsonRecord = (
+  value: string | null | undefined
+): Record<string, unknown> | null => {
   if (value === null || value === undefined) {
     return null;
   }
@@ -114,7 +116,9 @@ const isFiniteNumber = (value: unknown): value is number =>
 const isNullableFiniteNumber = (value: unknown): value is number | null =>
   value === null || isFiniteNumber(value);
 
-const isCommentBodyPreviewKind = (value: unknown): value is CommentBodyPreviewKind =>
+const isCommentBodyPreviewKind = (
+  value: unknown
+): value is CommentBodyPreviewKind =>
   value === 'text' || value === 'gif' || value === 'image';
 
 const isValidDateString = (value: unknown): value is string =>

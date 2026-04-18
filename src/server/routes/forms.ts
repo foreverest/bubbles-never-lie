@@ -10,7 +10,10 @@ const logger = createLogger('forms:create-chart');
 forms.post('/create-chart-submit', async (c) => {
   try {
     const values = await c.req.json<TimeframeFormValues>();
-    logger.info('Received create chart form submission', createFormLogMetadata(values));
+    logger.info(
+      'Received create chart form submission',
+      createFormLogMetadata(values)
+    );
 
     const post = await createBubbleStatsPost(values);
     logger.info('Created bubble stats post', {
@@ -25,7 +28,8 @@ forms.post('/create-chart-submit', async (c) => {
       200
     );
   } catch (error) {
-    const message = error instanceof Error ? error.message : 'Failed to create post.';
+    const message =
+      error instanceof Error ? error.message : 'Failed to create post.';
     logger.error('Create bubble stats post failed', { error: message });
 
     return c.json<UiResponse>(

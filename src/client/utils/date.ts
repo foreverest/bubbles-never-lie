@@ -26,7 +26,9 @@ type TimeframeDateRangeLabels = {
   fullLabel: string;
 };
 
-export function formatTimeframeDatePhrase(timeframe: TimeframePostData): string {
+export function formatTimeframeDatePhrase(
+  timeframe: TimeframePostData
+): string {
   const range = readLocalTimeframeRange(timeframe);
 
   if (!range) {
@@ -38,7 +40,9 @@ export function formatTimeframeDatePhrase(timeframe: TimeframePostData): string 
     : `from ${range.compactStartDate} through ${range.compactEndDate}`;
 }
 
-export function formatTimeframeDateRangeLabel(timeframe: TimeframePostData): string {
+export function formatTimeframeDateRangeLabel(
+  timeframe: TimeframePostData
+): string {
   return formatTimeframeDateRangeLabels(timeframe).fullLabel;
 }
 
@@ -96,15 +100,48 @@ export function formatRelativeAge(
   date: Date,
   options: { labelStyle?: RelativeAgeLabelStyle } = {}
 ): string {
-  const secondsAgo = Math.max(0, Math.floor((Date.now() - date.getTime()) / 1000));
+  const secondsAgo = Math.max(
+    0,
+    Math.floor((Date.now() - date.getTime()) / 1000)
+  );
   const useLongLabels = options.labelStyle === 'long';
   const units = [
-    { seconds: 31_536_000, shortLabel: 'yr.', singularLabel: 'year', pluralLabel: 'years' },
-    { seconds: 2_592_000, shortLabel: 'mo.', singularLabel: 'month', pluralLabel: 'months' },
-    { seconds: 604_800, shortLabel: 'wk.', singularLabel: 'week', pluralLabel: 'weeks' },
-    { seconds: 86_400, shortLabel: 'd.', singularLabel: 'day', pluralLabel: 'days' },
-    { seconds: 3_600, shortLabel: 'hr.', singularLabel: 'hour', pluralLabel: 'hours' },
-    { seconds: 60, shortLabel: 'min.', singularLabel: 'minute', pluralLabel: 'minutes' },
+    {
+      seconds: 31_536_000,
+      shortLabel: 'yr.',
+      singularLabel: 'year',
+      pluralLabel: 'years',
+    },
+    {
+      seconds: 2_592_000,
+      shortLabel: 'mo.',
+      singularLabel: 'month',
+      pluralLabel: 'months',
+    },
+    {
+      seconds: 604_800,
+      shortLabel: 'wk.',
+      singularLabel: 'week',
+      pluralLabel: 'weeks',
+    },
+    {
+      seconds: 86_400,
+      shortLabel: 'd.',
+      singularLabel: 'day',
+      pluralLabel: 'days',
+    },
+    {
+      seconds: 3_600,
+      shortLabel: 'hr.',
+      singularLabel: 'hour',
+      pluralLabel: 'hours',
+    },
+    {
+      seconds: 60,
+      shortLabel: 'min.',
+      singularLabel: 'minute',
+      pluralLabel: 'minutes',
+    },
   ];
 
   for (const unit of units) {

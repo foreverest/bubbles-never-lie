@@ -1,0 +1,54 @@
+import { getWebViewMode, requestExpandedMode } from '@devvit/web/client';
+import { useEffect, useState } from 'react';
+import type { MouseEvent as ReactMouseEvent } from 'react';
+
+import { App } from './app';
+
+type WebViewMode = 'inline' | 'expanded';
+
+export function ChartEntry() {
+  const [webViewMode, setWebViewMode] = useState<WebViewMode>(readWebViewMode);
+
+  useEffect(() => {
+    const syncWebViewMode = () => setWebViewMode(readWebViewMode());
+
+    window.addEventListener('focus', syncWebViewMode);
+    document.addEventListener('visibilitychange', syncWebViewMode);
+
+    return () => {
+      window.removeEventListener('focus', syncWebViewMode);
+      document.removeEventListener('visibilitychange', syncWebViewMode);
+    };
+  }, []);
+
+  return (
+    <>
+      <App />
+      {webViewMode === 'inline' ? <ExpandChartButton /> : null}
+    </>
+  );
+}
+
+function ExpandChartButton() {
+  const handleClick = (event: ReactMouseEvent<HTMLButtonElement>) => {
+    try {
+      requestExpandedMode(event.nativeEvent, 'game');
+    } catch (error) {
+      console.warn('Unable to open expanded chart:', error);
+    }
+  };
+
+  return (
+    <button className="expand-chart-button" onClick={handleClick} type="button">
+      Expand
+    </button>
+  );
+}
+
+function readWebViewMode(): WebViewMode {
+  try {
+    return getWebViewMode();
+  } catch {
+    return 'inline';
+  }
+}

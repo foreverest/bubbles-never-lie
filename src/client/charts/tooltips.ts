@@ -1,7 +1,11 @@
 import { resolveUserAvatarUrl } from '../../shared/api';
 import { formatRelativeAge } from '../utils/date';
 import { escapeHtml } from '../utils/html';
-import type { CommentBubbleDatum, ContributorBubbleDatum, PostBubbleDatum } from './types';
+import type {
+  CommentBubbleDatum,
+  ContributorBubbleDatum,
+  PostBubbleDatum,
+} from './types';
 
 type TooltipVariant = 'light' | 'dark';
 
@@ -18,7 +22,9 @@ export function renderPostTooltip(
   datum: PostBubbleDatum,
   variant: TooltipVariant = 'light'
 ): string {
-  const createdAgo = formatRelativeAge(new Date(datum.createdAt), { labelStyle: 'long' });
+  const createdAgo = formatRelativeAge(new Date(datum.createdAt), {
+    labelStyle: 'long',
+  });
 
   return [
     `<article class="chart-tooltip chart-tooltip--${variant} chart-tooltip--post">`,
@@ -42,7 +48,9 @@ export function renderCommentTooltip(
   datum: CommentBubbleDatum,
   variant: TooltipVariant = 'light'
 ): string {
-  const createdAgo = formatRelativeAge(new Date(datum.createdAt), { labelStyle: 'long' });
+  const createdAgo = formatRelativeAge(new Date(datum.createdAt), {
+    labelStyle: 'long',
+  });
 
   return [
     `<article class="chart-tooltip chart-tooltip--${variant} chart-tooltip--comment">`,
@@ -73,12 +81,28 @@ export function renderContributorTooltip(
     renderCurrentUserTooltipBadge(datum.isCurrentUser),
     '</div>',
     '<div class="chart-tooltip__stats chart-tooltip__contributor-line">',
-    renderTooltipInlineLabeledMetric(TOOLTIP_POST_ICON, datum.postCount, 'posts'),
-    renderTooltipInlineLabeledMetric(TOOLTIP_UPVOTE_ICON, datum.postScore, 'post upvotes'),
+    renderTooltipInlineLabeledMetric(
+      TOOLTIP_POST_ICON,
+      datum.postCount,
+      'posts'
+    ),
+    renderTooltipInlineLabeledMetric(
+      TOOLTIP_UPVOTE_ICON,
+      datum.postScore,
+      'post upvotes'
+    ),
     '</div>',
     '<div class="chart-tooltip__stats chart-tooltip__contributor-line">',
-    renderTooltipInlineLabeledMetric(TOOLTIP_COMMENT_ICON, datum.commentCount, 'comments'),
-    renderTooltipInlineLabeledMetric(TOOLTIP_UPVOTE_ICON, datum.commentScore, 'comment upvotes'),
+    renderTooltipInlineLabeledMetric(
+      TOOLTIP_COMMENT_ICON,
+      datum.commentCount,
+      'comments'
+    ),
+    renderTooltipInlineLabeledMetric(
+      TOOLTIP_UPVOTE_ICON,
+      datum.commentScore,
+      'comment upvotes'
+    ),
     '</div>',
     '</article>',
   ].join('');
@@ -122,13 +146,20 @@ function renderTooltipCommentPill(value: number): string {
   return `<span class="chart-tooltip__metric chart-tooltip__metric--pill chart-tooltip__metric--comments" aria-label="${escapeHtml(`${valueLabel} comments`)}">${TOOLTIP_COMMENT_ICON}<span class="chart-tooltip__metric-value">${valueLabel}</span></span>`;
 }
 
-function renderTooltipInlineVoteMetric(value: number, label = 'upvotes'): string {
+function renderTooltipInlineVoteMetric(
+  value: number,
+  label = 'upvotes'
+): string {
   const valueLabel = value.toLocaleString();
 
   return `<span class="chart-tooltip__metric chart-tooltip__metric--inline-vote" aria-label="${escapeHtml(`${valueLabel} ${label}`)}">${TOOLTIP_UPVOTE_ICON}<span class="chart-tooltip__metric-value">${valueLabel}</span>${TOOLTIP_DOWNVOTE_ICON}</span>`;
 }
 
-function renderTooltipInlineLabeledMetric(icon: string, value: number, label: string): string {
+function renderTooltipInlineLabeledMetric(
+  icon: string,
+  value: number,
+  label: string
+): string {
   const valueLabel = value.toLocaleString();
 
   return `<span class="chart-tooltip__metric chart-tooltip__metric--inline-labeled" aria-label="${escapeHtml(`${valueLabel} ${label}`)}">${icon}<span class="chart-tooltip__metric-value">${valueLabel}</span><span class="chart-tooltip__metric-label">${escapeHtml(label)}</span></span>`;

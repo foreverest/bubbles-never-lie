@@ -12,7 +12,9 @@ export type ChartHelpDetails = {
   totalBubblesLabel: string;
 };
 
-export function createPostsChartHelpDetails(totalBubbles: number): ChartHelpDetails {
+export function createPostsChartHelpDetails(
+  totalBubbles: number
+): ChartHelpDetails {
   return createChartHelpDetails(totalBubbles, [
     {
       kind: 'x-axis',
@@ -37,7 +39,9 @@ export function createPostsChartHelpDetails(totalBubbles: number): ChartHelpDeta
   ]);
 }
 
-export function createCommentsChartHelpDetails(totalBubbles: number): ChartHelpDetails {
+export function createCommentsChartHelpDetails(
+  totalBubbles: number
+): ChartHelpDetails {
   return createChartHelpDetails(totalBubbles, [
     {
       kind: 'x-axis',
@@ -57,7 +61,9 @@ export function createCommentsChartHelpDetails(totalBubbles: number): ChartHelpD
   ]);
 }
 
-export function createContributorsChartHelpDetails(totalBubbles: number): ChartHelpDetails {
+export function createContributorsChartHelpDetails(
+  totalBubbles: number
+): ChartHelpDetails {
   return createChartHelpDetails(totalBubbles, [
     {
       kind: 'x-axis',
@@ -82,7 +88,10 @@ export function createContributorsChartHelpDetails(totalBubbles: number): ChartH
   ]);
 }
 
-function createChartHelpDetails(totalBubbles: number, items: ChartHelpItem[]): ChartHelpDetails {
+function createChartHelpDetails(
+  totalBubbles: number,
+  items: ChartHelpItem[]
+): ChartHelpDetails {
   return {
     items,
     totalBubbles,

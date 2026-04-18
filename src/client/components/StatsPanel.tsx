@@ -12,7 +12,11 @@ export function StatsPanel({ state }: { state: DataState<StatsDataResponse> }) {
   }
 
   return (
-    <section className="chart-panel stats-panel" id="stats-panel" aria-label="Stats">
+    <section
+      className="chart-panel stats-panel"
+      id="stats-panel"
+      aria-label="Stats"
+    >
       <div className="stats-panel__item">
         <span className="stats-panel__label">Posts</span>
         <strong>{state.data.postCount.toLocaleString()}</strong>

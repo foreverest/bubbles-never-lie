@@ -1,5 +1,10 @@
 import { useEffect, useId, useRef, useState } from 'react';
-import type { FocusEvent, MouseEvent, PointerEvent as ReactPointerEvent, ReactNode } from 'react';
+import type {
+  FocusEvent,
+  MouseEvent,
+  PointerEvent as ReactPointerEvent,
+  ReactNode,
+} from 'react';
 
 import type { ChartHelpDetails, ChartHelpItemKind } from '../charts/help';
 
@@ -48,7 +53,10 @@ export function ChartHelpOverlay({ details }: { details: ChartHelpDetails }) {
 
   const handleBlur = (event: FocusEvent<HTMLDivElement>) => {
     const nextFocusTarget = event.relatedTarget;
-    if (nextFocusTarget instanceof Node && event.currentTarget.contains(nextFocusTarget)) {
+    if (
+      nextFocusTarget instanceof Node &&
+      event.currentTarget.contains(nextFocusTarget)
+    ) {
       return;
     }
 
@@ -90,7 +98,11 @@ export function ChartHelpOverlay({ details }: { details: ChartHelpDetails }) {
     >
       <button
         type="button"
-        className={isOpen ? 'chart-help__button chart-help__button--open' : 'chart-help__button'}
+        className={
+          isOpen
+            ? 'chart-help__button chart-help__button--open'
+            : 'chart-help__button'
+        }
         aria-controls={tooltipId}
         aria-expanded={isOpen}
         aria-label="Explain this chart"
@@ -107,7 +119,9 @@ export function ChartHelpOverlay({ details }: { details: ChartHelpDetails }) {
                 {renderChartHelpIcon(item.kind)}
                 <span className="chart-help__item-copy">
                   <span className="chart-help__item-label">{item.label}</span>
-                  <span className="chart-help__item-description">{item.description}</span>
+                  <span className="chart-help__item-description">
+                    {item.description}
+                  </span>
                 </span>
               </div>
             ))}
@@ -115,8 +129,12 @@ export function ChartHelpOverlay({ details }: { details: ChartHelpDetails }) {
 
           <div className="chart-help__divider" />
           <p className="chart-help__total">
-            <span className="chart-help__total-value">{details.totalBubbles.toLocaleString()}</span>
-            <span>{details.totalBubbles === 1 ? 'total bubble' : 'total bubbles'}</span>
+            <span className="chart-help__total-value">
+              {details.totalBubbles.toLocaleString()}
+            </span>
+            <span>
+              {details.totalBubbles === 1 ? 'total bubble' : 'total bubbles'}
+            </span>
           </p>
         </div>
       ) : null}
@@ -131,7 +149,12 @@ function renderChartHelpIcon(kind: ChartHelpItemKind): ReactNode {
 
   if (kind === 'size') {
     return (
-      <svg className="chart-help__icon" aria-hidden="true" fill="none" viewBox="0 0 24 24">
+      <svg
+        className="chart-help__icon"
+        aria-hidden="true"
+        fill="none"
+        viewBox="0 0 24 24"
+      >
         <circle cx="8" cy="15" r="3.25" />
         <circle cx="15" cy="9" r="5.25" />
       </svg>
@@ -140,7 +163,12 @@ function renderChartHelpIcon(kind: ChartHelpItemKind): ReactNode {
 
   if (kind === 'y-axis') {
     return (
-      <svg className="chart-help__icon" aria-hidden="true" fill="none" viewBox="0 0 24 24">
+      <svg
+        className="chart-help__icon"
+        aria-hidden="true"
+        fill="none"
+        viewBox="0 0 24 24"
+      >
         <path d="M12 20V5" />
         <path d="M6 11l6-6 6 6" />
       </svg>
@@ -148,7 +176,12 @@ function renderChartHelpIcon(kind: ChartHelpItemKind): ReactNode {
   }
 
   return (
-    <svg className="chart-help__icon" aria-hidden="true" fill="none" viewBox="0 0 24 24">
+    <svg
+      className="chart-help__icon"
+      aria-hidden="true"
+      fill="none"
+      viewBox="0 0 24 24"
+    >
       <path d="M4 12h15" />
       <path d="M13 6l6 6-6 6" />
     </svg>

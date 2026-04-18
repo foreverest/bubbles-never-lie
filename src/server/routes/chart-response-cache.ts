@@ -1,6 +1,10 @@
 const CHART_DATA_CACHE_KEY_VERSION = 'v1';
 
-export type ChartDataCacheEndpoint = 'posts' | 'comments' | 'contributors' | 'stats';
+export type ChartDataCacheEndpoint =
+  | 'posts'
+  | 'comments'
+  | 'contributors'
+  | 'stats';
 
 export type ChartDataCacheKeyOptions = {
   endpoint: ChartDataCacheEndpoint;
@@ -28,7 +32,10 @@ export const createChartDataCacheKey = ({
     `end=${endTime}`,
   ].join(':');
 
-const normalizeCacheKeyPart = (value: string | null | undefined, fallback: string): string => {
+const normalizeCacheKeyPart = (
+  value: string | null | undefined,
+  fallback: string
+): string => {
   const normalized = value?.trim() ?? '';
 
   return normalized === '' ? fallback : normalized;

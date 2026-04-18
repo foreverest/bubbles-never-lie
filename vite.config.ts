@@ -1,4 +1,5 @@
 import { devvit } from '@devvit/start/vite';
+import tailwind from '@tailwindcss/vite';
 import react from '@vitejs/plugin-react';
 import { defineConfig } from 'vite';
 
@@ -11,7 +12,10 @@ function manualChunks(id: string): string | undefined {
     return 'echarts';
   }
 
-  if (id.includes('node_modules/react') || id.includes('node_modules/react-dom')) {
+  if (
+    id.includes('node_modules/react') ||
+    id.includes('node_modules/react-dom')
+  ) {
     return 'react';
   }
 
@@ -23,6 +27,7 @@ function manualChunks(id: string): string | undefined {
 export default defineConfig({
   plugins: [
     react(),
+    tailwind(),
     devvit({
       client: {
         build: {

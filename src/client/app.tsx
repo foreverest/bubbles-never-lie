@@ -191,7 +191,10 @@ function CommentsPanel({
           />
         )
       ) : (
-        <PanelState state={state} loadingMessage="Loading comment chart data..." />
+        <PanelState
+          state={state}
+          loadingMessage="Loading comment chart data..."
+        />
       )}
     </section>
   );
@@ -209,7 +212,11 @@ function ContributorsPanel({
   resolvedTheme: ResolvedTheme;
 }) {
   return (
-    <section className="chart-panel" id="contributors-panel" aria-label="Contributors">
+    <section
+      className="chart-panel"
+      id="contributors-panel"
+      aria-label="Contributors"
+    >
       {state.status === 'ready' ? (
         state.data.contributors.length > 0 ? (
           <ContributorsChart
@@ -226,7 +233,10 @@ function ContributorsPanel({
           />
         )
       ) : (
-        <PanelState state={state} loadingMessage="Loading contributor chart data..." />
+        <PanelState
+          state={state}
+          loadingMessage="Loading contributor chart data..."
+        />
       )}
     </section>
   );

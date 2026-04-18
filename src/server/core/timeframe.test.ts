@@ -26,7 +26,9 @@ test('create timeframe form omits hour and prioritizes timezone options', () => 
   const form = createTimeframeForm({
     currentTimeZone: 'America/Los_Angeles',
   });
-  const fieldNames = form.fields.flatMap((field) => (field.type === 'group' ? [] : [field.name]));
+  const fieldNames = form.fields.flatMap((field) =>
+    field.type === 'group' ? [] : [field.name]
+  );
   const timeZoneField = form.fields.find(
     (field) => field.type !== 'group' && field.name === 'timeZone'
   );
@@ -46,12 +48,18 @@ test('create timeframe form omits hour and prioritizes timezone options', () => 
     label: 'America/Los Angeles (your timezone)',
     value: 'America/Los_Angeles',
   });
-  expect(timeZoneField.options.filter((option) => option.value === 'UTC')).toHaveLength(1);
   expect(
-    timeZoneField.options.filter((option) => option.value === 'America/Los_Angeles')
+    timeZoneField.options.filter((option) => option.value === 'UTC')
+  ).toHaveLength(1);
+  expect(
+    timeZoneField.options.filter(
+      (option) => option.value === 'America/Los_Angeles'
+    )
   ).toHaveLength(1);
 
-  const remainingTimeZones = timeZoneField.options.slice(2).map((option) => option.value);
+  const remainingTimeZones = timeZoneField.options
+    .slice(2)
+    .map((option) => option.value);
   expect(remainingTimeZones).toEqual([...remainingTimeZones].sort());
 });
 
@@ -74,8 +82,13 @@ test('timezone selector marks UTC as current when it is the current timezone', (
     throw new Error('Expected timezone select field.');
   }
 
-  expect(timeZoneField.options[0]).toEqual({ label: 'UTC (your timezone)', value: 'UTC' });
-  expect(timeZoneField.options.filter((option) => option.value === 'UTC')).toHaveLength(1);
+  expect(timeZoneField.options[0]).toEqual({
+    label: 'UTC (your timezone)',
+    value: 'UTC',
+  });
+  expect(
+    timeZoneField.options.filter((option) => option.value === 'UTC')
+  ).toHaveLength(1);
 });
 
 test('validates simplified timeframe post data', () => {
@@ -91,8 +104,12 @@ test('validates simplified timeframe post data', () => {
     end: new Date('2026-01-02T15:00:00.000Z'),
   });
 
-  expect(readTimeframePostData({ type: postData.type, endIso: postData.endIso })).toBeNull();
-  expect(readTimeframePostData({ ...postData, startIso: 'not-a-date' })).toBeNull();
+  expect(
+    readTimeframePostData({ type: postData.type, endIso: postData.endIso })
+  ).toBeNull();
+  expect(
+    readTimeframePostData({ ...postData, startIso: 'not-a-date' })
+  ).toBeNull();
   expect(
     readTimeframePostData({
       ...postData,
@@ -100,5 +117,10 @@ test('validates simplified timeframe post data', () => {
       endIso: '2026-01-02T00:00:00.000Z',
     })
   ).toBeNull();
-  expect(readTimeframePostData({ ...postData, dataSourceSubredditName: 'unexpected' })).toBeNull();
+  expect(
+    readTimeframePostData({
+      ...postData,
+      dataSourceSubredditName: 'unexpected',
+    })
+  ).toBeNull();
 });

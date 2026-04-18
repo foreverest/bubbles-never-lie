@@ -60,7 +60,9 @@ const readConfiguredLogLevel = (): ConfiguredLogLevel => {
   return isConfiguredLogLevel(value) ? value : defaultLogLevel;
 };
 
-const isConfiguredLogLevel = (value: string | undefined): value is ConfiguredLogLevel =>
+const isConfiguredLogLevel = (
+  value: string | undefined
+): value is ConfiguredLogLevel =>
   value === 'debug' ||
   value === 'info' ||
   value === 'warn' ||
@@ -74,7 +76,9 @@ const formatMetadata = (metadata: LogMetadata | undefined): string => {
 
   try {
     const serialized = JSON.stringify(metadata);
-    return serialized === undefined ? ' [metadata unavailable]' : ` ${serialized}`;
+    return serialized === undefined
+      ? ' [metadata unavailable]'
+      : ` ${serialized}`;
   } catch {
     return ' [metadata unavailable]';
   }

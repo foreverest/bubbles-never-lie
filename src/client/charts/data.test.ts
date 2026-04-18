@@ -1,6 +1,10 @@
 import { expect, test } from 'vitest';
 
-import type { ChartComment, ChartContributor, ChartPost } from '../../shared/api';
+import type {
+  ChartComment,
+  ChartContributor,
+  ChartPost,
+} from '../../shared/api';
 import {
   getCurrentUserDatumFields,
   groupCommentsByPost,
@@ -28,8 +32,12 @@ const post: ChartPost = {
 test('normalizes usernames and identifies the current user', () => {
   expect(normalizeUsername(' u/Alice ')).toBe('alice');
   expect(normalizeUsername('')).toBe(null);
-  expect(getCurrentUserDatumFields('Alice', 'alice')).toEqual({ isCurrentUser: true });
-  expect(getCurrentUserDatumFields('Bob', 'alice')).toEqual({ isCurrentUser: false });
+  expect(getCurrentUserDatumFields('Alice', 'alice')).toEqual({
+    isCurrentUser: true,
+  });
+  expect(getCurrentUserDatumFields('Bob', 'alice')).toEqual({
+    isCurrentUser: false,
+  });
 });
 
 test('adds lightweight datum discriminants', () => {

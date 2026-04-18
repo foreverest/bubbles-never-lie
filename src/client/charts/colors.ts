@@ -17,8 +17,12 @@ const CHART_COLOR_FALLBACK = CHART_COLOR_PALETTE[0];
 const CHART_UNKNOWN_BUCKET_COLOR = '#9aa6b2';
 const bubbleFillColorCache = new Map<string, string>();
 
-export function getKarmaBucketColor(bucket: SubredditKarmaBucket | null): string {
-  return bucket === null ? CHART_UNKNOWN_BUCKET_COLOR : getChartPaletteColor(bucket);
+export function getKarmaBucketColor(
+  bucket: SubredditKarmaBucket | null
+): string {
+  return bucket === null
+    ? CHART_UNKNOWN_BUCKET_COLOR
+    : getChartPaletteColor(bucket);
 }
 
 export function getCommentGroupColor(postId: string): string {
@@ -40,10 +44,15 @@ export function getBubbleFillColor(baseColor: string, alpha: number): string {
 }
 
 export function getChartPaletteColor(index: number): string {
-  return CHART_COLOR_PALETTE[index % CHART_COLOR_PALETTE.length] ?? CHART_COLOR_FALLBACK;
+  return (
+    CHART_COLOR_PALETTE[index % CHART_COLOR_PALETTE.length] ??
+    CHART_COLOR_FALLBACK
+  );
 }
 
-export function hexToRgb(color: string): { red: number; green: number; blue: number } | null {
+export function hexToRgb(
+  color: string
+): { red: number; green: number; blue: number } | null {
   const hex = color.startsWith('#') ? color.slice(1) : color;
 
   if (!/^[\da-f]{6}$/i.test(hex)) {

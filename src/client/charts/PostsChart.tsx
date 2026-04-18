@@ -68,7 +68,14 @@ export function PostsChart({
       ),
       true
     );
-  }, [chartData, chartRef, currentUserRippleEnabled, data, resolvedTheme, zoomEnabled]);
+  }, [
+    chartData,
+    chartRef,
+    currentUserRippleEnabled,
+    data,
+    resolvedTheme,
+    zoomEnabled,
+  ]);
 
   return (
     <div className="chart-stage-shell">

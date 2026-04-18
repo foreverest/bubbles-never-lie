@@ -16,9 +16,14 @@ test('uses visible zoom range edges as boundary labels', () => {
   const visibleStart = new Date(2024, 0, 1, 1, 0, 0, 0).getTime();
   const end = new Date(2024, 0, 1, 2, 0, 0, 0).getTime();
 
-  expect(formatXAxisLabel(visibleStart, 1, { start, end }, { start: visibleStart, end })).toBe(
-    'Jan 01\n01:00'
-  );
+  expect(
+    formatXAxisLabel(
+      visibleStart,
+      1,
+      { start, end },
+      { start: visibleStart, end }
+    )
+  ).toBe('Jan 01\n01:00');
 });
 
 test('formats end boundary ticks without rounding to the next minute', () => {

@@ -9,7 +9,10 @@ export function useResolvedTheme(themeMode: ThemeMode): ResolvedTheme {
   const resolvedTheme = resolveThemeMode(themeMode, prefersDark);
 
   useEffect(() => {
-    if (typeof window === 'undefined' || typeof window.matchMedia !== 'function') {
+    if (
+      typeof window === 'undefined' ||
+      typeof window.matchMedia !== 'function'
+    ) {
       return;
     }
 
@@ -44,8 +47,13 @@ export function useResolvedTheme(themeMode: ThemeMode): ResolvedTheme {
   return resolvedTheme;
 }
 
-export function resolveThemeMode(themeMode: ThemeMode, prefersDark: boolean): ResolvedTheme {
-  return themeMode === 'dark' || (themeMode === 'system' && prefersDark) ? 'dark' : 'light';
+export function resolveThemeMode(
+  themeMode: ThemeMode,
+  prefersDark: boolean
+): ResolvedTheme {
+  return themeMode === 'dark' || (themeMode === 'system' && prefersDark)
+    ? 'dark'
+    : 'light';
 }
 
 function readPrefersDarkColorScheme(): boolean {

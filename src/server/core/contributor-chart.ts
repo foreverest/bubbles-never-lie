@@ -40,7 +40,9 @@ export const readContributorsForTimeframe = async ({
     dataLayer.comments.getInTimeRange({ startTime, endTime }),
   ]);
   const activities = createContributorActivities(posts, comments);
-  const cachedContributors = await dataLayer.contributors.getByIds([...activities.keys()]);
+  const cachedContributors = await dataLayer.contributors.getByIds([
+    ...activities.keys(),
+  ]);
   const cachedContributorsByName = new Map(
     cachedContributors.map((contributor) => [contributor.id, contributor])
   );
@@ -79,7 +81,10 @@ export const createContributorActivities = (
       return;
     }
 
-    const activity = getOrCreateContributorActivity(activities, contributorName);
+    const activity = getOrCreateContributorActivity(
+      activities,
+      contributorName
+    );
     activity.postCount += 1;
     activity.postScore += post.score;
   });
@@ -91,7 +96,10 @@ export const createContributorActivities = (
       return;
     }
 
-    const activity = getOrCreateContributorActivity(activities, contributorName);
+    const activity = getOrCreateContributorActivity(
+      activities,
+      contributorName
+    );
     activity.commentCount += 1;
     activity.commentScore += comment.score;
   });
@@ -166,10 +174,15 @@ const getOrCreateContributorActivity = (
 const readChartContributorName = (username: string): string | null => {
   const trimmed = username.trim();
 
-  return trimmed === '' || trimmed.toLowerCase() === '[deleted]' ? null : trimmed;
+  return trimmed === '' || trimmed.toLowerCase() === '[deleted]'
+    ? null
+    : trimmed;
 };
 
-const sortChartContributors = (a: ChartContributor, b: ChartContributor): number =>
+const sortChartContributors = (
+  a: ChartContributor,
+  b: ChartContributor
+): number =>
   b.postCount + b.commentCount - (a.postCount + a.commentCount) ||
   b.totalScore - a.totalScore ||
   a.contributorName.localeCompare(b.contributorName);

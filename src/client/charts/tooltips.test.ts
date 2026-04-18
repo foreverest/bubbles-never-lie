@@ -27,9 +27,13 @@ test('renders escaped post tooltip content with fallback avatar and current-user
 
     expect(tooltip).toMatch(/chart-tooltip--light/);
     expect(tooltip).toMatch(/Alice &amp; Bob/);
-    expect(tooltip).toMatch(/&lt;script&gt;alert\(&quot;x&quot;\)&lt;\/script&gt;/);
+    expect(tooltip).toMatch(
+      /&lt;script&gt;alert\(&quot;x&quot;\)&lt;\/script&gt;/
+    );
     expect(tooltip).toMatch(/<span class="chart-tooltip__you">you<\/span>/);
-    expect(tooltip).toMatch(new RegExp(USER_AVATAR_FALLBACK_URL.replaceAll('.', '\\.')));
+    expect(tooltip).toMatch(
+      new RegExp(USER_AVATAR_FALLBACK_URL.replaceAll('.', '\\.'))
+    );
     expect(tooltip).toMatch(/1 hour ago/);
   } finally {
     vi.useRealTimers();
@@ -110,7 +114,9 @@ test('renders image comment preview as a compact media label', () => {
   expect(tooltip).not.toMatch(/preview\.redd\.it/);
 });
 
-const createCommentDatum = (overrides: Partial<CommentBubbleDatum> = {}): CommentBubbleDatum => ({
+const createCommentDatum = (
+  overrides: Partial<CommentBubbleDatum> = {}
+): CommentBubbleDatum => ({
   kind: 'comment',
   value: [Date.parse('2024-02-29T11:00:00.000Z'), 10],
   score: 10,

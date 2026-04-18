@@ -1,7 +1,10 @@
 import { context } from '@devvit/web/server';
 import { Hono } from 'hono';
 import { refreshContributorCache } from '../core/contributor-cache';
-import { processCommentCacheQueue, refreshCommentCache } from '../core/comment-cache';
+import {
+  processCommentCacheQueue,
+  refreshCommentCache,
+} from '../core/comment-cache';
 import { refreshPostCache } from '../core/post-cache';
 import { refreshCurrentSubredditIconCache } from '../core/subreddit-icons';
 import { getCacheRefreshSubredditNames } from '../core/subreddits';
@@ -17,7 +20,10 @@ const cacheAppLogger = createLogger('cache:app');
 const COMMENT_QUEUE_WORKER_ROUTE_DURATION_MS = 25 * 1000;
 
 cache.post('/refresh-post-cache', async (c) => {
-  cachePostsLogger.info('Received post cache refresh request', createContextLogMetadata());
+  cachePostsLogger.info(
+    'Received post cache refresh request',
+    createContextLogMetadata()
+  );
 
   try {
     const results = await refreshPostCachesForCurrentSubreddits();
@@ -56,7 +62,10 @@ cache.post('/refresh-post-cache', async (c) => {
 });
 
 cache.post('/refresh-comment-cache', async (c) => {
-  cacheCommentsLogger.info('Received comment cache refresh request', createContextLogMetadata());
+  cacheCommentsLogger.info(
+    'Received comment cache refresh request',
+    createContextLogMetadata()
+  );
 
   try {
     const results = await refreshCommentCachesForCurrentSubreddits();
@@ -103,21 +112,24 @@ cache.post('/refresh-comment-cache-queue', async (c) => {
   try {
     const results = await processCommentCacheQueuesForCurrentSubreddits();
 
-    cacheCommentQueueLogger.info('Completed comment cache queue refresh request', {
-      ...createContextLogMetadata(),
-      subredditCount: results.length,
-      results: results.map(({ subredditName, result }) => ({
-        subredditName,
-        processedPostCount: result.processedPostCount,
-        processedCommentParentCount: result.processedCommentParentCount,
-        failedItemCount: result.failedItemCount,
-        invalidQueueItemCount: result.invalidQueueItemCount,
-        fetchedCommentCount: result.fetchedCommentCount,
-        cachedCommentCount: result.cachedCommentCount,
-        enqueuedCommentParentCount: result.enqueuedCommentParentCount,
-        queueEmpty: result.queueEmpty,
-      })),
-    });
+    cacheCommentQueueLogger.info(
+      'Completed comment cache queue refresh request',
+      {
+        ...createContextLogMetadata(),
+        subredditCount: results.length,
+        results: results.map(({ subredditName, result }) => ({
+          subredditName,
+          processedPostCount: result.processedPostCount,
+          processedCommentParentCount: result.processedCommentParentCount,
+          failedItemCount: result.failedItemCount,
+          invalidQueueItemCount: result.invalidQueueItemCount,
+          fetchedCommentCount: result.fetchedCommentCount,
+          cachedCommentCount: result.cachedCommentCount,
+          enqueuedCommentParentCount: result.enqueuedCommentParentCount,
+          queueEmpty: result.queueEmpty,
+        })),
+      }
+    );
     return c.json(
       {
         status: 'ok',
@@ -127,10 +139,13 @@ cache.post('/refresh-comment-cache-queue', async (c) => {
     );
   } catch (error) {
     const message = getErrorMessage(error);
-    cacheCommentQueueLogger.error('Comment cache queue refresh request failed', {
-      ...createContextLogMetadata(),
-      error: message,
-    });
+    cacheCommentQueueLogger.error(
+      'Comment cache queue refresh request failed',
+      {
+        ...createContextLogMetadata(),
+        error: message,
+      }
+    );
 
     return c.json(
       {
@@ -150,15 +165,18 @@ cache.post('/refresh-contributor-cache', async (c) => {
 
   try {
     const results = await refreshContributorCachesForCurrentSubreddits();
-    cacheContributorsLogger.info('Completed contributor cache refresh request', {
-      ...createContextLogMetadata(),
-      subredditCount: results.length,
-      results: results.map(({ subredditName, result }) => ({
-        subredditName,
-        candidateContributorCount: result.candidateContributorCount,
-        refreshedContributorCount: result.refreshedContributorCount,
-      })),
-    });
+    cacheContributorsLogger.info(
+      'Completed contributor cache refresh request',
+      {
+        ...createContextLogMetadata(),
+        subredditCount: results.length,
+        results: results.map(({ subredditName, result }) => ({
+          subredditName,
+          candidateContributorCount: result.candidateContributorCount,
+          refreshedContributorCount: result.refreshedContributorCount,
+        })),
+      }
+    );
 
     return c.json(
       {
@@ -191,7 +209,9 @@ cache.post('/refresh-subreddit-icons', async (c) => {
   );
 
   try {
-    const result = await refreshCurrentSubredditIconCache(context.subredditName);
+    const result = await refreshCurrentSubredditIconCache(
+      context.subredditName
+    );
     cacheSubredditIconsLogger.info('Completed subreddit icon refresh request', {
       ...createContextLogMetadata(),
       subredditName: result.subredditName,
@@ -223,29 +243,22 @@ cache.post('/refresh-subreddit-icons', async (c) => {
 });
 
 cache.post('/refresh-app-cache', async (c) => {
-  cacheAppLogger.info('Received app cache refresh request', createContextLogMetadata());
+  cacheAppLogger.info(
+    'Received app cache refresh request',
+    createContextLogMetadata()
+  );
 
   try {
-    const postCaches = await refreshPostCachesForCurrentSubreddits();
-    const commentCaches = await refreshCommentCachesForCurrentSubreddits();
-    const contributorCaches = await refreshContributorCachesForCurrentSubreddits();
-    const subredditIcon = await refreshCurrentSubredditIconCache(context.subredditName);
+    const result = await refreshAppCachesForCurrentSubreddits();
     cacheAppLogger.info('Completed app cache refresh request', {
       ...createContextLogMetadata(),
-      postCacheSubredditCount: postCaches.length,
-      commentCacheSubredditCount: commentCaches.length,
-      contributorCacheSubredditCount: contributorCaches.length,
-      subredditIconName: subredditIcon.subredditName,
-      hasSubredditIconUrl: subredditIcon.subredditIconUrl !== null,
+      ...createAppCacheRefreshLogMetadata(result),
     });
 
     return c.json(
       {
         status: 'ok',
-        postCaches,
-        commentCaches,
-        contributorCaches,
-        subredditIcon,
+        ...result,
       },
       200
     );
@@ -266,6 +279,40 @@ cache.post('/refresh-app-cache', async (c) => {
   }
 });
 
+export type AppCacheRefreshResult = {
+  postCaches: Array<{
+    subredditName: string;
+    result: Awaited<ReturnType<typeof refreshPostCache>>;
+  }>;
+  commentCaches: Array<{
+    subredditName: string;
+    result: Awaited<ReturnType<typeof refreshCommentCache>>;
+  }>;
+  contributorCaches: Array<{
+    subredditName: string;
+    result: Awaited<ReturnType<typeof refreshContributorCache>>;
+  }>;
+  subredditIcon: Awaited<ReturnType<typeof refreshCurrentSubredditIconCache>>;
+};
+
+export const refreshAppCachesForCurrentSubreddits =
+  async (): Promise<AppCacheRefreshResult> => {
+    const postCaches = await refreshPostCachesForCurrentSubreddits();
+    const commentCaches = await refreshCommentCachesForCurrentSubreddits();
+    const contributorCaches =
+      await refreshContributorCachesForCurrentSubreddits();
+    const subredditIcon = await refreshCurrentSubredditIconCache(
+      context.subredditName
+    );
+
+    return {
+      postCaches,
+      commentCaches,
+      contributorCaches,
+      subredditIcon,
+    };
+  };
+
 const refreshPostCachesForCurrentSubreddits = async () => {
   const subredditNames = getCacheRefreshSubredditNames(context.subredditName);
   cachePostsLogger.info('Refreshing post cache for subreddits', {
@@ -280,7 +327,9 @@ const refreshPostCachesForCurrentSubreddits = async () => {
 
   for (const subredditName of subredditNames) {
     try {
-      cachePostsLogger.info('Refreshing post cache for subreddit', { subredditName });
+      cachePostsLogger.info('Refreshing post cache for subreddit', {
+        subredditName,
+      });
       const result = await refreshPostCache(subredditName);
       results.push({ subredditName, result });
       cachePostsLogger.info('Refreshed post cache for subreddit', {
@@ -319,7 +368,9 @@ const refreshCommentCachesForCurrentSubreddits = async () => {
 
   for (const subredditName of subredditNames) {
     try {
-      cacheCommentsLogger.info('Refreshing comment cache for subreddit', { subredditName });
+      cacheCommentsLogger.info('Refreshing comment cache for subreddit', {
+        subredditName,
+      });
       const result = await refreshCommentCache(subredditName);
       results.push({ subredditName, result });
       cacheCommentsLogger.info('Refreshed comment cache for subreddit', {
@@ -338,7 +389,9 @@ const refreshCommentCachesForCurrentSubreddits = async () => {
   }
 
   if (failures.length > 0) {
-    throw new Error(`Unable to refresh comment cache for ${failures.join(', ')}`);
+    throw new Error(
+      `Unable to refresh comment cache for ${failures.join(', ')}`
+    );
   }
 
   return results;
@@ -347,10 +400,13 @@ const refreshCommentCachesForCurrentSubreddits = async () => {
 const processCommentCacheQueuesForCurrentSubreddits = async () => {
   const subredditNames = getCacheRefreshSubredditNames(context.subredditName);
   const startedAt = Date.now();
-  cacheCommentQueueLogger.info('Processing comment cache queues for subreddits', {
-    ...createContextLogMetadata(),
-    subredditNames,
-  });
+  cacheCommentQueueLogger.info(
+    'Processing comment cache queues for subreddits',
+    {
+      ...createContextLogMetadata(),
+      subredditNames,
+    }
+  );
   const results: Array<{
     subredditName: string;
     result: Awaited<ReturnType<typeof processCommentCacheQueue>>;
@@ -359,7 +415,10 @@ const processCommentCacheQueuesForCurrentSubreddits = async () => {
 
   for (const subredditName of subredditNames) {
     const elapsedMs = Date.now() - startedAt;
-    const remainingDurationMs = Math.max(0, COMMENT_QUEUE_WORKER_ROUTE_DURATION_MS - elapsedMs);
+    const remainingDurationMs = Math.max(
+      0,
+      COMMENT_QUEUE_WORKER_ROUTE_DURATION_MS - elapsedMs
+    );
 
     if (remainingDurationMs <= 0) {
       cacheCommentQueueLogger.info(
@@ -372,38 +431,49 @@ const processCommentCacheQueuesForCurrentSubreddits = async () => {
     }
 
     try {
-      cacheCommentQueueLogger.info('Processing comment cache queue for subreddit', {
-        subredditName,
-        remainingDurationMs,
-      });
+      cacheCommentQueueLogger.info(
+        'Processing comment cache queue for subreddit',
+        {
+          subredditName,
+          remainingDurationMs,
+        }
+      );
       const result = await processCommentCacheQueue({
         subredditName,
         maxDurationMs: remainingDurationMs,
       });
       results.push({ subredditName, result });
-      cacheCommentQueueLogger.info('Processed comment cache queue for subreddit', {
-        subredditName,
-        processedPostCount: result.processedPostCount,
-        processedCommentParentCount: result.processedCommentParentCount,
-        failedItemCount: result.failedItemCount,
-        invalidQueueItemCount: result.invalidQueueItemCount,
-        fetchedCommentCount: result.fetchedCommentCount,
-        cachedCommentCount: result.cachedCommentCount,
-        enqueuedCommentParentCount: result.enqueuedCommentParentCount,
-        queueEmpty: result.queueEmpty,
-      });
+      cacheCommentQueueLogger.info(
+        'Processed comment cache queue for subreddit',
+        {
+          subredditName,
+          processedPostCount: result.processedPostCount,
+          processedCommentParentCount: result.processedCommentParentCount,
+          failedItemCount: result.failedItemCount,
+          invalidQueueItemCount: result.invalidQueueItemCount,
+          fetchedCommentCount: result.fetchedCommentCount,
+          cachedCommentCount: result.cachedCommentCount,
+          enqueuedCommentParentCount: result.enqueuedCommentParentCount,
+          queueEmpty: result.queueEmpty,
+        }
+      );
     } catch (error) {
       const message = getErrorMessage(error);
-      cacheCommentQueueLogger.warn('Comment cache queue processing failed for subreddit', {
-        subredditName,
-        error: message,
-      });
+      cacheCommentQueueLogger.warn(
+        'Comment cache queue processing failed for subreddit',
+        {
+          subredditName,
+          error: message,
+        }
+      );
       failures.push(`r/${subredditName}: ${message}`);
     }
   }
 
   if (failures.length > 0) {
-    throw new Error(`Unable to process comment cache queue for ${failures.join(', ')}`);
+    throw new Error(
+      `Unable to process comment cache queue for ${failures.join(', ')}`
+    );
   }
 
   return results;
@@ -423,28 +493,39 @@ const refreshContributorCachesForCurrentSubreddits = async () => {
 
   for (const subredditName of subredditNames) {
     try {
-      cacheContributorsLogger.info('Refreshing contributor cache for subreddit', {
-        subredditName,
-      });
+      cacheContributorsLogger.info(
+        'Refreshing contributor cache for subreddit',
+        {
+          subredditName,
+        }
+      );
       const result = await refreshContributorCache(subredditName);
       results.push({ subredditName, result });
-      cacheContributorsLogger.info('Refreshed contributor cache for subreddit', {
-        subredditName,
-        candidateContributorCount: result.candidateContributorCount,
-        refreshedContributorCount: result.refreshedContributorCount,
-      });
+      cacheContributorsLogger.info(
+        'Refreshed contributor cache for subreddit',
+        {
+          subredditName,
+          candidateContributorCount: result.candidateContributorCount,
+          refreshedContributorCount: result.refreshedContributorCount,
+        }
+      );
     } catch (error) {
       const message = getErrorMessage(error);
-      cacheContributorsLogger.warn('Contributor cache refresh failed for subreddit', {
-        subredditName,
-        error: message,
-      });
+      cacheContributorsLogger.warn(
+        'Contributor cache refresh failed for subreddit',
+        {
+          subredditName,
+          error: message,
+        }
+      );
       failures.push(`r/${subredditName}: ${message}`);
     }
   }
 
   if (failures.length > 0) {
-    throw new Error(`Unable to refresh contributor cache for ${failures.join(', ')}`);
+    throw new Error(
+      `Unable to refresh contributor cache for ${failures.join(', ')}`
+    );
   }
 
   return results;
@@ -454,5 +535,20 @@ const createContextLogMetadata = (): Record<string, unknown> => ({
   currentSubredditName: context.subredditName,
 });
 
+export const createAppCacheRefreshLogMetadata = ({
+  postCaches,
+  commentCaches,
+  contributorCaches,
+  subredditIcon,
+}: AppCacheRefreshResult): Record<string, unknown> => ({
+  postCacheSubredditCount: postCaches.length,
+  commentCacheSubredditCount: commentCaches.length,
+  contributorCacheSubredditCount: contributorCaches.length,
+  subredditIconName: subredditIcon.subredditName,
+  hasSubredditIconUrl: subredditIcon.subredditIconUrl !== null,
+});
+
 const getErrorMessage = (error: unknown): string =>
-  error instanceof Error ? error.message : String(error) || 'Unable to refresh post cache.';
+  error instanceof Error
+    ? error.message
+    : String(error) || 'Unable to refresh post cache.';
