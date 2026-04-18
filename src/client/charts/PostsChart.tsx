@@ -1,11 +1,13 @@
 import { useCallback, useEffect, useMemo } from 'react';
 
 import type { PostsChartDataResponse } from '../../shared/api';
+import { ChartHelpOverlay } from '../components/ChartHelpOverlay';
 import { useCurrentUsername } from '../hooks/useCurrentUsername';
 import type { ResolvedTheme } from '../types';
 import { openRedditUrl } from '../utils/navigation';
 import { isPostBubbleDatum, toPostBubbleDatum } from './data';
 import type { EChartsInstance } from './echarts';
+import { createPostsChartHelpDetails } from './help';
 import { createPostsOption } from './options/posts';
 import { readVisibleTimeRange } from './timeAxis';
 import type { ChartEventParams, PostBubbleDatum } from './types';
@@ -26,6 +28,10 @@ export function PostsChart({
   const chartData = useMemo<PostBubbleDatum[]>(
     () => data.posts.map((post) => toPostBubbleDatum(post, currentUsername)),
     [currentUsername, data.posts]
+  );
+  const helpDetails = useMemo(
+    () => createPostsChartHelpDetails(data.posts.length),
+    [data.posts.length]
   );
   const handleChartInit = useCallback((chart: EChartsInstance) => {
     const handleChartClick = (params: ChartEventParams) => {
@@ -65,11 +71,14 @@ export function PostsChart({
   }, [chartData, chartRef, currentUserRippleEnabled, data, resolvedTheme, zoomEnabled]);
 
   return (
-    <div
-      className="chart-stage"
-      ref={containerRef}
-      role="img"
-      aria-label={`Posts in r/${data.subredditName} plotted by comments and upvotes`}
-    />
+    <div className="chart-stage-shell">
+      <div
+        className="chart-stage"
+        ref={containerRef}
+        role="img"
+        aria-label={`Posts in r/${data.subredditName} plotted by comments and upvotes`}
+      />
+      <ChartHelpOverlay details={helpDetails} />
+    </div>
   );
 }

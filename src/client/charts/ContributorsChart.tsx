@@ -1,11 +1,13 @@
 import { useCallback, useEffect, useMemo } from 'react';
 
 import type { ContributorsChartDataResponse } from '../../shared/api';
+import { ChartHelpOverlay } from '../components/ChartHelpOverlay';
 import { useCurrentUsername } from '../hooks/useCurrentUsername';
 import type { ResolvedTheme } from '../types';
 import { openRedditUrl } from '../utils/navigation';
 import { isContributorBubbleDatum, toContributorBubbleDatum } from './data';
 import type { EChartsInstance } from './echarts';
+import { createContributorsChartHelpDetails } from './help';
 import { createContributorsOption } from './options/contributors';
 import type { ChartEventParams, ContributorBubbleDatum } from './types';
 import { useEChart } from './useEChart';
@@ -28,6 +30,10 @@ export function ContributorsChart({
         toContributorBubbleDatum(contributor, currentUsername)
       ),
     [currentUsername, data.contributors]
+  );
+  const helpDetails = useMemo(
+    () => createContributorsChartHelpDetails(data.contributors.length),
+    [data.contributors.length]
   );
   const handleChartInit = useCallback((chart: EChartsInstance) => {
     const handleChartClick = (params: ChartEventParams) => {
@@ -60,11 +66,14 @@ export function ContributorsChart({
   }, [chartData, chartRef, currentUserRippleEnabled, resolvedTheme, zoomEnabled]);
 
   return (
-    <div
-      className="chart-stage"
-      ref={containerRef}
-      role="img"
-      aria-label={`Contributors in r/${data.subredditName} plotted by total comment upvotes and total post upvotes`}
-    />
+    <div className="chart-stage-shell">
+      <div
+        className="chart-stage"
+        ref={containerRef}
+        role="img"
+        aria-label={`Contributors in r/${data.subredditName} plotted by total comment upvotes and total post upvotes`}
+      />
+      <ChartHelpOverlay details={helpDetails} />
+    </div>
   );
 }

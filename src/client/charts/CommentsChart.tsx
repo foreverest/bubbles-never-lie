@@ -1,11 +1,13 @@
 import { useCallback, useEffect, useMemo, useRef } from 'react';
 
 import type { CommentsChartDataResponse } from '../../shared/api';
+import { ChartHelpOverlay } from '../components/ChartHelpOverlay';
 import { useCurrentUsername } from '../hooks/useCurrentUsername';
 import type { ResolvedTheme } from '../types';
 import { openRedditUrl } from '../utils/navigation';
 import { getCommentGroupSeriesId, isCommentBubbleDatum, toCommentBubbleDatum } from './data';
 import type { EChartsInstance } from './echarts';
+import { createCommentsChartHelpDetails } from './help';
 import { createCommentsOption } from './options/comments';
 import { COMMENT_BUBBLE_SIZE, COMMENT_GROUP_EMPHASIZED_BUBBLE_SIZE } from './sizing';
 import { readVisibleTimeRange } from './timeAxis';
@@ -28,6 +30,10 @@ export function CommentsChart({
   const chartData = useMemo<CommentBubbleDatum[]>(
     () => data.comments.map((comment) => toCommentBubbleDatum(comment, currentUsername)),
     [currentUsername, data.comments]
+  );
+  const helpDetails = useMemo(
+    () => createCommentsChartHelpDetails(data.comments.length),
+    [data.comments.length]
   );
   const handleChartInit = useCallback((chart: EChartsInstance) => {
     let clearCommentGroupEmphasisFrame = 0;
@@ -145,11 +151,14 @@ export function CommentsChart({
   }, [chartData, chartRef, currentUserRippleEnabled, data, resolvedTheme, zoomEnabled]);
 
   return (
-    <div
-      className="chart-stage"
-      ref={containerRef}
-      role="img"
-      aria-label={`Comments in r/${data.subredditName} plotted by creation time and upvotes`}
-    />
+    <div className="chart-stage-shell">
+      <div
+        className="chart-stage"
+        ref={containerRef}
+        role="img"
+        aria-label={`Comments in r/${data.subredditName} plotted by creation time and upvotes`}
+      />
+      <ChartHelpOverlay details={helpDetails} />
+    </div>
   );
 }
