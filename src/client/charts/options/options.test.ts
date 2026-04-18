@@ -63,6 +63,10 @@ test('posts option applies dark mode and dark chart chrome without changing data
   expect(readLineColor(xAxis, 'splitLine')).toBe(darkTheme.gridLineColor);
   expect(readLineColor(xAxis, 'axisLine')).toBe(darkTheme.axisLineColor);
   expect(readObject(xAxis.axisLabel).color).toBe(darkTheme.axisLabelColor);
+  expect(readObject(xAxis.axisLabel)).toMatchObject({
+    hideOverlap: true,
+    textMargin: [0, 4],
+  });
 
   const tooltip = readObject(readOptionField(darkOption, 'tooltip'));
   expect(tooltip.backgroundColor).toBe(darkTheme.tooltipBackgroundColor);

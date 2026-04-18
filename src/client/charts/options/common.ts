@@ -120,6 +120,8 @@ export function createTimeXAxis(
       fontSize: 12,
       fontWeight: 600,
       margin: 14,
+      textMargin: [0, 4],
+      hideOverlap: true,
       formatter: (value: number, tickIndex: number) =>
         formatXAxisLabel(
           value,
