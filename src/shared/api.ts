@@ -9,13 +9,8 @@ export type SubredditKarmaBucket = 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9;
 
 export type TimeframePostData = {
   type: 'bubble-stats-timeframe';
-  startDate: string;
-  endDate: string;
   startIso: string;
   endIso: string;
-  createdAt: string;
-  timeZone: string;
-  durationDays: number;
   dataSourceSubredditName?: string;
 };
 

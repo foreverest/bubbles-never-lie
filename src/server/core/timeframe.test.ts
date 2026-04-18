@@ -17,12 +17,8 @@ const formValues: TimeframeFormValues = {
 
 test('parses selected day from midnight in the selected timezone', () => {
   expect(parseFormDateRange(formValues)).toEqual({
-    startDate: '2026-01-02',
-    endDate: '2026-01-02',
     startIso: '2026-01-01T15:00:00.000Z',
-    endIso: '2026-01-02T14:59:59.999Z',
-    timeZone: 'Asia/Tokyo',
-    durationDays: 1,
+    endIso: '2026-01-02T15:00:00.000Z',
   });
 });
 
@@ -82,41 +78,27 @@ test('timezone selector marks UTC as current when it is the current timezone', (
   expect(timeZoneField.options.filter((option) => option.value === 'UTC')).toHaveLength(1);
 });
 
-test('validates day-based timeframe post data', () => {
+test('validates simplified timeframe post data', () => {
   const range = parseFormDateRange(formValues);
   const postData = {
     type: 'bubble-stats-timeframe',
     ...range,
-    createdAt: '2026-01-01T00:00:00.000Z',
-  };
-  const postDataWithoutTimeZone = {
-    type: postData.type,
-    startDate: postData.startDate,
-    endDate: postData.endDate,
-    startIso: postData.startIso,
-    endIso: postData.endIso,
-    createdAt: postData.createdAt,
-    durationDays: postData.durationDays,
-  };
-  const postDataWithoutDurationDays = {
-    type: postData.type,
-    startDate: postData.startDate,
-    endDate: postData.endDate,
-    startIso: postData.startIso,
-    endIso: postData.endIso,
-    createdAt: postData.createdAt,
-    timeZone: postData.timeZone,
   };
 
   expect(readTimeframePostData(postData)).toEqual({
     postData,
     start: new Date('2026-01-01T15:00:00.000Z'),
-    end: new Date('2026-01-02T14:59:59.999Z'),
-    createdAt: new Date('2026-01-01T00:00:00.000Z'),
+    end: new Date('2026-01-02T15:00:00.000Z'),
   });
 
-  expect(readTimeframePostData(postDataWithoutTimeZone)).toBeNull();
-  expect(readTimeframePostData(postDataWithoutDurationDays)).toBeNull();
-  expect(readTimeframePostData({ ...postData, startHour: 0 })).toBeNull();
-  expect(readTimeframePostData({ ...postData, startIso: '2026-01-02T00:00:00.000Z' })).toBeNull();
+  expect(readTimeframePostData({ type: postData.type, endIso: postData.endIso })).toBeNull();
+  expect(readTimeframePostData({ ...postData, startIso: 'not-a-date' })).toBeNull();
+  expect(
+    readTimeframePostData({
+      ...postData,
+      startIso: '2026-01-03T00:00:00.000Z',
+      endIso: '2026-01-02T00:00:00.000Z',
+    })
+  ).toBeNull();
+  expect(readTimeframePostData({ ...postData, dataSourceSubredditName: 'unexpected' })).toBeNull();
 });

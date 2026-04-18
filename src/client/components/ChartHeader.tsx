@@ -121,7 +121,7 @@ export function ChartHeader({
             className="chart-title__meta"
             title={timeframeLabel.fullLabel}
           >
-            <span className="chart-title__meta-desktop">{timeframeLabel.fullLabel}</span>
+            <span className="chart-title__meta-desktop">{timeframeLabel.compactLabel}</span>
             <span className="chart-title__meta-mobile">{timeframeLabel.compactLabel}</span>
           </p>
         </div>

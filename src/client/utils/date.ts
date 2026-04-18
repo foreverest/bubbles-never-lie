@@ -7,6 +7,18 @@ const DATE_ONLY_FORMATTER = new Intl.DateTimeFormat('en-US', {
   year: 'numeric',
   timeZone: 'UTC',
 });
+const LOCAL_DATE_FORMATTER = new Intl.DateTimeFormat('en-US', {
+  month: 'short',
+  day: 'numeric',
+  year: 'numeric',
+});
+const LOCAL_DATE_TIME_FORMATTER = new Intl.DateTimeFormat('en-US', {
+  month: 'short',
+  day: 'numeric',
+  year: 'numeric',
+  hour: 'numeric',
+  minute: '2-digit',
+});
 
 type RelativeAgeLabelStyle = 'short' | 'long';
 type TimeframeDateRangeLabels = {
@@ -15,13 +27,15 @@ type TimeframeDateRangeLabels = {
 };
 
 export function formatTimeframeDatePhrase(timeframe: TimeframePostData): string {
-  const startDate = formatDateOnly(timeframe.startDate);
-  const endDate = formatDateOnly(timeframe.endDate);
-  const timeZoneLabel = formatTimeZoneLabel(timeframe.timeZone);
+  const range = readLocalTimeframeRange(timeframe);
 
-  return timeframe.startDate === timeframe.endDate
-    ? `on ${startDate} in ${timeZoneLabel}`
-    : `from ${startDate} through ${endDate} in ${timeZoneLabel}`;
+  if (!range) {
+    return `from ${timeframe.startIso} through ${timeframe.endIso}`;
+  }
+
+  return range.compactStartDate === range.compactEndDate
+    ? `on ${range.compactStartDate}`
+    : `from ${range.compactStartDate} through ${range.compactEndDate}`;
 }
 
 export function formatTimeframeDateRangeLabel(timeframe: TimeframePostData): string {
@@ -31,15 +45,27 @@ export function formatTimeframeDateRangeLabel(timeframe: TimeframePostData): str
 export function formatTimeframeDateRangeLabels(
   timeframe: TimeframePostData
 ): TimeframeDateRangeLabels {
-  const startDate = formatDateOnly(timeframe.startDate);
-  const endDate = formatDateOnly(timeframe.endDate);
+  const range = readLocalTimeframeRange(timeframe);
+
+  if (!range) {
+    const fallbackLabel = `${timeframe.startIso} - ${timeframe.endIso}`;
+    return {
+      compactLabel: fallbackLabel,
+      fullLabel: fallbackLabel,
+    };
+  }
+
   const compactDateRange =
-    timeframe.startDate === timeframe.endDate ? startDate : `${startDate} - ${endDate}`;
-  const timeZoneLabel = formatTimeZoneLabel(timeframe.timeZone);
+    range.compactStartDate === range.compactEndDate
+      ? range.compactStartDate
+      : `${range.compactStartDate} - ${range.compactEndDate}`;
 
   return {
     compactLabel: compactDateRange,
-    fullLabel: `${compactDateRange} in ${timeZoneLabel}`,
+    fullLabel:
+      range.fullStartDate === range.fullEndDate
+        ? range.fullStartDate
+        : `${range.fullStartDate} - ${range.fullEndDate}`,
   };
 }
 
@@ -64,10 +90,6 @@ export function formatDateOnly(value: string): string {
   }
 
   return DATE_ONLY_FORMATTER.format(date);
-}
-
-export function formatTimeZoneLabel(timeZone: string): string {
-  return timeZone.replaceAll('_', ' ');
 }
 
 export function formatRelativeAge(
@@ -99,4 +121,30 @@ export function formatRelativeAge(
   }
 
   return 'just now';
+}
+
+function readLocalTimeframeRange(timeframe: TimeframePostData): {
+  compactStartDate: string;
+  compactEndDate: string;
+  fullStartDate: string;
+  fullEndDate: string;
+} | null {
+  const start = parseIsoDate(timeframe.startIso);
+  const end = parseIsoDate(timeframe.endIso);
+
+  if (!start || !end) {
+    return null;
+  }
+
+  return {
+    compactStartDate: LOCAL_DATE_FORMATTER.format(start),
+    compactEndDate: LOCAL_DATE_FORMATTER.format(end),
+    fullStartDate: LOCAL_DATE_TIME_FORMATTER.format(start),
+    fullEndDate: LOCAL_DATE_TIME_FORMATTER.format(end),
+  };
+}
+
+function parseIsoDate(value: string): Date | null {
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? null : date;
 }

@@ -23,18 +23,12 @@ export function formatXAxisLabel(
   chartTimeRange: TimeRange,
   visibleTimeRange: TimeRange | null
 ): string {
-  const date = new Date(value);
   const currentTimeRange = visibleTimeRange ?? chartTimeRange;
   const isBoundary =
     tickIndex === 0 ||
     isTimeRangeEdge(value, currentTimeRange.start) ||
     isTimeRangeEdge(value, currentTimeRange.end);
-
-  if (isTimeRangeEdge(value, chartTimeRange.end) && date.getMinutes() === 59) {
-    date.setMinutes(date.getMinutes() + 1);
-    date.setSeconds(0);
-    date.setMilliseconds(0);
-  }
+  const date = new Date(value);
 
   if (isBoundary) {
     return isMidnight(date)

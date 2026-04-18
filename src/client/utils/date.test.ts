@@ -11,14 +11,21 @@ import {
 
 const baseTimeframe: TimeframePostData = {
   type: 'bubble-stats-timeframe',
-  startDate: '2024-02-29',
-  endDate: '2024-02-29',
-  startIso: '2024-02-29T00:00:00.000Z',
-  endIso: '2024-03-01T00:00:00.000Z',
-  createdAt: '2024-02-28T12:00:00.000Z',
-  timeZone: 'Asia/Tokyo',
-  durationDays: 1,
+  startIso: new Date(2024, 1, 29, 8, 30).toISOString(),
+  endIso: new Date(2024, 1, 29, 18, 45).toISOString(),
 };
+const localDateFormatter = new Intl.DateTimeFormat('en-US', {
+  month: 'short',
+  day: 'numeric',
+  year: 'numeric',
+});
+const localDateTimeFormatter = new Intl.DateTimeFormat('en-US', {
+  month: 'short',
+  day: 'numeric',
+  year: 'numeric',
+  hour: 'numeric',
+  minute: '2-digit',
+});
 
 test('formats valid date-only values and leaves invalid values unchanged', () => {
   expect(formatDateOnly('2024-02-29')).toBe('Feb 29, 2024');
@@ -27,28 +34,32 @@ test('formats valid date-only values and leaves invalid values unchanged', () =>
 });
 
 test('formats single-day and range timeframe labels', () => {
-  expect(formatTimeframeDatePhrase(baseTimeframe)).toBe('on Feb 29, 2024 in Asia/Tokyo');
-  expect(formatTimeframeDateRangeLabel(baseTimeframe)).toBe('Feb 29, 2024 in Asia/Tokyo');
+  const start = new Date(baseTimeframe.startIso);
+  const end = new Date(baseTimeframe.endIso);
+
+  expect(formatTimeframeDatePhrase(baseTimeframe)).toBe(`on ${localDateFormatter.format(start)}`);
+  expect(formatTimeframeDateRangeLabel(baseTimeframe)).toBe(
+    `${localDateTimeFormatter.format(start)} - ${localDateTimeFormatter.format(end)}`
+  );
   expect(formatTimeframeDateRangeLabels(baseTimeframe)).toEqual({
-    compactLabel: 'Feb 29, 2024',
-    fullLabel: 'Feb 29, 2024 in Asia/Tokyo',
+    compactLabel: localDateFormatter.format(start),
+    fullLabel: `${localDateTimeFormatter.format(start)} - ${localDateTimeFormatter.format(end)}`,
   });
 
   const rangeTimeframe: TimeframePostData = {
     ...baseTimeframe,
-    endDate: '2024-03-02',
-    durationDays: 3,
+    endIso: new Date(2024, 2, 2, 18, 45).toISOString(),
   };
+  const rangeEnd = new Date(rangeTimeframe.endIso);
 
   expect(formatTimeframeDatePhrase(rangeTimeframe)).toBe(
-    'from Feb 29, 2024 through Mar 2, 2024 in Asia/Tokyo'
-  );
-  expect(formatTimeframeDateRangeLabel(rangeTimeframe)).toBe(
-    'Feb 29, 2024 - Mar 2, 2024 in Asia/Tokyo'
+    `from ${localDateFormatter.format(start)} through ${localDateFormatter.format(rangeEnd)}`
   );
   expect(formatTimeframeDateRangeLabels(rangeTimeframe)).toEqual({
-    compactLabel: 'Feb 29, 2024 - Mar 2, 2024',
-    fullLabel: 'Feb 29, 2024 - Mar 2, 2024 in Asia/Tokyo',
+    compactLabel: `${localDateFormatter.format(start)} - ${localDateFormatter.format(rangeEnd)}`,
+    fullLabel: `${localDateTimeFormatter.format(start)} - ${localDateTimeFormatter.format(
+      rangeEnd
+    )}`,
   });
 });
 

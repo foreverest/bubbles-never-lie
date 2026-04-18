@@ -6,15 +6,10 @@ const minYear = 2026;
 const defaultStartHour = 0;
 const defaultDurationDays = 1;
 const defaultTimeZone = 'UTC';
-const dateOnlyPattern = /^\d{4}-\d{2}-\d{2}$/;
 
 export type DateRange = {
-  startDate: string;
-  endDate: string;
   startIso: string;
   endIso: string;
-  timeZone: string;
-  durationDays: number;
 };
 
 type SelectValue = string | string[] | undefined;
@@ -39,7 +34,6 @@ export type ValidatedTimeframePostData = {
   postData: TimeframePostData;
   start: Date;
   end: Date;
-  createdAt: Date;
 };
 
 type DateParts = {
@@ -48,8 +42,11 @@ type DateParts = {
   day: number;
 };
 
-type TimeframeParts = DateParts & {
+type ZonedDateParts = DateParts & {
   timeZone: string;
+};
+
+type TimeframeParts = ZonedDateParts & {
   durationDays: number;
 };
 
@@ -172,7 +169,6 @@ export const createPostData = (
   const postData: TimeframePostData = {
     type: 'bubble-stats-timeframe',
     ...range,
-    createdAt: new Date().toISOString(),
   };
 
   if (options.useTestDataSource) {
@@ -190,19 +186,7 @@ export const readTimeframePostData = (
   }
 
   const data = postDataValue as Partial<TimeframePostData>;
-  if (
-    typeof data.startDate !== 'string' ||
-    typeof data.endDate !== 'string' ||
-    typeof data.startIso !== 'string' ||
-    typeof data.endIso !== 'string' ||
-    typeof data.createdAt !== 'string' ||
-    typeof data.timeZone !== 'string' ||
-    typeof data.durationDays !== 'number'
-  ) {
-    return null;
-  }
-
-  if ('startHour' in postDataValue) {
+  if (typeof data.startIso !== 'string' || typeof data.endIso !== 'string') {
     return null;
   }
 
@@ -213,62 +197,17 @@ export const readTimeframePostData = (
     return null;
   }
 
-  const start = tryParseDateOnly(data.startDate, 'startDate');
-  const end = tryParseDateOnly(data.endDate, 'endDate');
-  const startIso = tryParseIsoDate(data.startIso);
-  const endIso = tryParseIsoDate(data.endIso);
-  const createdAt = tryParseIsoDate(data.createdAt);
+  const start = tryParseIsoDate(data.startIso);
+  const end = tryParseIsoDate(data.endIso);
 
-  if (
-    !start ||
-    !end ||
-    !startIso ||
-    !endIso ||
-    !createdAt ||
-    startIso.getTime() > endIso.getTime()
-  ) {
-    return null;
-  }
-
-  if (
-    !Number.isInteger(data.durationDays) ||
-    data.durationDays < 1 ||
-    data.durationDays > 7 ||
-    !isValidTimeZone(data.timeZone)
-  ) {
-    return null;
-  }
-
-  const startDateParts = tryParseDateParts(data.startDate);
-  if (!startDateParts) {
-    return null;
-  }
-
-  const range = tryCreateDateRangeFromParts({
-    ...startDateParts,
-    timeZone: data.timeZone,
-    durationDays: data.durationDays,
-  });
-
-  if (
-    !range ||
-    range.startDate !== data.startDate ||
-    range.endDate !== data.endDate ||
-    range.startIso !== data.startIso ||
-    range.endIso !== data.endIso
-  ) {
+  if (!start || !end || start.getTime() > end.getTime()) {
     return null;
   }
 
   const validatedPostData: TimeframePostData = {
     type: 'bubble-stats-timeframe',
-    startDate: data.startDate,
-    endDate: data.endDate,
     startIso: data.startIso,
     endIso: data.endIso,
-    createdAt: data.createdAt,
-    timeZone: data.timeZone,
-    durationDays: data.durationDays,
   };
 
   if (data.dataSourceSubredditName === TEST_DATA_SOURCE_SUBREDDIT_NAME) {
@@ -277,9 +216,8 @@ export const readTimeframePostData = (
 
   return {
     postData: validatedPostData,
-    start: startIso,
-    end: endIso,
-    createdAt,
+    start,
+    end,
   };
 };
 
@@ -301,89 +239,21 @@ const createDateRangeFromParts = (parts: TimeframeParts): DateRange => {
   validateDateParts(parts);
 
   const start = zonedDateTimeToUtc(parts);
-  const endExclusiveDate = addCalendarDays(parts, parts.durationDays);
-  const endExclusive = zonedDateTimeToUtc({
-    ...endExclusiveDate,
+  const endDate = addCalendarDays(parts, parts.durationDays);
+  const end = zonedDateTimeToUtc({
+    ...endDate,
     timeZone: parts.timeZone,
-    durationDays: parts.durationDays,
   });
-  const end = new Date(endExclusive.getTime() - 1);
 
   return {
-    startDate: formatDateParts(parts),
-    endDate: formatDateInTimeZone(end, parts.timeZone),
     startIso: start.toISOString(),
     endIso: end.toISOString(),
-    timeZone: parts.timeZone,
-    durationDays: parts.durationDays,
   };
-};
-
-const tryCreateDateRangeFromParts = (parts: TimeframeParts): DateRange | null => {
-  try {
-    return createDateRangeFromParts(parts);
-  } catch {
-    return null;
-  }
-};
-
-const parseDateOnly = (value: string, fieldName: string): Date => {
-  const { year, month, day } = parseDateParts(value, fieldName);
-  const hour = fieldName === 'endDate' ? 23 : 0;
-  const minute = fieldName === 'endDate' ? 59 : 0;
-  const second = fieldName === 'endDate' ? 59 : 0;
-  const millisecond = fieldName === 'endDate' ? 999 : 0;
-  const date = new Date(Date.UTC(year, month - 1, day, hour, minute, second, millisecond));
-
-  if (
-    date.getUTCFullYear() !== year ||
-    date.getUTCMonth() !== month - 1 ||
-    date.getUTCDate() !== day
-  ) {
-    throw new Error(`Invalid ${fieldName}.`);
-  }
-
-  return date;
-};
-
-const parseDateParts = (value: string, fieldName: string): DateParts => {
-  const [yearText, monthText, dayText] = value.split('-');
-  const year = Number(yearText);
-  const month = Number(monthText);
-  const day = Number(dayText);
-
-  validateDateParts({ year, month, day }, fieldName);
-
-  return { year, month, day };
-};
-
-const tryParseDateParts = (value: string): DateParts | null => {
-  if (!dateOnlyPattern.test(value)) {
-    return null;
-  }
-
-  try {
-    return parseDateParts(value, 'startDate');
-  } catch {
-    return null;
-  }
-};
-
-const tryParseDateOnly = (value: string, fieldName: string): Date | null => {
-  if (!dateOnlyPattern.test(value)) {
-    return null;
-  }
-
-  try {
-    return parseDateOnly(value, fieldName);
-  } catch {
-    return null;
-  }
 };
 
 const tryParseIsoDate = (value: string): Date | null => {
   const date = new Date(value);
-  return Number.isNaN(date.getTime()) ? null : date;
+  return Number.isNaN(date.getTime()) || date.toISOString() !== value ? null : date;
 };
 
 const createRangeOptions = (
@@ -502,7 +372,7 @@ const isValidTimeZone = (timeZone: string): boolean => {
   }
 };
 
-const zonedDateTimeToUtc = (parts: TimeframeParts): Date => {
+const zonedDateTimeToUtc = (parts: ZonedDateParts): Date => {
   const naiveUtc = Date.UTC(parts.year, parts.month - 1, parts.day, defaultStartHour);
   let utc = naiveUtc;
 
@@ -597,14 +467,6 @@ const getDaysInMonth = (year: number, month: number): number =>
 
 const getMaxYear = (timeZone: string): number =>
   Math.max(minYear, getDatePartsInTimeZone(new Date(), timeZone).year + 1);
-
-const formatDateInTimeZone = (date: Date, timeZone: string): string =>
-  formatDateParts(getDatePartsInTimeZone(date, timeZone));
-
-const formatDateParts = (parts: DateParts): string =>
-  `${parts.year}-${pad2(parts.month)}-${pad2(parts.day)}`;
-
-const pad2 = (value: number): string => value.toString().padStart(2, '0');
 
 const clamp = (value: number, min: number, max: number): number =>
   Math.min(Math.max(value, min), max);
