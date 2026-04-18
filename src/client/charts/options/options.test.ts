@@ -60,8 +60,8 @@ test('posts option applies dark mode and dark chart chrome without changing data
   const grid = readObject(readOptionField(darkOption, 'grid'));
   expect(grid).toMatchObject({
     top: 24,
-    right: 8,
-    bottom: 8,
+    right: 10,
+    bottom: 16,
     left: 20,
     outerBoundsMode: 'same',
     outerBoundsContain: 'axisLabel',
