@@ -247,10 +247,74 @@ test('processCommentCacheQueue caches post comments and fetches child comments w
   assert.equal(result.fetchedCommentCount, 2);
   assert.equal(result.cachedCommentCount, 2);
   assert.deepEqual(
-    cachedComments.map(({ id, postId, bodyPreview }) => ({ id, postId, bodyPreview })),
+    cachedComments.map(({ id, postId, bodyPreview, bodyPreviewKind }) => ({
+      id,
+      postId,
+      bodyPreview,
+      bodyPreviewKind,
+    })),
     [
-      { id: 't1_parent', postId: 't3_post_1', bodyPreview: 'Parent body' },
-      { id: 't1_child', postId: 't3_post_1', bodyPreview: 'Child body' },
+      {
+        id: 't1_parent',
+        postId: 't3_post_1',
+        bodyPreview: 'Parent body',
+        bodyPreviewKind: 'text',
+      },
+      {
+        id: 't1_child',
+        postId: 't3_post_1',
+        bodyPreview: 'Child body',
+        bodyPreviewKind: 'text',
+      },
+    ]
+  );
+});
+
+test('processCommentCacheQueue stores typed media comment previews before truncating text', async () => {
+  const redisClient = new FakeRedisClient();
+  const redditClient = new FakeRedditClient();
+  const dataLayer = createBubbleStatsDataLayer('ExampleSub', redisClient);
+  const keys = getDataKeys('ExampleSub');
+
+  await redisClient.zAdd(keys.commentRefreshPostQueue, { member: 't3_post_1', score: 1 });
+  redditClient.setResponse('t3_post_1', undefined, [
+    createComment('t1_gif', 't3_post_1', '![gif](giphy|VCn7Example)'),
+    createComment(
+      't1_image',
+      't3_post_1',
+      'https://preview.redd.it/april-13-2026-daily-rddt-discussion-thread-v0-e5rpml9730vg1.jpeg?width=770&format=pjpg&auto=webp&s=84de852e1c1a2410d7df4d47c6ac283fbf3efc6c'
+    ),
+    createComment('t1_literal_gif', 't3_post_1', 'GIF comment'),
+    createComment('t1_long_text', 't3_post_1', 'abcdefghijklmnopqrstuvwxyz'),
+  ]);
+
+  await processCommentCacheQueue(
+    { subredditName: 'ExampleSub', maxDurationMs: 25_000 },
+    {
+      redisClient: redisClient as CommentCacheQueueProcessDependencies['redisClient'],
+      redditClient: redditClient as unknown as CommentCacheQueueProcessDependencies['redditClient'],
+      dataLayer,
+      now: () => 0,
+    }
+  );
+  const cachedComments = await dataLayer.comments.getByIds([
+    't1_gif',
+    't1_image',
+    't1_literal_gif',
+    't1_long_text',
+  ]);
+
+  assert.deepEqual(
+    cachedComments.map(({ id, bodyPreview, bodyPreviewKind }) => ({
+      id,
+      bodyPreview,
+      bodyPreviewKind,
+    })),
+    [
+      { id: 't1_gif', bodyPreview: '', bodyPreviewKind: 'gif' },
+      { id: 't1_image', bodyPreview: '', bodyPreviewKind: 'image' },
+      { id: 't1_literal_gif', bodyPreview: 'GIF comment', bodyPreviewKind: 'text' },
+      { id: 't1_long_text', bodyPreview: 'abcdefghijklmnopq...', bodyPreviewKind: 'text' },
     ]
   );
 });

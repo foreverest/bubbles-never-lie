@@ -126,6 +126,7 @@ const createComment = (
   authorName,
   score: 5,
   bodyPreview: `Comment ${id}`,
+  bodyPreviewKind: 'text',
   createdAt,
   permalink: `/r/example/comments/t3_post/${id}`,
 });
@@ -186,6 +187,30 @@ test('time indexed repositories maintain createdAt indexes and skip malformed hy
     't1_comment_1',
     't1_comment_2',
   ]);
+});
+
+test('comment repositories treat missing bodyPreviewKind as text', async () => {
+  const redisClient = new FakeRedisDataClient();
+  const dataLayer = createBubbleStatsDataLayer('ExampleSub', redisClient);
+  const keys = getDataKeys('ExampleSub');
+  const legacyComment = {
+    id: 't1_legacy',
+    postId: 't3_post_1',
+    authorName: 'alice',
+    score: 5,
+    bodyPreview: 'GIF comment',
+    createdAt: '2026-04-15T10:30:00.000Z',
+    permalink: '/r/example/comments/t3_post_1/t1_legacy',
+  };
+
+  await redisClient.hSet(keys.comments, {
+    [legacyComment.id]: JSON.stringify(legacyComment),
+  });
+
+  assert.deepEqual(await dataLayer.comments.getById(legacyComment.id), {
+    ...legacyComment,
+    bodyPreviewKind: 'text',
+  });
 });
 
 test('time indexed repositories read latest ids in newest-first order', async () => {

@@ -1,6 +1,10 @@
 import { reddit, redis } from '@devvit/web/server';
 import type { Comment } from '@devvit/web/server';
-import { resolveUserAvatarUrl, type ChartComment } from '../../shared/api';
+import {
+  resolveUserAvatarUrl,
+  type ChartComment,
+  type CommentBodyPreviewKind,
+} from '../../shared/api';
 import { createBubbleStatsDataLayer, getDataKeys, type BubbleStatsDataLayer } from '../data';
 import type { CommentEntity, HydratedComment } from '../data';
 import { createLogger } from '../logging/logger';
@@ -98,6 +102,7 @@ type QueueItemRefreshResult = {
 };
 
 type CommentWithAuthor = HydratedComment<{ author: true }>;
+type CommentBodyPreview = Pick<CommentEntity, 'bodyPreview' | 'bodyPreviewKind'>;
 
 export const readCommentsForTimeframe = async ({
   subredditName,
@@ -440,15 +445,20 @@ const refreshQueuedCommentParent = async ({
 const createCommentQueueMember = (postId: string, commentId: string): CommentQueueMember | null =>
   isPostId(postId) && isCommentId(commentId) ? `${postId}:${commentId}` : null;
 
-const toCommentEntity = (comment: Comment): CommentEntity => ({
-  id: comment.id,
-  postId: comment.postId,
-  authorName: comment.authorName,
-  score: comment.score,
-  bodyPreview: createCommentPreview(comment.body),
-  createdAt: comment.createdAt.toISOString(),
-  permalink: comment.permalink,
-});
+const toCommentEntity = (comment: Comment): CommentEntity => {
+  const bodyPreview = createCommentBodyPreview(comment.body);
+
+  return {
+    id: comment.id,
+    postId: comment.postId,
+    authorName: comment.authorName,
+    score: comment.score,
+    bodyPreview: bodyPreview.bodyPreview,
+    bodyPreviewKind: bodyPreview.bodyPreviewKind,
+    createdAt: comment.createdAt.toISOString(),
+    permalink: comment.permalink,
+  };
+};
 
 const toChartComment = (comment: CommentWithAuthor): ChartComment => ({
   id: comment.id,
@@ -457,12 +467,29 @@ const toChartComment = (comment: CommentWithAuthor): ChartComment => ({
   authorAvatarUrl: resolveUserAvatarUrl(comment.author?.avatarUrl),
   score: comment.score,
   bodyPreview: comment.bodyPreview,
+  bodyPreviewKind: comment.bodyPreviewKind,
   createdAt: comment.createdAt,
   permalink: comment.permalink,
 });
 
-const createCommentPreview = (body: string): string => {
-  const normalized = body.replace(/\s+/g, ' ').trim();
+const createCommentBodyPreview = (body: string): CommentBodyPreview => {
+  const normalized = normalizeCommentBody(body);
+  const mediaKind = getMediaOnlyCommentPreviewKind(normalized);
+
+  if (mediaKind) {
+    return {
+      bodyPreview: '',
+      bodyPreviewKind: mediaKind,
+    };
+  }
+
+  return {
+    bodyPreview: truncateCommentPreview(normalized),
+    bodyPreviewKind: 'text',
+  };
+};
+
+const truncateCommentPreview = (normalized: string): string => {
   const symbols = Array.from(normalized);
 
   if (symbols.length <= COMMENT_PREVIEW_LENGTH) {
@@ -470,6 +497,56 @@ const createCommentPreview = (body: string): string => {
   }
 
   return `${symbols.slice(0, COMMENT_PREVIEW_LENGTH - 3).join('')}...`;
+};
+
+const normalizeCommentBody = (body: string): string => body.replace(/\s+/g, ' ').trim();
+
+const getMediaOnlyCommentPreviewKind = (
+  normalized: string
+): Exclude<CommentBodyPreviewKind, 'text'> | null => {
+  if (isGiphyMarkdownComment(normalized)) {
+    return 'gif';
+  }
+
+  if (isImageUrlComment(normalized)) {
+    return 'image';
+  }
+
+  return null;
+};
+
+const isGiphyMarkdownComment = (normalized: string): boolean => {
+  const match = /^!\[\s*gif\s*\]\(([^)\s]+)\)$/iu.exec(normalized);
+  const target = match?.[1];
+
+  if (!target) {
+    return false;
+  }
+
+  if (target.startsWith('giphy|')) {
+    return true;
+  }
+
+  return isUrlWithHost(target, (host) => host === 'giphy.com' || host.endsWith('.giphy.com'));
+};
+
+const isImageUrlComment = (normalized: string): boolean =>
+  isUrlWithHost(normalized, (host, url) => {
+    if (host === 'preview.redd.it' || host === 'i.redd.it') {
+      return true;
+    }
+
+    return /\.(?:avif|jpe?g|png|webp)$/iu.test(url.pathname);
+  });
+
+const isUrlWithHost = (value: string, predicate: (host: string, url: URL) => boolean): boolean => {
+  try {
+    const url = new URL(value);
+
+    return (url.protocol === 'https:' || url.protocol === 'http:') && predicate(url.hostname, url);
+  } catch {
+    return false;
+  }
 };
 
 const isPostId = (value: unknown): value is PostId =>

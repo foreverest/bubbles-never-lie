@@ -32,6 +32,8 @@ export type ChartPost = {
   permalink: string;
 };
 
+export type CommentBodyPreviewKind = 'text' | 'gif' | 'image';
+
 export type ChartComment = {
   id: string;
   postId: string;
@@ -39,6 +41,7 @@ export type ChartComment = {
   authorAvatarUrl: string | null;
   score: number;
   bodyPreview: string;
+  bodyPreviewKind: CommentBodyPreviewKind;
   createdAt: string;
   permalink: string;
 };

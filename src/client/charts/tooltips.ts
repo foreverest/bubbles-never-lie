@@ -53,7 +53,7 @@ export function renderCommentTooltip(
     '<span aria-hidden="true" class="chart-tooltip__separator">&middot;</span>',
     `<span class="chart-tooltip__age">${escapeHtml(createdAgo)}</span>`,
     '</div>',
-    `<strong class="chart-tooltip__title">${escapeHtml(datum.bodyPreview)}</strong>`,
+    renderCommentTooltipTitle(datum),
     '<div class="chart-tooltip__stats">',
     renderTooltipInlineVoteMetric(datum.score),
     '</div>',
@@ -92,6 +92,22 @@ function renderTooltipAvatar(rawAvatarUrl: string | null): string {
 
 function renderCurrentUserTooltipBadge(isCurrentUser: boolean): string {
   return isCurrentUser ? '<span class="chart-tooltip__you">you</span>' : '';
+}
+
+function renderCommentTooltipTitle(datum: CommentBubbleDatum): string {
+  if (datum.bodyPreviewKind === 'gif') {
+    return renderMediaCommentTooltipTitle('GIF');
+  }
+
+  if (datum.bodyPreviewKind === 'image') {
+    return renderMediaCommentTooltipTitle('Image');
+  }
+
+  return `<strong class="chart-tooltip__title">${escapeHtml(datum.bodyPreview)}</strong>`;
+}
+
+function renderMediaCommentTooltipTitle(label: string): string {
+  return `<strong class="chart-tooltip__title chart-tooltip__title--media"><span class="chart-tooltip__media-label">${escapeHtml(label)}</span></strong>`;
 }
 
 function renderTooltipVotePill(value: number, label = 'upvotes'): string {
