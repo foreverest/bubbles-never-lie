@@ -18,6 +18,7 @@ import {
   createCurrentUserRippleSeries,
   createTimeXAxis,
   createUpvotesYAxis,
+  enableNarrowTimeAxisMedia,
   enableSingleAxisZoom,
   getChartTheme,
 } from './common';
@@ -104,6 +105,8 @@ export function createCommentsOption(
   if (zoomEnabled) {
     enableSingleAxisZoom(option);
   }
+
+  enableNarrowTimeAxisMedia(option);
 
   return option;
 }

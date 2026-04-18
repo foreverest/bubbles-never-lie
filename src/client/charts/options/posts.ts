@@ -13,6 +13,7 @@ import {
   createCurrentUserRippleSeries,
   createTimeXAxis,
   createUpvotesYAxis,
+  enableNarrowTimeAxisMedia,
   enableSingleAxisZoom,
   getChartTheme,
 } from './common';
@@ -100,6 +101,8 @@ export function createPostsOption(
   if (zoomEnabled) {
     enableSingleAxisZoom(option);
   }
+
+  enableNarrowTimeAxisMedia(option);
 
   return option;
 }

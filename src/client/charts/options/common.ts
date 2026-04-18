@@ -59,6 +59,9 @@ const CHART_THEMES: Record<ResolvedTheme, ChartTheme> = {
 
 const LIGHT_CHART_THEME = CHART_THEMES.light;
 const CURRENT_USER_RIPPLE_SERIES_Z = 4;
+const TIME_AXIS_SPLIT_NUMBER = 6;
+const NARROW_TIME_AXIS_MAX_WIDTH = 240;
+const NARROW_TIME_AXIS_SPLIT_NUMBER = 1;
 const CURRENT_USER_RIPPLE_EFFECT = {
   brushType: 'fill',
   scale: 3,
@@ -70,11 +73,12 @@ export function createChartGrid(
   overrides: Partial<{ top: number; right: number; bottom: number; left: number }> = {}
 ) {
   return {
-    top: 34,
-    right: 28,
-    bottom: 40,
-    left: 48,
-    containLabel: true,
+    top: 24,
+    right: 10,
+    bottom: 16,
+    left: 20,
+    outerBoundsMode: 'same',
+    outerBoundsContain: 'axisLabel',
     ...overrides,
   };
 }
@@ -110,6 +114,7 @@ export function createTimeXAxis(
     type: 'time',
     min: startTime,
     max: endTime,
+    splitNumber: TIME_AXIS_SPLIT_NUMBER,
     splitLine: createSplitLine(theme),
     axisLine: createAxisLine(theme),
     axisTick: {
@@ -130,11 +135,26 @@ export function createTimeXAxis(
           getVisibleTimeRange?.() ?? null
         ),
       showMinLabel: true,
-      alignMinLabel: 'center',
+      alignMinLabel: 'right',
       showMaxLabel: true,
-      alignMaxLabel: 'center',
+      alignMaxLabel: 'left',
     },
   };
+}
+
+export function enableNarrowTimeAxisMedia(option: EChartsCoreOption): void {
+  option.media = [
+    {
+      query: {
+        maxWidth: NARROW_TIME_AXIS_MAX_WIDTH,
+      },
+      option: {
+        xAxis: {
+          splitNumber: NARROW_TIME_AXIS_SPLIT_NUMBER,
+        },
+      },
+    },
+  ];
 }
 
 export function createUpvotesYAxis(theme = LIGHT_CHART_THEME) {

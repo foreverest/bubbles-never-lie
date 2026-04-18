@@ -2,6 +2,7 @@ import { expect, test } from 'vitest';
 
 import type { ChartResponseMetadata, ChartPost } from '../../../shared/api';
 import { toPostBubbleDatum } from '../data';
+import { createCommentsOption } from './comments';
 import { createContributorsOption } from './contributors';
 import { getChartTheme } from './common';
 import { createPostsOption } from './posts';
@@ -56,13 +57,29 @@ test('posts option applies dark mode and dark chart chrome without changing data
   expect(readOptionField(darkOption, 'darkMode')).toBe(true);
   expect(readOptionField(darkOption, 'backgroundColor')).toBe(darkTheme.backgroundColor);
 
+  const grid = readObject(readOptionField(darkOption, 'grid'));
+  expect(grid).toMatchObject({
+    top: 24,
+    right: 8,
+    bottom: 8,
+    left: 20,
+    outerBoundsMode: 'same',
+    outerBoundsContain: 'axisLabel',
+  });
+  expect(grid.containLabel).toBe(undefined);
+
   const xAxis = readObject(readOptionField(darkOption, 'xAxis'));
+  expect(xAxis.splitNumber).toBe(6);
   expect(readLineColor(xAxis, 'splitLine')).toBe(darkTheme.gridLineColor);
   expect(readLineColor(xAxis, 'axisLine')).toBe(darkTheme.axisLineColor);
   expect(readObject(xAxis.axisLabel).color).toBe(darkTheme.axisLabelColor);
   expect(readObject(xAxis.axisLabel)).toMatchObject({
     hideOverlap: true,
     textMargin: [0, 4],
+    showMinLabel: true,
+    alignMinLabel: 'right',
+    showMaxLabel: true,
+    alignMaxLabel: 'left',
   });
 
   const tooltip = readObject(readOptionField(darkOption, 'tooltip'));
@@ -97,6 +114,30 @@ test('contributors option uses dual-axis zoom when enabled', () => {
 
   expect(Array.isArray(dataZoom)).toBe(true);
   expect(readSeries(option).length).toBe(2);
+});
+
+test('time charts use a narrow axis media override without changing contributors', () => {
+  const datum = toPostBubbleDatum(post, 'alice');
+  const expectedMedia = [
+    {
+      query: {
+        maxWidth: 240,
+      },
+      option: {
+        xAxis: {
+          splitNumber: 1,
+        },
+      },
+    },
+  ];
+
+  expect(readOptionField(createPostsOption([datum], metadata, false, false), 'media')).toEqual(
+    expectedMedia
+  );
+  expect(readOptionField(createCommentsOption([], metadata, false, false), 'media')).toEqual(
+    expectedMedia
+  );
+  expect(readOptionField(createContributorsOption([], false, false), 'media')).toBe(undefined);
 });
 
 function readOptionField(option: unknown, key: string): unknown {
