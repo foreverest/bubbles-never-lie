@@ -6,7 +6,7 @@ import {
 } from './subreddits';
 
 const logger = createLogger('subreddit-icons');
-const SUBREDDIT_ICON_URL_KEY_PREFIX = 'bubble-stats:subreddits:icon-url';
+const SUBREDDIT_ICON_URL_KEY_PREFIX = 'subreddits:icon-url';
 const TEST_DATA_SOURCE_SUBREDDIT_ICON_URL =
   'https://styles.redditmedia.com/t5_4x7l6b/styles/communityIcon_tofdifo8b35f1.png?width=128&frame=1&auto=webp&s=d847af3d81a242af471946e2aff1f26e9692f35b';
 

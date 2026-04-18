@@ -1,7 +1,14 @@
 import { expect, test } from 'vitest';
 
-import { normalizeChartPreferences } from './useChartPreferences';
+import {
+  CHART_PREFERENCES_STORAGE_KEY,
+  normalizeChartPreferences,
+} from './useChartPreferences';
 import { resolveThemeMode } from './useResolvedTheme';
+
+test('uses the app-local chart preferences storage key', () => {
+  expect(CHART_PREFERENCES_STORAGE_KEY).toBe('chart-preferences:v1');
+});
 
 test('normalizes stored chart preferences that predate theme mode', () => {
   expect(

@@ -147,7 +147,7 @@ export function ChartHeader({
             aria-controls={activePanelId}
             aria-expanded={openMenu === 'sections'}
             aria-haspopup="true"
-            aria-label="Bubble stats section"
+            aria-label="Bubbles Never Lie section"
             className={
               openMenu === 'sections'
                 ? 'section-menu-button section-menu-button--open'
@@ -165,7 +165,7 @@ export function ChartHeader({
           {openMenu === 'sections' ? (
             <div
               className="chart-section-menu__menu"
-              aria-label="Bubble stats sections"
+              aria-label="Bubbles Never Lie sections"
               role="menu"
             >
               <TabItems
@@ -233,7 +233,7 @@ export function ChartHeader({
           <div className="chart-mobile-controls__menu">
             <div
               className="chart-mobile-controls__group"
-              aria-label="Bubble stats sections"
+              aria-label="Bubbles Never Lie sections"
               role="menu"
             >
               <TabItems

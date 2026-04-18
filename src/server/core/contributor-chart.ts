@@ -3,7 +3,7 @@ import {
   type SubredditKarmaBucket,
   type ChartContributor,
 } from '../../shared/api';
-import { createBubbleStatsDataLayer } from '../data';
+import { createDataLayer } from '../data';
 import type { ContributorEntity, CommentEntity, PostEntity } from '../data';
 import { createContributorKarmaBuckets } from './contributor-karma';
 
@@ -34,7 +34,7 @@ export const readContributorsForTimeframe = async ({
   startTime,
   endTime,
 }: ContributorChartReadOptions): Promise<ContributorChartReadResult> => {
-  const dataLayer = createBubbleStatsDataLayer(subredditName);
+  const dataLayer = createDataLayer(subredditName);
   const [posts, comments] = await Promise.all([
     dataLayer.posts.getInTimeRange({ startTime, endTime }),
     dataLayer.comments.getInTimeRange({ startTime, endTime }),
@@ -57,7 +57,7 @@ export const readContributorCountForTimeframe = async ({
   startTime,
   endTime,
 }: ContributorChartReadOptions): Promise<ContributorCountReadResult> => {
-  const dataLayer = createBubbleStatsDataLayer(subredditName);
+  const dataLayer = createDataLayer(subredditName);
   const [posts, comments] = await Promise.all([
     dataLayer.posts.getInTimeRange({ startTime, endTime }),
     dataLayer.comments.getInTimeRange({ startTime, endTime }),

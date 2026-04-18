@@ -15,7 +15,7 @@ test('renders both time-axis edge labels on narrow time charts', () => {
     subredditName: 'example',
     subredditIconUrl: null,
     timeframe: {
-      type: 'bubble-stats-timeframe',
+      type: 'timeframe',
       startIso: start.toISOString(),
       endIso: end.toISOString(),
     },

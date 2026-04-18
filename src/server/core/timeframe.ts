@@ -78,7 +78,7 @@ export const createTimeframeForm = (
       type: 'string',
       name: 'title',
       label: 'Post title',
-      placeholder: 'Subreddit bubble stats',
+      placeholder: 'Bubbles Never Lie: subreddit activity',
       defaultValue: normalizeTitle(defaultValues.title),
     },
     {
@@ -150,7 +150,7 @@ export const createTimeframeForm = (
   }
 
   return {
-    title: 'Create bubble stats post',
+    title: 'Create Bubbles Never Lie post',
     description:
       'Choose the starting date and timezone. The chart samples the newest subreddit posts and filters them to that range.',
     acceptLabel: 'Create post',
@@ -181,7 +181,7 @@ export const createPostData = (
   options: { useTestDataSource?: boolean } = {}
 ): TimeframePostData => {
   const postData: TimeframePostData = {
-    type: 'bubble-stats-timeframe',
+    type: 'timeframe',
     ...range,
   };
 
@@ -195,7 +195,7 @@ export const createPostData = (
 export const readTimeframePostData = (
   postDataValue: JsonObject | undefined
 ): ValidatedTimeframePostData | null => {
-  if (!postDataValue || postDataValue.type !== 'bubble-stats-timeframe') {
+  if (!postDataValue || postDataValue.type !== 'timeframe') {
     return null;
   }
 
@@ -219,7 +219,7 @@ export const readTimeframePostData = (
   }
 
   const validatedPostData: TimeframePostData = {
-    type: 'bubble-stats-timeframe',
+    type: 'timeframe',
     startIso: data.startIso,
     endIso: data.endIso,
   };
@@ -237,7 +237,7 @@ export const readTimeframePostData = (
 
 export const normalizeTitle = (value: string | undefined): string => {
   const title = typeof value === 'string' ? value.trim() : '';
-  return title || 'Subreddit bubble stats';
+  return title || 'Bubbles Never Lie: subreddit activity';
 };
 
 export const resolveCurrentTimeZone = (

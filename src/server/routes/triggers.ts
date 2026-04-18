@@ -28,7 +28,7 @@ triggers.post('/on-app-install', async (c) => {
     return c.json<TriggerResponse>(
       {
         status: 'success',
-        message: `Bubble Stats caches refreshed for r/${context.subredditName} (trigger: ${input.type})`,
+        message: `Bubbles Never Lie caches refreshed for r/${context.subredditName} (trigger: ${input.type})`,
       },
       200
     );
@@ -43,7 +43,7 @@ triggers.post('/on-app-install', async (c) => {
     return c.json<TriggerResponse>(
       {
         status: 'error',
-        message: 'Failed to refresh Bubble Stats caches',
+        message: 'Failed to refresh Bubbles Never Lie caches',
       },
       400
     );

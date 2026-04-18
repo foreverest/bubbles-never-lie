@@ -1,6 +1,6 @@
 import { Hono } from 'hono';
 import type { UiResponse } from '@devvit/web/shared';
-import { createBubbleStatsPost } from '../core/post';
+import { createChartPost } from '../core/post';
 import type { TimeframeFormValues } from '../core/timeframe';
 import { createLogger } from '../logging/logger';
 
@@ -15,14 +15,14 @@ forms.post('/create-chart-submit', async (c) => {
       createFormLogMetadata(values)
     );
 
-    const post = await createBubbleStatsPost(values);
-    logger.info('Created bubble stats post', {
+    const post = await createChartPost(values);
+    logger.info('Created Bubbles Never Lie post', {
       permalink: post.permalink,
     });
 
     return c.json<UiResponse>(
       {
-        showToast: 'Bubble stats post created',
+        showToast: 'Bubbles Never Lie post created',
         navigateTo: `https://www.reddit.com${post.permalink}`,
       },
       200
@@ -30,7 +30,7 @@ forms.post('/create-chart-submit', async (c) => {
   } catch (error) {
     const message =
       error instanceof Error ? error.message : 'Failed to create post.';
-    logger.error('Create bubble stats post failed', { error: message });
+    logger.error('Create Bubbles Never Lie post failed', { error: message });
 
     return c.json<UiResponse>(
       {

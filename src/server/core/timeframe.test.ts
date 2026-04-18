@@ -94,7 +94,7 @@ test('timezone selector marks UTC as current when it is the current timezone', (
 test('validates simplified timeframe post data', () => {
   const range = parseFormDateRange(formValues);
   const postData = {
-    type: 'bubble-stats-timeframe',
+    type: 'timeframe',
     ...range,
   };
 

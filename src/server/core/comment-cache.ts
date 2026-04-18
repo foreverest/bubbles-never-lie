@@ -5,11 +5,7 @@ import {
   type ChartComment,
   type CommentBodyPreviewKind,
 } from '../../shared/api';
-import {
-  createBubbleStatsDataLayer,
-  getDataKeys,
-  type BubbleStatsDataLayer,
-} from '../data';
+import { createDataLayer, getDataKeys, type DataLayer } from '../data';
 import type { CommentEntity, HydratedComment } from '../data';
 import { createLogger } from '../logging/logger';
 import { readLatestCachedPostIds } from './post-cache';
@@ -77,7 +73,7 @@ export type CommentCacheRefreshDependencies = {
 export type CommentCacheQueueProcessDependencies = {
   redisClient?: CommentRefreshQueueRedisClient;
   redditClient?: CommentRefreshRedditClient;
-  dataLayer?: BubbleStatsDataLayer;
+  dataLayer?: DataLayer;
   now?: () => number;
 };
 
@@ -119,7 +115,7 @@ export const readCommentsForTimeframe = async ({
   startTime,
   endTime,
 }: CommentCacheReadOptions): Promise<CommentCacheReadResult> => {
-  const dataLayer = createBubbleStatsDataLayer(subredditName);
+  const dataLayer = createDataLayer(subredditName);
   const comments = await dataLayer.comments.getInTimeRange({
     startTime,
     endTime,
@@ -140,7 +136,7 @@ export const readCommentCountForTimeframe = async ({
   startTime,
   endTime,
 }: CommentCacheReadOptions): Promise<CommentCountReadResult> => {
-  const dataLayer = createBubbleStatsDataLayer(subredditName);
+  const dataLayer = createDataLayer(subredditName);
   const comments = await dataLayer.comments.getInTimeRange({
     startTime,
     endTime,
@@ -205,7 +201,7 @@ export const processCommentCacheQueue = async (
   {
     redisClient = redis,
     redditClient = reddit,
-    dataLayer = createBubbleStatsDataLayer(subredditName),
+    dataLayer = createDataLayer(subredditName),
     now = Date.now,
   }: CommentCacheQueueProcessDependencies = {}
 ): Promise<CommentCacheQueueProcessResult> => {
@@ -411,7 +407,7 @@ const refreshQueuedCommentParent = async ({
   redisClient,
   now,
 }: {
-  dataLayer: BubbleStatsDataLayer;
+  dataLayer: DataLayer;
   item: Exclude<CommentQueueItem, { kind: 'invalid' }>;
   queueKeys: CommentRefreshQueueKeys;
   redditClient: CommentRefreshRedditClient;

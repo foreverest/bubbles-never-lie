@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'vitest';
 import {
-  createBubbleStatsDataLayer,
+  createDataLayer,
   getDataKeys,
   type ContributorEntity,
   type CommentEntity,
@@ -111,6 +111,18 @@ class FakeRedisDataClient implements RedisDataClient {
   }
 }
 
+test('data keys use app-local prefixes', () => {
+  assert.deepEqual(getDataKeys('r/ExampleSub'), {
+    posts: 'data:v1:examplesub:posts',
+    postCreatedAtIndex: 'data:v1:examplesub:posts:createdAt',
+    comments: 'data:v1:examplesub:comments',
+    commentCreatedAtIndex: 'data:v1:examplesub:comments:createdAt',
+    commentRefreshPostQueue: 'data:v1:examplesub:comments:refresh:posts',
+    commentRefreshCommentQueue: 'data:v1:examplesub:comments:refresh:comments',
+    contributors: 'data:v1:examplesub:contributors',
+  });
+});
+
 const createContributor = (id: string): ContributorEntity => ({
   id,
   avatarUrl: `https://example.com/${id}.png`,
@@ -150,7 +162,7 @@ const createComment = (
 
 test('hash repositories skip missing and malformed entities while preserving valid input order', async () => {
   const redisClient = new FakeRedisDataClient();
-  const dataLayer = createBubbleStatsDataLayer('ExampleSub', redisClient);
+  const dataLayer = createDataLayer('ExampleSub', redisClient);
   const keys = getDataKeys('ExampleSub');
   const alice = createContributor('alice');
   const carol = createContributor('carol');
@@ -175,7 +187,7 @@ test('hash repositories skip missing and malformed entities while preserving val
 
 test('time indexed repositories maintain createdAt indexes and skip malformed hydrated rows', async () => {
   const redisClient = new FakeRedisDataClient();
-  const dataLayer = createBubbleStatsDataLayer('ExampleSub', redisClient);
+  const dataLayer = createDataLayer('ExampleSub', redisClient);
   const keys = getDataKeys('ExampleSub');
   const firstPost = createPost('t3_post_1', '2026-04-15T10:00:00.000Z');
   const secondPost = createPost('t3_post_2', '2026-04-15T12:00:00.000Z');
@@ -218,7 +230,7 @@ test('time indexed repositories maintain createdAt indexes and skip malformed hy
 
 test('comment repositories treat missing bodyPreviewKind as text', async () => {
   const redisClient = new FakeRedisDataClient();
-  const dataLayer = createBubbleStatsDataLayer('ExampleSub', redisClient);
+  const dataLayer = createDataLayer('ExampleSub', redisClient);
   const keys = getDataKeys('ExampleSub');
   const legacyComment = {
     id: 't1_legacy',
@@ -242,7 +254,7 @@ test('comment repositories treat missing bodyPreviewKind as text', async () => {
 
 test('time indexed repositories read latest ids in newest-first order', async () => {
   const redisClient = new FakeRedisDataClient();
-  const dataLayer = createBubbleStatsDataLayer('ExampleSub', redisClient);
+  const dataLayer = createDataLayer('ExampleSub', redisClient);
   const postCount = 1005;
   const posts = Array.from({ length: postCount }, (_, index) =>
     createPost(
@@ -270,7 +282,7 @@ test('time indexed repositories read latest ids in newest-first order', async ()
 
 test('relation hydrators add requested relations, preserve order, and keep missing relations null', async () => {
   const redisClient = new FakeRedisDataClient();
-  const dataLayer = createBubbleStatsDataLayer('ExampleSub', redisClient);
+  const dataLayer = createDataLayer('ExampleSub', redisClient);
   const keys = getDataKeys('ExampleSub');
   const alice = createContributor('alice');
   const post = createPost('t3_post_1', '2026-04-15T10:00:00.000Z');
@@ -344,7 +356,7 @@ test('relation hydrators add requested relations, preserve order, and keep missi
 
 test('post relation hydrator adds author when requested', async () => {
   const redisClient = new FakeRedisDataClient();
-  const dataLayer = createBubbleStatsDataLayer('ExampleSub', redisClient);
+  const dataLayer = createDataLayer('ExampleSub', redisClient);
   const alice = createContributor('alice');
   const post = createPost('t3_post_1', '2026-04-15T10:00:00.000Z');
   const missingAuthorPost = createPost(

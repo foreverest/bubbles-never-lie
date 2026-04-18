@@ -10,7 +10,7 @@ import {
 } from './date';
 
 const baseTimeframe: TimeframePostData = {
-  type: 'bubble-stats-timeframe',
+  type: 'timeframe',
   startIso: new Date(2024, 1, 29, 8, 30).toISOString(),
   endIso: new Date(2024, 1, 29, 18, 45).toISOString(),
 };

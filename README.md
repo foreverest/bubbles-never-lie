@@ -1,10 +1,10 @@
-# Bubble Stats
+# Bubbles Never Lie
 
-Bubble Stats creates an interactive subreddit post that helps people understand recent post activity at a glance. Pick a date range, publish a chart, and use the bubbles to compare when posts were created, how many upvotes they received, how much conversation they generated, and whether the post author's subreddit karma bucket is known.
+Bubbles Never Lie creates an interactive subreddit post that helps people understand recent post activity at a glance. Pick a date range, publish a chart, and use the bubbles to compare when posts were created, how many upvotes they received, how much conversation they generated, and whether the post author's subreddit karma bucket is known.
 
 ## What the app does
 
-Bubble Stats turns subreddit posts into a bubble chart:
+Bubbles Never Lie turns subreddit posts into a bubble chart:
 
 - Each bubble is one post from the selected date range.
 - The left-to-right position shows when the post was created.
@@ -13,7 +13,7 @@ Bubble Stats turns subreddit posts into a bubble chart:
 - The bubble color reflects the post author's relative subreddit karma bucket among contributors in the chart when that information is available.
 - Gray bubbles mean the post author's subreddit karma bucket was not available.
 
-Bubble Stats also includes a comments chart:
+Bubbles Never Lie also includes a comments chart:
 
 - Each bubble is one comment from the selected date range.
 - The left-to-right position shows when the comment was created.
@@ -26,7 +26,7 @@ The charts are useful for spotting busy posting periods, posts that drove conver
 
 ## How to create a chart
 
-Use the subreddit menu item named "Create bubble stats post". The app opens a short form where you can enter:
+Use the subreddit menu item named "Create Bubbles Never Lie post". The app opens a short form where you can enter:
 
 - A post title.
 - A start year, month, and day.
@@ -37,7 +37,7 @@ The form defaults to the current date in UTC, the UTC timezone, and a 1-day char
 
 ## How to read the chart
 
-Open the new Bubble Stats post and use the tabs at the top:
+Open the new Bubbles Never Lie post and use the tabs at the top:
 
 - Posts: Shows the interactive bubble chart.
 - Comments: Shows comments by creation time and upvote score.
@@ -50,7 +50,7 @@ On the comments chart, hover over or tap a bubble to see the author, author avat
 
 ## Data notes
 
-Bubble Stats is designed for recent subreddit activity. It samples the newest subreddit posts, keeps a rolling cache of recent post and contributor details, and filters that data to the date range you chose. Very old date ranges may not include every historical post.
+Bubbles Never Lie is designed for recent subreddit activity. It samples the newest subreddit posts, keeps a rolling cache of recent post and contributor details, and filters that data to the date range you chose. Very old date ranges may not include every historical post.
 
 If the app was just installed or upgraded, a chart may briefly say a cache is warming. Try again shortly. If no posts or comments match the selected range, the chart shows an empty state and suggests trying a wider date range.
 

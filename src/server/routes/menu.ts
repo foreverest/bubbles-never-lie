@@ -20,7 +20,7 @@ menu.post('/create-chart', async (c) => {
   );
   const defaults = defaultTimeframeFormValues();
   const formDefaults = {
-    title: 'Subreddit bubble stats',
+    title: 'Bubbles Never Lie: subreddit activity',
     ...defaults,
   };
   const allowTestDataSource = canUseTestDataSource(context.subredditName);

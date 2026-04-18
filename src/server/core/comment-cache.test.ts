@@ -1,11 +1,7 @@
 import assert from 'node:assert/strict';
 import type { Comment } from '@devvit/web/server';
 import { test } from 'vitest';
-import {
-  createBubbleStatsDataLayer,
-  getDataKeys,
-  type RedisDataClient,
-} from '../data';
+import { createDataLayer, getDataKeys, type RedisDataClient } from '../data';
 import {
   processCommentCacheQueue,
   refreshCommentCache,
@@ -199,7 +195,7 @@ test('refreshCommentCache resets queues and seeds post ids with timestamp batch 
 test('processCommentCacheQueue prefers comment queue items before post queue items', async () => {
   const redisClient = new FakeRedisClient();
   const redditClient = new FakeRedditClient();
-  const dataLayer = createBubbleStatsDataLayer('ExampleSub', redisClient);
+  const dataLayer = createDataLayer('ExampleSub', redisClient);
   const keys = getDataKeys('ExampleSub');
 
   await redisClient.zAdd(keys.commentRefreshCommentQueue, {
@@ -241,7 +237,7 @@ test('processCommentCacheQueue prefers comment queue items before post queue ite
 test('processCommentCacheQueue caches post comments and fetches child comments with postId and commentId', async () => {
   const redisClient = new FakeRedisClient();
   const redditClient = new FakeRedditClient();
-  const dataLayer = createBubbleStatsDataLayer('ExampleSub', redisClient);
+  const dataLayer = createDataLayer('ExampleSub', redisClient);
   const keys = getDataKeys('ExampleSub');
 
   await redisClient.zAdd(keys.commentRefreshPostQueue, {
@@ -310,7 +306,7 @@ test('processCommentCacheQueue caches post comments and fetches child comments w
 test('processCommentCacheQueue stores typed media comment previews before truncating text', async () => {
   const redisClient = new FakeRedisClient();
   const redditClient = new FakeRedditClient();
-  const dataLayer = createBubbleStatsDataLayer('ExampleSub', redisClient);
+  const dataLayer = createDataLayer('ExampleSub', redisClient);
   const keys = getDataKeys('ExampleSub');
 
   await redisClient.zAdd(keys.commentRefreshPostQueue, {
@@ -372,7 +368,7 @@ test('processCommentCacheQueue stores typed media comment previews before trunca
 test('processCommentCacheQueue skips malformed comment queue members', async () => {
   const redisClient = new FakeRedisClient();
   const redditClient = new FakeRedditClient();
-  const dataLayer = createBubbleStatsDataLayer('ExampleSub', redisClient);
+  const dataLayer = createDataLayer('ExampleSub', redisClient);
   const keys = getDataKeys('ExampleSub');
 
   await redisClient.zAdd(keys.commentRefreshCommentQueue, {
@@ -406,7 +402,7 @@ test('processCommentCacheQueue skips malformed comment queue members', async () 
 test('processCommentCacheQueue skips failed fetches and continues with later queue items', async () => {
   const redisClient = new FakeRedisClient();
   const redditClient = new FakeRedditClient();
-  const dataLayer = createBubbleStatsDataLayer('ExampleSub', redisClient);
+  const dataLayer = createDataLayer('ExampleSub', redisClient);
   const keys = getDataKeys('ExampleSub');
 
   await redisClient.zAdd(

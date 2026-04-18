@@ -22,7 +22,6 @@ export const createChartDataCacheKey = ({
   endTime,
 }: ChartDataCacheKeyOptions): string =>
   [
-    'bubble-stats',
     'chart-data',
     CHART_DATA_CACHE_KEY_VERSION,
     `endpoint=${encodeCacheKeyPart(endpoint)}`,

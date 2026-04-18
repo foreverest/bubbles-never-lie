@@ -39,16 +39,16 @@ export {
 export { createRelationHydrators } from './relations';
 export { getDataKeys } from './keys';
 
-export type BubbleStatsDataLayer = RelationHydrators & {
+export type DataLayer = RelationHydrators & {
   posts: PostRepository;
   comments: CommentRepository;
   contributors: ContributorRepository;
 };
 
-export const createBubbleStatsDataLayer = (
+export const createDataLayer = (
   subredditName: string,
   redisClient?: RedisDataClient
-): BubbleStatsDataLayer => {
+): DataLayer => {
   const posts = createPostRepository(subredditName, redisClient);
   const comments = createCommentRepository(subredditName, redisClient);
   const contributors = createContributorRepository(subredditName, redisClient);

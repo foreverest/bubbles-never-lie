@@ -55,7 +55,7 @@ const shouldLog = (level: LogLevel): boolean =>
   logLevelPriorities[level] >= logLevelPriorities[readConfiguredLogLevel()];
 
 const readConfiguredLogLevel = (): ConfiguredLogLevel => {
-  const value = process.env.BUBBLE_STATS_LOG_LEVEL?.toLowerCase();
+  const value = process.env.LOG_LEVEL?.toLowerCase();
 
   return isConfiguredLogLevel(value) ? value : defaultLogLevel;
 };

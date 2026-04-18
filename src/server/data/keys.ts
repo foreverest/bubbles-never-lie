@@ -1,6 +1,6 @@
 import { normalizeSubredditName } from '../core/subreddits';
 
-const DATA_KEY_PREFIX = 'bubble-stats:data:v1';
+const DATA_KEY_PREFIX = 'data:v1';
 
 export type DataKeys = {
   posts: string;

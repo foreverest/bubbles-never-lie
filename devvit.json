@@ -28,7 +28,7 @@
   "menu": {
     "items": [
       {
-        "label": "Create bubble stats post",
+        "label": "Create Bubbles Never Lie post",
         "description": "Chart subreddit posts and comments by activity",
         "location": "subreddit",
         "forUserType": "user",

@@ -62,7 +62,7 @@ export function App() {
     return (
       <main className="app-shell app-shell--centered">
         <section className="message-panel" aria-live="polite">
-          <p className="eyebrow">Bubble stats</p>
+          <p className="eyebrow">Bubbles Never Lie</p>
           <h1>Chart data could not be loaded.</h1>
           <p>{postsState.message}</p>
         </section>
@@ -74,7 +74,7 @@ export function App() {
 
   return (
     <main className="app-shell">
-      <section className="chart-region" aria-label="Bubble stats">
+      <section className="chart-region" aria-label="Bubbles Never Lie">
         <ChartHeader
           data={postsData}
           activeTab={activeTab}

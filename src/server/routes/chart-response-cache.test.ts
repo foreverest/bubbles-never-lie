@@ -41,6 +41,7 @@ test('chart data cache keys normalize missing post IDs and encode separators', (
     subredditName: 'name:with/slash',
   });
 
+  assert.match(key, /^chart-data:v1:/);
   assert.match(key, /post=none/);
   assert.match(key, /subreddit=name%3Awith%2Fslash/);
   assert.doesNotMatch(key, /subreddit=name:with\/slash/);

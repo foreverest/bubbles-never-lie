@@ -1,6 +1,6 @@
 import { reddit } from '@devvit/web/server';
 import { resolveUserAvatarUrl } from '../../shared/api';
-import { createBubbleStatsDataLayer } from '../data';
+import { createDataLayer } from '../data';
 import type { ContributorEntity, CommentEntity, PostEntity } from '../data';
 import { createLogger } from '../logging/logger';
 import { shouldUseSyntheticContributorKarma } from './subreddits';
@@ -24,7 +24,7 @@ export const refreshContributorCache = async (
   logger.info('Refreshing contributor cache', { subredditName });
 
   try {
-    const dataLayer = createBubbleStatsDataLayer(subredditName);
+    const dataLayer = createDataLayer(subredditName);
     const fetchedAt = new Date();
     const [posts, comments] = await Promise.all([
       dataLayer.posts.getInTimeRange({

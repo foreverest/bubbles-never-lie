@@ -3,8 +3,7 @@ import type { Dispatch, SetStateAction } from 'react';
 
 import type { ChartPreferences, ThemeMode } from '../types';
 
-export const CHART_PREFERENCES_STORAGE_KEY =
-  'bubble-stats:chart-preferences:v1';
+export const CHART_PREFERENCES_STORAGE_KEY = 'chart-preferences:v1';
 
 export const DEFAULT_CHART_PREFERENCES: ChartPreferences = {
   zoomEnabled: false,

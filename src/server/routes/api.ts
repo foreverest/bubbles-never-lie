@@ -37,7 +37,7 @@ const contributorsApiLogger = createLogger('contributors-api');
 const statsApiLogger = createLogger('stats-api');
 const chartDataCacheTtlSeconds = 30;
 const missingTimeframeMessage =
-  'This post is missing a bubble stats date range.';
+  'This post is missing a Bubbles Never Lie date range.';
 const postsErrorMessage =
   'Unable to load subreddit post chart data. Try again shortly.';
 const commentsErrorMessage =

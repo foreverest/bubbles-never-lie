@@ -5,7 +5,7 @@ import {
   type ChartPost,
   type SubredditKarmaBucket,
 } from '../../shared/api';
-import { createBubbleStatsDataLayer } from '../data';
+import { createDataLayer } from '../data';
 import type { ContributorEntity, HydratedPost, PostEntity } from '../data';
 import { createLogger } from '../logging/logger';
 import { createContributorKarmaBuckets } from './contributor-karma';
@@ -54,7 +54,7 @@ export const readPostsForTimeframe = async ({
   startTime,
   endTime,
 }: PostCacheReadOptions): Promise<PostCacheReadResult> => {
-  const dataLayer = createBubbleStatsDataLayer(subredditName);
+  const dataLayer = createDataLayer(subredditName);
   const posts = await dataLayer.posts.getInTimeRange({ startTime, endTime });
   const hydratedPosts = await dataLayer.hydratePostRelations(posts, {
     author: true,
@@ -77,7 +77,7 @@ export const readPostCountForTimeframe = async ({
   startTime,
   endTime,
 }: PostCacheReadOptions): Promise<PostCountReadResult> => {
-  const dataLayer = createBubbleStatsDataLayer(subredditName);
+  const dataLayer = createDataLayer(subredditName);
   const posts = await dataLayer.posts.getInTimeRange({ startTime, endTime });
 
   return {
@@ -91,7 +91,7 @@ export const refreshPostCache = async (
   logger.info('Refreshing post cache', { subredditName });
 
   try {
-    const dataLayer = createBubbleStatsDataLayer(subredditName);
+    const dataLayer = createDataLayer(subredditName);
     const posts = await reddit
       .getNewPosts({
         subredditName,
@@ -134,7 +134,7 @@ export const readCachedPostIdsForTimeframe = async ({
   startTime,
   endTime,
 }: CachedPostIdReadOptions): Promise<CachedPostIdReadResult> => {
-  const dataLayer = createBubbleStatsDataLayer(subredditName);
+  const dataLayer = createDataLayer(subredditName);
   const postIds = (
     await dataLayer.posts.getIdsInTimeRange({ startTime, endTime })
   ).filter(isPostId);
@@ -148,7 +148,7 @@ export const readLatestCachedPostIds = async ({
   subredditName,
   limit,
 }: LatestCachedPostIdReadOptions): Promise<CachedPostIdReadResult> => {
-  const dataLayer = createBubbleStatsDataLayer(subredditName);
+  const dataLayer = createDataLayer(subredditName);
   const postIds = (await dataLayer.posts.getLatestIds(limit)).filter(isPostId);
 
   return {

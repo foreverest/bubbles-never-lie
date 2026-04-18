@@ -7,7 +7,7 @@ import {
 import type { TimeframeFormValues } from './timeframe';
 import { canUseTestDataSource } from './subreddits';
 
-export const createBubbleStatsPost = async (values: TimeframeFormValues) => {
+export const createChartPost = async (values: TimeframeFormValues) => {
   const range = parseFormDateRange(values);
   const useTestDataSource =
     values.useTestDataSource === true &&

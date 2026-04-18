@@ -2,20 +2,20 @@ import assert from 'node:assert/strict';
 import { afterEach, test, vi } from 'vitest';
 import { createLogger } from './logger';
 
-const originalLogLevel = process.env.BUBBLE_STATS_LOG_LEVEL;
+const originalLogLevel = process.env.LOG_LEVEL;
 
 afterEach(() => {
   if (originalLogLevel === undefined) {
-    delete process.env.BUBBLE_STATS_LOG_LEVEL;
+    delete process.env.LOG_LEVEL;
   } else {
-    process.env.BUBBLE_STATS_LOG_LEVEL = originalLogLevel;
+    process.env.LOG_LEVEL = originalLogLevel;
   }
 
   vi.restoreAllMocks();
 });
 
 test('formats log lines with time, level, component, message, and metadata', () => {
-  process.env.BUBBLE_STATS_LOG_LEVEL = 'debug';
+  process.env.LOG_LEVEL = 'debug';
   const log = vi.spyOn(console, 'log').mockImplementation(() => undefined);
   const logger = createLogger('posts-api');
 
@@ -37,7 +37,7 @@ test('formats log lines with time, level, component, message, and metadata', () 
 });
 
 test('uses info as the default log level', () => {
-  delete process.env.BUBBLE_STATS_LOG_LEVEL;
+  delete process.env.LOG_LEVEL;
   const log = vi.spyOn(console, 'log').mockImplementation(() => undefined);
   const logger = createLogger('comments-api');
 
@@ -52,7 +52,7 @@ test('uses info as the default log level', () => {
 });
 
 test('suppresses logs below the configured level', () => {
-  process.env.BUBBLE_STATS_LOG_LEVEL = 'warn';
+  process.env.LOG_LEVEL = 'warn';
   const log = vi.spyOn(console, 'log').mockImplementation(() => undefined);
   const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
   const error = vi.spyOn(console, 'error').mockImplementation(() => undefined);
@@ -76,7 +76,7 @@ test('suppresses logs below the configured level', () => {
 });
 
 test('silent suppresses all output', () => {
-  process.env.BUBBLE_STATS_LOG_LEVEL = 'silent';
+  process.env.LOG_LEVEL = 'silent';
   const log = vi.spyOn(console, 'log').mockImplementation(() => undefined);
   const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
   const error = vi.spyOn(console, 'error').mockImplementation(() => undefined);
@@ -93,7 +93,7 @@ test('silent suppresses all output', () => {
 });
 
 test('unserializable metadata does not throw', () => {
-  process.env.BUBBLE_STATS_LOG_LEVEL = 'debug';
+  process.env.LOG_LEVEL = 'debug';
   const log = vi.spyOn(console, 'log').mockImplementation(() => undefined);
   const logger = createLogger('comment-cache');
   const metadata: Record<string, unknown> = {};
