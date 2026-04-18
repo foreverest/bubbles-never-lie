@@ -16,7 +16,7 @@ test('posts chart help describes all visual encodings and total bubbles', () => 
     'Post creation time',
     'Post upvotes',
     'Comments on the post',
-    'Author subreddit karma bucket; gray when unavailable',
+    'Author subreddit karma bucket',
   ]);
 });
 
@@ -41,6 +41,6 @@ test('contributors chart help maps axes to comment and post upvotes', () => {
     'Total comment upvotes',
     'Total post upvotes',
     'Posts and comments by contributor',
-    'Contributor subreddit karma bucket; gray when unavailable',
+    'Contributor subreddit karma bucket',
   ]);
 });

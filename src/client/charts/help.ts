@@ -32,7 +32,7 @@ export function createPostsChartHelpDetails(totalBubbles: number): ChartHelpDeta
     {
       kind: 'color',
       label: 'Bubble color',
-      description: 'Author subreddit karma bucket; gray when unavailable',
+      description: 'Author subreddit karma bucket',
     },
   ]);
 }
@@ -77,7 +77,7 @@ export function createContributorsChartHelpDetails(totalBubbles: number): ChartH
     {
       kind: 'color',
       label: 'Bubble color',
-      description: 'Contributor subreddit karma bucket; gray when unavailable',
+      description: 'Contributor subreddit karma bucket',
     },
   ]);
 }
