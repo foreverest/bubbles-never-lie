@@ -18,6 +18,7 @@ type ChartHeaderProps = {
   onCurrentUserRippleEnabledChange: (enabled: boolean) => void;
   themeMode: ThemeMode;
   onThemeModeChange: (themeMode: ThemeMode) => void;
+  onFeedbackOpen: () => void;
   onRequestExpandedMode?: (event: ReactMouseEvent<HTMLButtonElement>) => void;
 };
 
@@ -44,6 +45,7 @@ export function ChartHeader({
   onCurrentUserRippleEnabledChange,
   themeMode,
   onThemeModeChange,
+  onFeedbackOpen,
   onRequestExpandedMode,
 }: ChartHeaderProps) {
   const [openMenu, setOpenMenu] = useState<OpenMenu>(null);
@@ -113,6 +115,11 @@ export function ChartHeader({
     event: ReactMouseEvent<HTMLButtonElement>
   ) => {
     onRequestExpandedMode?.(event);
+    setOpenMenu(null);
+  };
+
+  const handleFeedbackOpen = () => {
+    onFeedbackOpen();
     setOpenMenu(null);
   };
 
@@ -214,6 +221,7 @@ export function ChartHeader({
                 settings={settings}
                 themeMode={themeMode}
                 onThemeModeChange={onThemeModeChange}
+                onFeedbackOpen={handleFeedbackOpen}
                 {...(onRequestExpandedMode
                   ? { onRequestExpandedMode: handleRequestExpandedMode }
                   : {})}
@@ -264,6 +272,7 @@ export function ChartHeader({
                 settings={settings}
                 themeMode={themeMode}
                 onThemeModeChange={onThemeModeChange}
+                onFeedbackOpen={handleFeedbackOpen}
                 {...(onRequestExpandedMode
                   ? { onRequestExpandedMode: handleRequestExpandedMode }
                   : {})}
@@ -280,11 +289,13 @@ function SettingsMenuContent({
   settings,
   themeMode,
   onThemeModeChange,
+  onFeedbackOpen,
   onRequestExpandedMode,
 }: {
   settings: ChartSetting[];
   themeMode: ThemeMode;
   onThemeModeChange: (themeMode: ThemeMode) => void;
+  onFeedbackOpen: () => void;
   onRequestExpandedMode?: (event: ReactMouseEvent<HTMLButtonElement>) => void;
 }) {
   return (
@@ -323,6 +334,14 @@ function SettingsMenuContent({
           ))}
         </div>
       </div>
+      <div className="chart-settings__divider" />
+      <button
+        className="chart-settings__action"
+        onClick={onFeedbackOpen}
+        type="button"
+      >
+        Feedback
+      </button>
     </>
   );
 }

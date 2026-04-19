@@ -12,6 +12,7 @@ import { ContributorsChart } from './charts/ContributorsChart';
 import { PostsChart } from './charts/PostsChart';
 import { ChartHeader } from './components/ChartHeader';
 import { EmptyState } from './components/EmptyState';
+import { FeedbackDialog } from './components/FeedbackDialog';
 import { InsightsPanel } from './components/InsightsPanel';
 import { PanelState } from './components/PanelState';
 import { useApiResource } from './hooks/useApiResource';
@@ -26,6 +27,7 @@ type AppProps = {
 
 export function App({ onRequestExpandedMode }: AppProps) {
   const [activeTab, setActiveTab] = useState<TabName>('posts');
+  const [feedbackDialogOpen, setFeedbackDialogOpen] = useState(false);
   const [chartPreferences, setChartPreferences] = useChartPreferences();
   const { zoomEnabled, currentUserRippleEnabled, themeMode } = chartPreferences;
   const resolvedTheme = useResolvedTheme(themeMode);
@@ -98,6 +100,7 @@ export function App({ onRequestExpandedMode }: AppProps) {
         ...preferences,
         themeMode: nextThemeMode,
       })),
+    onFeedbackOpen: () => setFeedbackDialogOpen(true),
     ...(onRequestExpandedMode ? { onRequestExpandedMode } : {}),
   };
 
@@ -131,6 +134,9 @@ export function App({ onRequestExpandedMode }: AppProps) {
           <InsightsPanel state={insightsState} />
         )}
       </section>
+      {feedbackDialogOpen ? (
+        <FeedbackDialog onClose={() => setFeedbackDialogOpen(false)} />
+      ) : null}
     </main>
   );
 }
