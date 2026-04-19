@@ -106,10 +106,7 @@ type QueueItemRefreshResult = {
 };
 
 type CommentWithAuthor = HydratedComment<{ author: true }>;
-type CommentBodyPreview = Pick<
-  CommentEntity,
-  'bodyPreview'
->;
+type CommentBodyPreview = Pick<CommentEntity, 'bodyPreview'>;
 type CommentBodyMediaPreviewMarker =
   | typeof COMMENT_GIF_PREVIEW_MARKER
   | typeof COMMENT_IMAGE_PREVIEW_MARKER;
