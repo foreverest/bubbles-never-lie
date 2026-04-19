@@ -321,7 +321,11 @@ test('processCommentCacheQueue stores typed media comment previews before trunca
       'https://preview.redd.it/april-13-2026-daily-rddt-discussion-thread-v0-e5rpml9730vg1.jpeg?width=770&format=pjpg&auto=webp&s=84de852e1c1a2410d7df4d47c6ac283fbf3efc6c'
     ),
     createComment('t1_literal_gif', 't3_post_1', 'GIF comment'),
-    createComment('t1_long_text', 't3_post_1', 'abcdefghijklmnopqrstuvwxyz'),
+    createComment(
+      't1_long_text',
+      't3_post_1',
+      'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ'
+    ),
   ]);
 
   await processCommentCacheQueue(
@@ -358,7 +362,7 @@ test('processCommentCacheQueue stores typed media comment previews before trunca
       },
       {
         id: 't1_long_text',
-        bodyPreview: 'abcdefghijklmnopq...',
+        bodyPreview: 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTU...',
         bodyPreviewKind: 'text',
       },
     ]
