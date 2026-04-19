@@ -1,13 +1,14 @@
 import { expect, test } from 'vitest';
 
 import {
-  createTimeframeForm,
+  createPostData,
+  createPostForm,
   parseFormDateRange,
-  readTimeframePostData,
-  type TimeframeFormValues,
-} from './timeframe';
+  readPostConfig,
+  type CreatePostFormValues,
+} from './post-config';
 
-const formValues: TimeframeFormValues = {
+const formValues: CreatePostFormValues = {
   startYear: ['2026'],
   startMonth: ['1'],
   startDay: ['2'],
@@ -22,8 +23,8 @@ test('parses selected day from midnight in the selected timezone', () => {
   });
 });
 
-test('create timeframe form omits hour and prioritizes timezone options', () => {
-  const form = createTimeframeForm({
+test('create post form omits hour and prioritizes timezone options', () => {
+  const form = createPostForm({
     currentTimeZone: 'America/Los_Angeles',
   });
   const fieldNames = form.fields.flatMap((field) =>
@@ -64,7 +65,7 @@ test('create timeframe form omits hour and prioritizes timezone options', () => 
 });
 
 test('timezone selector marks UTC as current when it is the current timezone', () => {
-  const form = createTimeframeForm({
+  const form = createPostForm({
     currentTimeZone: 'UTC',
     defaultValues: {
       startYear: ['2026'],
@@ -91,35 +92,40 @@ test('timezone selector marks UTC as current when it is the current timezone', (
   ).toHaveLength(1);
 });
 
-test('validates simplified timeframe post data', () => {
-  const range = parseFormDateRange(formValues);
-  const postData = {
-    type: 'timeframe',
-    ...range,
-  };
+test('validates post config with nested date range', () => {
+  const dateRange = parseFormDateRange(formValues);
+  const postConfig = createPostData(dateRange);
 
-  expect(readTimeframePostData(postData)).toEqual({
-    postData,
+  expect(postConfig).toEqual({
+    type: 'post-config',
+    dateRange,
+  });
+  expect(readPostConfig(postConfig)).toEqual({
+    config: postConfig,
     start: new Date('2026-01-01T15:00:00.000Z'),
     end: new Date('2026-01-02T15:00:00.000Z'),
   });
 
+  expect(readPostConfig({ type: postConfig.type })).toBeNull();
   expect(
-    readTimeframePostData({ type: postData.type, endIso: postData.endIso })
-  ).toBeNull();
-  expect(
-    readTimeframePostData({ ...postData, startIso: 'not-a-date' })
-  ).toBeNull();
-  expect(
-    readTimeframePostData({
-      ...postData,
-      startIso: '2026-01-03T00:00:00.000Z',
-      endIso: '2026-01-02T00:00:00.000Z',
+    readPostConfig({
+      ...postConfig,
+      dateRange: { ...postConfig.dateRange, startIso: 'not-a-date' },
     })
   ).toBeNull();
   expect(
-    readTimeframePostData({
-      ...postData,
+    readPostConfig({
+      ...postConfig,
+      dateRange: {
+        ...postConfig.dateRange,
+        startIso: '2026-01-03T00:00:00.000Z',
+        endIso: '2026-01-02T00:00:00.000Z',
+      },
+    })
+  ).toBeNull();
+  expect(
+    readPostConfig({
+      ...postConfig,
       dataSourceSubredditName: 'unexpected',
     })
   ).toBeNull();

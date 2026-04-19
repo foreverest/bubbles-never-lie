@@ -29,7 +29,7 @@ type ContributorActivity = {
   commentScore: number;
 };
 
-export const readContributorsForTimeframe = async ({
+export const readContributorsInDateRange = async ({
   subredditName,
   startTime,
   endTime,
@@ -52,7 +52,7 @@ export const readContributorsForTimeframe = async ({
   };
 };
 
-export const readContributorCountForTimeframe = async ({
+export const readContributorCountInDateRange = async ({
   subredditName,
   startTime,
   endTime,

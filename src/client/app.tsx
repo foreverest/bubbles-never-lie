@@ -87,9 +87,7 @@ export function App({ onRequestExpandedMode }: AppProps) {
         zoomEnabled: nextZoomEnabled,
       })),
     currentUserRippleEnabled,
-    onCurrentUserRippleEnabledChange: (
-      nextCurrentUserRippleEnabled: boolean,
-    ) =>
+    onCurrentUserRippleEnabledChange: (nextCurrentUserRippleEnabled: boolean) =>
       setChartPreferences((preferences) => ({
         ...preferences,
         currentUserRippleEnabled: nextCurrentUserRippleEnabled,
@@ -161,7 +159,7 @@ function PostsPanel({
         <EmptyState
           contentLabel="posts"
           subredditName={data.subredditName}
-          timeframe={data.timeframe}
+          dateRange={data.dateRange}
         />
       )}
     </section>
@@ -193,7 +191,7 @@ function CommentsPanel({
           <EmptyState
             contentLabel="comments"
             subredditName={state.data.subredditName}
-            timeframe={state.data.timeframe}
+            dateRange={state.data.dateRange}
           />
         )
       ) : (
@@ -235,7 +233,7 @@ function ContributorsPanel({
           <EmptyState
             contentLabel="active contributors"
             subredditName={state.data.subredditName}
-            timeframe={state.data.timeframe}
+            dateRange={state.data.dateRange}
           />
         )
       ) : (

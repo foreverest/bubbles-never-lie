@@ -2,10 +2,10 @@ import { context } from '@devvit/web/server';
 import { Hono } from 'hono';
 import type { MenuItemRequest, UiResponse } from '@devvit/web/shared';
 import {
-  createTimeframeForm,
-  defaultTimeframeFormValues,
+  createPostForm,
+  defaultCreatePostFormValues,
   resolveCurrentTimeZone,
-} from '../core/timeframe';
+} from '../core/post-config';
 import { canUseTestDataSource } from '../core/subreddits';
 import { createLogger } from '../logging/logger';
 
@@ -18,7 +18,7 @@ menu.post('/create-post', async (c) => {
   const currentTimeZone = resolveCurrentTimeZone(
     context.metadata[timeZoneHeader]?.values[0]
   );
-  const defaults = defaultTimeframeFormValues();
+  const defaults = defaultCreatePostFormValues();
   const formDefaults = {
     title: 'Subreddit Activity Charts',
     ...defaults,
@@ -33,8 +33,8 @@ menu.post('/create-post', async (c) => {
   return c.json<UiResponse>(
     {
       showForm: {
-        name: 'timeframeForm',
-        form: createTimeframeForm({
+        name: 'createPostForm',
+        form: createPostForm({
           allowTestDataSource,
           currentTimeZone,
           defaultValues: formDefaults,

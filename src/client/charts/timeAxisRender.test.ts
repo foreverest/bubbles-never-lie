@@ -14,8 +14,7 @@ test('renders both time-axis edge labels on narrow time charts', () => {
   const chartData: ChartResponseMetadata = {
     subredditName: 'example',
     subredditIconUrl: null,
-    timeframe: {
-      type: 'timeframe',
+    dateRange: {
       startIso: start.toISOString(),
       endIso: end.toISOString(),
     },

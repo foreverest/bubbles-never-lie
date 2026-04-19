@@ -3,11 +3,11 @@ import {
   createPostData,
   normalizeTitle,
   parseFormDateRange,
-} from './timeframe';
-import type { TimeframeFormValues } from './timeframe';
+} from './post-config';
+import type { CreatePostFormValues } from './post-config';
 import { canUseTestDataSource } from './subreddits';
 
-export const createChartPost = async (values: TimeframeFormValues) => {
+export const createPost = async (values: CreatePostFormValues) => {
   const range = parseFormDateRange(values);
   const useTestDataSource =
     values.useTestDataSource === true &&

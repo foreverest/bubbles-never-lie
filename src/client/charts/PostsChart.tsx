@@ -29,10 +29,7 @@ export function PostsChart({
     () => data.posts.map((post) => toPostBubbleDatum(post, currentUsername)),
     [currentUsername, data.posts]
   );
-  const helpDetails = useMemo(
-    () => createPostsChartHelpDetails(),
-    []
-  );
+  const helpDetails = useMemo(() => createPostsChartHelpDetails(), []);
   const handleChartInit = useCallback((chart: EChartsInstance) => {
     const handleChartClick = (params: ChartEventParams) => {
       const datum = isPostBubbleDatum(params.data) ? params.data : null;

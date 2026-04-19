@@ -110,7 +110,7 @@ type CommentBodyPreview = Pick<
   'bodyPreview' | 'bodyPreviewKind'
 >;
 
-export const readCommentsForTimeframe = async ({
+export const readCommentsInDateRange = async ({
   subredditName,
   startTime,
   endTime,
@@ -131,7 +131,7 @@ export const readCommentsForTimeframe = async ({
   };
 };
 
-export const readCommentCountForTimeframe = async ({
+export const readCommentCountInDateRange = async ({
   subredditName,
   startTime,
   endTime,

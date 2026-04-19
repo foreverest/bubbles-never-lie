@@ -10,8 +10,7 @@ import { createPostsOption } from './posts';
 const metadata: ChartResponseMetadata = {
   subredditName: 'example',
   subredditIconUrl: null,
-  timeframe: {
-    type: 'timeframe',
+  dateRange: {
     startIso: '2024-02-29T00:00:00.000Z',
     endIso: '2024-03-01T00:00:00.000Z',
   },

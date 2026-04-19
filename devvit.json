@@ -37,7 +37,7 @@
     ]
   },
   "forms": {
-    "timeframeForm": "/internal/form/create-post-submit"
+    "createPostForm": "/internal/form/create-post-submit"
   },
   "triggers": {
     "onAppInstall": "/internal/triggers/on-app-install"

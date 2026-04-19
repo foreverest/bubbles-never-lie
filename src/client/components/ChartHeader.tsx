@@ -4,7 +4,7 @@ import type { MouseEvent as ReactMouseEvent } from 'react';
 import type { ChartResponseMetadata } from '../../shared/api';
 import type { ChartPreferences, TabName, ThemeMode } from '../types';
 import { TABS, getTabLabel } from '../types';
-import { formatTimeframeDateRangeLabels } from '../utils/date';
+import { formatDateRangeLabels } from '../utils/date';
 
 type OpenMenu = 'sections' | 'settings' | 'mobile' | null;
 
@@ -51,7 +51,7 @@ export function ChartHeader({
   const settingsRef = useRef<HTMLDivElement | null>(null);
   const mobileControlsRef = useRef<HTMLDivElement | null>(null);
   const activeTabLabel = getTabLabel(activeTab);
-  const timeframeLabel = formatTimeframeDateRangeLabels(data.timeframe);
+  const dateRangeLabel = formatDateRangeLabels(data.dateRange);
   const activePanelId =
     TABS.find((tab) => tab.name === activeTab)?.panelId ?? `${activeTab}-panel`;
   const settings: ChartSetting[] = [
@@ -110,7 +110,7 @@ export function ChartHeader({
   };
 
   const handleRequestExpandedMode = (
-    event: ReactMouseEvent<HTMLButtonElement>,
+    event: ReactMouseEvent<HTMLButtonElement>
   ) => {
     onRequestExpandedMode?.(event);
     setOpenMenu(null);
@@ -137,15 +137,15 @@ export function ChartHeader({
             <span>r/{data.subredditName}</span>
           </div>
           <p
-            aria-label={timeframeLabel.fullLabel}
+            aria-label={dateRangeLabel.fullLabel}
             className="chart-title__meta"
-            title={timeframeLabel.fullLabel}
+            title={dateRangeLabel.fullLabel}
           >
             <span className="chart-title__meta-desktop">
-              {timeframeLabel.compactLabel}
+              {dateRangeLabel.compactLabel}
             </span>
             <span className="chart-title__meta-mobile">
-              {timeframeLabel.compactLabel}
+              {dateRangeLabel.compactLabel}
             </span>
           </p>
         </div>

@@ -1,4 +1,4 @@
-import type { TimeframePostData } from '../../shared/api';
+import type { DateRange } from '../../shared/api';
 
 const DATE_ONLY_PATTERN = /^(\d{4})-(\d{2})-(\d{2})$/;
 const DATE_ONLY_FORMATTER = new Intl.DateTimeFormat('en-US', {
@@ -21,18 +21,16 @@ const LOCAL_DATE_TIME_FORMATTER = new Intl.DateTimeFormat('en-US', {
 });
 
 type RelativeAgeLabelStyle = 'short' | 'long';
-type TimeframeDateRangeLabels = {
+type DateRangeLabels = {
   compactLabel: string;
   fullLabel: string;
 };
 
-export function formatTimeframeDatePhrase(
-  timeframe: TimeframePostData
-): string {
-  const range = readLocalTimeframeRange(timeframe);
+export function formatDateRangePhrase(dateRange: DateRange): string {
+  const range = readLocalDateRange(dateRange);
 
   if (!range) {
-    return `from ${timeframe.startIso} through ${timeframe.endIso}`;
+    return `from ${dateRange.startIso} through ${dateRange.endIso}`;
   }
 
   return range.compactStartDate === range.compactEndDate
@@ -40,19 +38,15 @@ export function formatTimeframeDatePhrase(
     : `from ${range.compactStartDate} through ${range.compactEndDate}`;
 }
 
-export function formatTimeframeDateRangeLabel(
-  timeframe: TimeframePostData
-): string {
-  return formatTimeframeDateRangeLabels(timeframe).fullLabel;
+export function formatDateRangeLabel(dateRange: DateRange): string {
+  return formatDateRangeLabels(dateRange).fullLabel;
 }
 
-export function formatTimeframeDateRangeLabels(
-  timeframe: TimeframePostData
-): TimeframeDateRangeLabels {
-  const range = readLocalTimeframeRange(timeframe);
+export function formatDateRangeLabels(dateRange: DateRange): DateRangeLabels {
+  const range = readLocalDateRange(dateRange);
 
   if (!range) {
-    const fallbackLabel = `${timeframe.startIso} - ${timeframe.endIso}`;
+    const fallbackLabel = `${dateRange.startIso} - ${dateRange.endIso}`;
     return {
       compactLabel: fallbackLabel,
       fullLabel: fallbackLabel,
@@ -160,14 +154,14 @@ export function formatRelativeAge(
   return 'just now';
 }
 
-function readLocalTimeframeRange(timeframe: TimeframePostData): {
+function readLocalDateRange(dateRange: DateRange): {
   compactStartDate: string;
   compactEndDate: string;
   fullStartDate: string;
   fullEndDate: string;
 } | null {
-  const start = parseIsoDate(timeframe.startIso);
-  const end = parseIsoDate(timeframe.endIso);
+  const start = parseIsoDate(dateRange.startIso);
+  const end = parseIsoDate(dateRange.endIso);
 
   if (!start || !end) {
     return null;

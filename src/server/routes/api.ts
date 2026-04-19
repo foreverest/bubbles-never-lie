@@ -9,21 +9,21 @@ import type {
   StatsDataResponse,
 } from '../../shared/api';
 import {
-  readContributorCountForTimeframe,
-  readContributorsForTimeframe,
+  readContributorCountInDateRange,
+  readContributorsInDateRange,
 } from '../core/contributor-chart';
 import {
-  readCommentCountForTimeframe,
-  readCommentsForTimeframe,
+  readCommentCountInDateRange,
+  readCommentsInDateRange,
 } from '../core/comment-cache';
 import {
-  readPostCountForTimeframe,
-  readPostsForTimeframe,
+  readPostCountInDateRange,
+  readPostsInDateRange,
 } from '../core/post-cache';
 import { readCachedSubredditIconUrl } from '../core/subreddit-icons';
 import { resolveChartDataSubredditName } from '../core/subreddits';
-import type { ValidatedTimeframePostData } from '../core/timeframe';
-import { readTimeframePostData } from '../core/timeframe';
+import type { ValidatedPostConfig } from '../core/post-config';
+import { readPostConfig } from '../core/post-config';
 import { createLogger, type ComponentLogger } from '../logging/logger';
 import {
   createChartDataCacheKey,
@@ -36,7 +36,7 @@ const commentsApiLogger = createLogger('comments-api');
 const contributorsApiLogger = createLogger('contributors-api');
 const statsApiLogger = createLogger('stats-api');
 const chartDataCacheTtlSeconds = 30;
-const missingTimeframeMessage =
+const missingDateRangeMessage =
   'This post is missing a Bubbles Never Lie date range.';
 const postsErrorMessage =
   'Unable to load subreddit post chart data. Try again shortly.';
@@ -54,14 +54,14 @@ api.get('/posts', async (c) => {
 
   if (!chartContext) {
     logger.warn(
-      'Missing timeframe for posts chart data request',
+      'Missing date range for posts chart data request',
       createRequestLogMetadata()
     );
 
     return c.json<ErrorResponse>(
       {
         status: 'error',
-        message: missingTimeframeMessage,
+        message: missingDateRangeMessage,
       },
       400
     );
@@ -73,7 +73,7 @@ api.get('/posts', async (c) => {
       chartContext,
       logger,
       async () => {
-        const cachedPosts = await readPostsForTimeframe({
+        const cachedPosts = await readPostsInDateRange({
           subredditName: chartContext.subredditName,
           startTime: chartContext.startTime,
           endTime: chartContext.endTime,
@@ -120,14 +120,14 @@ api.get('/comments', async (c) => {
 
   if (!chartContext) {
     logger.warn(
-      'Missing timeframe for comments chart data request',
+      'Missing date range for comments chart data request',
       createRequestLogMetadata()
     );
 
     return c.json<ErrorResponse>(
       {
         status: 'error',
-        message: missingTimeframeMessage,
+        message: missingDateRangeMessage,
       },
       400
     );
@@ -139,7 +139,7 @@ api.get('/comments', async (c) => {
       chartContext,
       logger,
       async () => {
-        const cachedComments = await readCommentsForTimeframe({
+        const cachedComments = await readCommentsInDateRange({
           subredditName: chartContext.subredditName,
           startTime: chartContext.startTime,
           endTime: chartContext.endTime,
@@ -186,14 +186,14 @@ api.get('/contributors', async (c) => {
 
   if (!chartContext) {
     logger.warn(
-      'Missing timeframe for contributors chart data request',
+      'Missing date range for contributors chart data request',
       createRequestLogMetadata()
     );
 
     return c.json<ErrorResponse>(
       {
         status: 'error',
-        message: missingTimeframeMessage,
+        message: missingDateRangeMessage,
       },
       400
     );
@@ -205,7 +205,7 @@ api.get('/contributors', async (c) => {
       chartContext,
       logger,
       async () => {
-        const cachedContributors = await readContributorsForTimeframe({
+        const cachedContributors = await readContributorsInDateRange({
           subredditName: chartContext.subredditName,
           startTime: chartContext.startTime,
           endTime: chartContext.endTime,
@@ -249,14 +249,14 @@ api.get('/stats', async (c) => {
 
   if (!chartContext) {
     logger.warn(
-      'Missing timeframe for stats data request',
+      'Missing date range for stats data request',
       createRequestLogMetadata()
     );
 
     return c.json<ErrorResponse>(
       {
         status: 'error',
-        message: missingTimeframeMessage,
+        message: missingDateRangeMessage,
       },
       400
     );
@@ -269,17 +269,17 @@ api.get('/stats', async (c) => {
       logger,
       async () => {
         const [posts, comments, contributors] = await Promise.all([
-          readPostCountForTimeframe({
+          readPostCountInDateRange({
             subredditName: chartContext.subredditName,
             startTime: chartContext.startTime,
             endTime: chartContext.endTime,
           }),
-          readCommentCountForTimeframe({
+          readCommentCountInDateRange({
             subredditName: chartContext.subredditName,
             startTime: chartContext.startTime,
             endTime: chartContext.endTime,
           }),
-          readContributorCountForTimeframe({
+          readContributorCountInDateRange({
             subredditName: chartContext.subredditName,
             startTime: chartContext.startTime,
             endTime: chartContext.endTime,
@@ -322,7 +322,7 @@ api.get('/stats', async (c) => {
 
 type ChartContext = {
   subredditName: string;
-  timeframe: ValidatedTimeframePostData;
+  postConfig: ValidatedPostConfig;
   startTime: number;
   endTime: number;
 };
@@ -375,30 +375,30 @@ const readCachedChartDataResponse = async <
 };
 
 const readChartContext = (): ChartContext | null => {
-  const timeframe = readTimeframePostData(context.postData);
+  const postConfig = readPostConfig(context.postData);
 
-  if (!timeframe) {
+  if (!postConfig) {
     return null;
   }
 
   return {
     subredditName: resolveChartDataSubredditName(
       context.subredditName,
-      timeframe.postData.dataSourceSubredditName
+      postConfig.config.dataSourceSubredditName
     ),
-    timeframe,
-    startTime: timeframe.start.getTime(),
-    endTime: timeframe.end.getTime(),
+    postConfig,
+    startTime: postConfig.start.getTime(),
+    endTime: postConfig.end.getTime(),
   };
 };
 
 const createChartMetadata = async ({
   subredditName,
-  timeframe,
+  postConfig,
 }: ChartContext): Promise<ChartResponseMetadata> => ({
   subredditName,
   subredditIconUrl: await readCachedSubredditIconUrl(subredditName),
-  timeframe: timeframe.postData,
+  dateRange: postConfig.config.dateRange,
   generatedAt: new Date().toISOString(),
 });
 

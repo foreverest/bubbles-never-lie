@@ -1,7 +1,7 @@
 import { Hono } from 'hono';
 import type { UiResponse } from '@devvit/web/shared';
-import { createChartPost } from '../core/post';
-import type { TimeframeFormValues } from '../core/timeframe';
+import { createPost } from '../core/post';
+import type { CreatePostFormValues } from '../core/post-config';
 import { createLogger } from '../logging/logger';
 
 export const forms = new Hono();
@@ -9,13 +9,13 @@ const logger = createLogger('forms:create-post');
 
 forms.post('/create-post-submit', async (c) => {
   try {
-    const values = await c.req.json<TimeframeFormValues>();
+    const values = await c.req.json<CreatePostFormValues>();
     logger.info(
       'Received create post form submission',
       createFormLogMetadata(values)
     );
 
-    const post = await createChartPost(values);
+    const post = await createPost(values);
     logger.info('Created Bubbles Never Lie post', {
       permalink: post.permalink,
     });

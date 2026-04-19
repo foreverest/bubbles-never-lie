@@ -1,16 +1,16 @@
-import type { TimeframePostData } from '../../shared/api';
-import { formatTimeframeDatePhrase } from '../utils/date';
+import type { DateRange } from '../../shared/api';
+import { formatDateRangePhrase } from '../utils/date';
 
 export function EmptyState({
   contentLabel,
   subredditName,
-  timeframe,
+  dateRange,
 }: {
   contentLabel: string;
   subredditName: string;
-  timeframe: TimeframePostData;
+  dateRange: DateRange;
 }) {
-  const datePhrase = formatTimeframeDatePhrase(timeframe);
+  const datePhrase = formatDateRangePhrase(dateRange);
 
   return (
     <div className="empty-state">

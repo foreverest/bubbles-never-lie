@@ -22,7 +22,7 @@ export function ChartEntry() {
   }, []);
 
   const handleRequestExpandedMode = (
-    event: ReactMouseEvent<HTMLButtonElement>,
+    event: ReactMouseEvent<HTMLButtonElement>
   ) => {
     try {
       requestExpandedMode(event.nativeEvent, 'game');

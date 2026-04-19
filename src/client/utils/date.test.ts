@@ -1,16 +1,15 @@
 import { expect, test, vi } from 'vitest';
 
-import type { TimeframePostData } from '../../shared/api';
+import type { DateRange } from '../../shared/api';
 import {
   formatDateOnly,
+  formatDateRangeLabel,
+  formatDateRangeLabels,
+  formatDateRangePhrase,
   formatRelativeAge,
-  formatTimeframeDatePhrase,
-  formatTimeframeDateRangeLabel,
-  formatTimeframeDateRangeLabels,
 } from './date';
 
-const baseTimeframe: TimeframePostData = {
-  type: 'timeframe',
+const baseDateRange: DateRange = {
   startIso: new Date(2024, 1, 29, 8, 30).toISOString(),
   endIso: new Date(2024, 1, 29, 18, 45).toISOString(),
 };
@@ -33,31 +32,31 @@ test('formats valid date-only values and leaves invalid values unchanged', () =>
   expect(formatDateOnly('not-a-date')).toBe('not-a-date');
 });
 
-test('formats single-day and range timeframe labels', () => {
-  const start = new Date(baseTimeframe.startIso);
-  const end = new Date(baseTimeframe.endIso);
+test('formats single-day and multi-day date range labels', () => {
+  const start = new Date(baseDateRange.startIso);
+  const end = new Date(baseDateRange.endIso);
 
-  expect(formatTimeframeDatePhrase(baseTimeframe)).toBe(
+  expect(formatDateRangePhrase(baseDateRange)).toBe(
     `on ${localDateFormatter.format(start)}`
   );
-  expect(formatTimeframeDateRangeLabel(baseTimeframe)).toBe(
+  expect(formatDateRangeLabel(baseDateRange)).toBe(
     `${localDateTimeFormatter.format(start)} - ${localDateTimeFormatter.format(end)}`
   );
-  expect(formatTimeframeDateRangeLabels(baseTimeframe)).toEqual({
+  expect(formatDateRangeLabels(baseDateRange)).toEqual({
     compactLabel: localDateFormatter.format(start),
     fullLabel: `${localDateTimeFormatter.format(start)} - ${localDateTimeFormatter.format(end)}`,
   });
 
-  const rangeTimeframe: TimeframePostData = {
-    ...baseTimeframe,
+  const extendedDateRange: DateRange = {
+    ...baseDateRange,
     endIso: new Date(2024, 2, 2, 18, 45).toISOString(),
   };
-  const rangeEnd = new Date(rangeTimeframe.endIso);
+  const rangeEnd = new Date(extendedDateRange.endIso);
 
-  expect(formatTimeframeDatePhrase(rangeTimeframe)).toBe(
+  expect(formatDateRangePhrase(extendedDateRange)).toBe(
     `from ${localDateFormatter.format(start)} through ${localDateFormatter.format(rangeEnd)}`
   );
-  expect(formatTimeframeDateRangeLabels(rangeTimeframe)).toEqual({
+  expect(formatDateRangeLabels(extendedDateRange)).toEqual({
     compactLabel: `${localDateFormatter.format(start)} - ${localDateFormatter.format(rangeEnd)}`,
     fullLabel: `${localDateTimeFormatter.format(start)} - ${localDateTimeFormatter.format(
       rangeEnd

@@ -1,5 +1,5 @@
 import type { Form, JsonObject } from '@devvit/web/shared';
-import type { TimeframePostData } from '../../shared/api';
+import type { DateRange, PostConfig } from '../../shared/api';
 import { TEST_DATA_SOURCE_SUBREDDIT_NAME } from './subreddits';
 
 const minYear = 2026;
@@ -7,14 +7,9 @@ const defaultStartHour = 0;
 const defaultDurationDays = 1;
 const defaultTimeZone = 'UTC';
 
-export type DateRange = {
-  startIso: string;
-  endIso: string;
-};
-
 type SelectValue = string | string[] | undefined;
 
-export type TimeframeFormValues = {
+export type CreatePostFormValues = {
   startYear?: SelectValue;
   startMonth?: SelectValue;
   startDay?: SelectValue;
@@ -24,14 +19,14 @@ export type TimeframeFormValues = {
   useTestDataSource?: boolean;
 };
 
-export type TimeframeFormOptions = {
+export type CreatePostFormOptions = {
   allowTestDataSource?: boolean;
   currentTimeZone?: string;
-  defaultValues?: TimeframeFormValues;
+  defaultValues?: CreatePostFormValues;
 };
 
-export type ValidatedTimeframePostData = {
-  postData: TimeframePostData;
+export type ValidatedPostConfig = {
+  config: PostConfig;
   start: Date;
   end: Date;
 };
@@ -46,11 +41,11 @@ type ZonedDateParts = DateParts & {
   timeZone: string;
 };
 
-type TimeframeParts = ZonedDateParts & {
+type DateRangeParts = ZonedDateParts & {
   durationDays: number;
 };
 
-export const defaultTimeframeFormValues = (): TimeframeFormValues => {
+export const defaultCreatePostFormValues = (): CreatePostFormValues => {
   const currentDate = getDatePartsInTimeZone(new Date(), defaultTimeZone);
   const year = clamp(currentDate.year, minYear, getMaxYear(defaultTimeZone));
   const day = Math.min(
@@ -67,12 +62,10 @@ export const defaultTimeframeFormValues = (): TimeframeFormValues => {
   };
 };
 
-export const createTimeframeForm = (
-  options: TimeframeFormOptions = {}
-): Form => {
+export const createPostForm = (options: CreatePostFormOptions = {}): Form => {
   const currentTimeZone = resolveCurrentTimeZone(options.currentTimeZone);
   const maxYear = getMaxYear(currentTimeZone);
-  const defaultValues = options.defaultValues ?? defaultTimeframeFormValues();
+  const defaultValues = options.defaultValues ?? defaultCreatePostFormValues();
   const fields: Form['fields'] = [
     {
       type: 'string',
@@ -159,7 +152,7 @@ export const createTimeframeForm = (
   };
 };
 
-export const parseFormDateRange = (values: TimeframeFormValues): DateRange => {
+export const parseFormDateRange = (values: CreatePostFormValues): DateRange => {
   const timeZone = parseTimeZone(values.timeZone);
 
   return createDateRangeFromParts({
@@ -172,64 +165,76 @@ export const parseFormDateRange = (values: TimeframeFormValues): DateRange => {
     month: parseSelectNumber(values.startMonth, 'month', 1, 12),
     day: parseSelectNumber(values.startDay, 'day', 1, 31),
     timeZone,
-    durationDays: parseSelectNumber(values.durationDays, 'chart length', 1, 7),
+    durationDays: parseSelectNumber(
+      values.durationDays,
+      'date range length',
+      1,
+      7
+    ),
   });
 };
 
 export const createPostData = (
   range: DateRange,
   options: { useTestDataSource?: boolean } = {}
-): TimeframePostData => {
-  const postData: TimeframePostData = {
-    type: 'timeframe',
-    ...range,
+): PostConfig => {
+  const postConfig: PostConfig = {
+    type: 'post-config',
+    dateRange: range,
   };
 
   if (options.useTestDataSource) {
-    postData.dataSourceSubredditName = TEST_DATA_SOURCE_SUBREDDIT_NAME;
+    postConfig.dataSourceSubredditName = TEST_DATA_SOURCE_SUBREDDIT_NAME;
   }
 
-  return postData;
+  return postConfig;
 };
 
-export const readTimeframePostData = (
+export const readPostConfig = (
   postDataValue: JsonObject | undefined
-): ValidatedTimeframePostData | null => {
-  if (!postDataValue || postDataValue.type !== 'timeframe') {
+): ValidatedPostConfig | null => {
+  if (!isRecord(postDataValue) || postDataValue.type !== 'post-config') {
     return null;
   }
 
-  const data = postDataValue as Partial<TimeframePostData>;
-  if (typeof data.startIso !== 'string' || typeof data.endIso !== 'string') {
-    return null;
-  }
-
+  const dataSourceSubredditName = postDataValue.dataSourceSubredditName;
   if (
-    data.dataSourceSubredditName !== undefined &&
-    data.dataSourceSubredditName !== TEST_DATA_SOURCE_SUBREDDIT_NAME
+    dataSourceSubredditName !== undefined &&
+    dataSourceSubredditName !== TEST_DATA_SOURCE_SUBREDDIT_NAME
   ) {
     return null;
   }
 
-  const start = tryParseIsoDate(data.startIso);
-  const end = tryParseIsoDate(data.endIso);
+  const dateRange = postDataValue.dateRange;
+  if (
+    !isRecord(dateRange) ||
+    typeof dateRange.startIso !== 'string' ||
+    typeof dateRange.endIso !== 'string'
+  ) {
+    return null;
+  }
+
+  const start = tryParseIsoDate(dateRange.startIso);
+  const end = tryParseIsoDate(dateRange.endIso);
 
   if (!start || !end || start.getTime() > end.getTime()) {
     return null;
   }
 
-  const validatedPostData: TimeframePostData = {
-    type: 'timeframe',
-    startIso: data.startIso,
-    endIso: data.endIso,
+  const postConfig: PostConfig = {
+    type: 'post-config',
+    dateRange: {
+      startIso: dateRange.startIso,
+      endIso: dateRange.endIso,
+    },
   };
 
-  if (data.dataSourceSubredditName === TEST_DATA_SOURCE_SUBREDDIT_NAME) {
-    validatedPostData.dataSourceSubredditName = data.dataSourceSubredditName;
+  if (dataSourceSubredditName === TEST_DATA_SOURCE_SUBREDDIT_NAME) {
+    postConfig.dataSourceSubredditName = dataSourceSubredditName;
   }
 
   return {
-    postData: validatedPostData,
+    config: postConfig,
     start,
     end,
   };
@@ -253,7 +258,7 @@ export const resolveCurrentTimeZone = (
     : defaultTimeZone;
 };
 
-const createDateRangeFromParts = (parts: TimeframeParts): DateRange => {
+const createDateRangeFromParts = (parts: DateRangeParts): DateRange => {
   validateDateParts(parts);
 
   const start = zonedDateTimeToUtc(parts);
@@ -275,6 +280,9 @@ const tryParseIsoDate = (value: string): Date | null => {
     ? null
     : date;
 };
+
+const isRecord = (value: unknown): value is Record<string, unknown> =>
+  value !== null && typeof value === 'object' && !Array.isArray(value);
 
 const createRangeOptions = (
   start: number,

@@ -41,10 +41,7 @@ export function CommentsChart({
       ),
     [currentUsername, data.comments]
   );
-  const helpDetails = useMemo(
-    () => createCommentsChartHelpDetails(),
-    []
-  );
+  const helpDetails = useMemo(() => createCommentsChartHelpDetails(), []);
   const handleChartInit = useCallback((chart: EChartsInstance) => {
     let clearCommentGroupEmphasisFrame = 0;
 

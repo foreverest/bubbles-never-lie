@@ -8,10 +8,14 @@ export const resolveUserAvatarUrl = (
 
 export type SubredditKarmaBucket = 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9;
 
-export type TimeframePostData = {
-  type: 'timeframe';
+export type DateRange = {
   startIso: string;
   endIso: string;
+};
+
+export type PostConfig = {
+  type: 'post-config';
+  dateRange: DateRange;
   dataSourceSubredditName?: string;
 };
 
@@ -56,7 +60,7 @@ export type ChartContributor = {
 export type ChartResponseMetadata = {
   subredditName: string;
   subredditIconUrl: string | null;
-  timeframe: TimeframePostData;
+  dateRange: DateRange;
   generatedAt: string;
 };
 

@@ -33,8 +33,8 @@ export function createCommentsOption(
 ): EChartsCoreOption {
   const chartTheme = getChartTheme(resolvedTheme);
   const minScore = Math.min(0, ...data.map((datum) => datum.score));
-  const startTime = Date.parse(chartData.timeframe.startIso);
-  const endTime = Date.parse(chartData.timeframe.endIso);
+  const startTime = Date.parse(chartData.dateRange.startIso);
+  const endTime = Date.parse(chartData.dateRange.endIso);
   const commentGroups = groupCommentsByPost(data);
   const option: EChartsCoreOption = {
     backgroundColor: chartTheme.backgroundColor,

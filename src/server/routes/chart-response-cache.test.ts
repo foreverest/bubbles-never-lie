@@ -13,7 +13,7 @@ const baseOptions: ChartDataCacheKeyOptions = {
   endTime: Date.parse('2026-04-16T10:00:00.000Z'),
 };
 
-test('chart data cache keys distinguish endpoint, post, subreddit, and timeframe', () => {
+test('chart data cache keys distinguish endpoint, post, subreddit, and date range', () => {
   const keys = [
     createChartDataCacheKey(baseOptions),
     createChartDataCacheKey({ ...baseOptions, endpoint: 'comments' }),

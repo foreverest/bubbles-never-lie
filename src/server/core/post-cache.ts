@@ -49,7 +49,7 @@ export type CachedPostIdReadResult = {
 
 type PostWithAuthor = HydratedPost<{ author: true }>;
 
-export const readPostsForTimeframe = async ({
+export const readPostsInDateRange = async ({
   subredditName,
   startTime,
   endTime,
@@ -72,7 +72,7 @@ export const readPostsForTimeframe = async ({
   };
 };
 
-export const readPostCountForTimeframe = async ({
+export const readPostCountInDateRange = async ({
   subredditName,
   startTime,
   endTime,
@@ -129,7 +129,7 @@ export const refreshPostCache = async (
   }
 };
 
-export const readCachedPostIdsForTimeframe = async ({
+export const readCachedPostIdsInDateRange = async ({
   subredditName,
   startTime,
   endTime,

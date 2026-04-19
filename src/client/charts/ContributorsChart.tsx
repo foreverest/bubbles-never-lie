@@ -31,10 +31,7 @@ export function ContributorsChart({
       ),
     [currentUsername, data.contributors]
   );
-  const helpDetails = useMemo(
-    () => createContributorsChartHelpDetails(),
-    []
-  );
+  const helpDetails = useMemo(() => createContributorsChartHelpDetails(), []);
   const handleChartInit = useCallback((chart: EChartsInstance) => {
     const handleChartClick = (params: ChartEventParams) => {
       const datum = isContributorBubbleDatum(params.data) ? params.data : null;

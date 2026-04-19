@@ -31,8 +31,8 @@ export function createPostsOption(
   const chartTheme = getChartTheme(resolvedTheme);
   const minScore = Math.min(0, ...data.map((datum) => datum.score));
   const maxComments = Math.max(1, ...data.map((datum) => datum.comments));
-  const startTime = Date.parse(chartData.timeframe.startIso);
-  const endTime = Date.parse(chartData.timeframe.endIso);
+  const startTime = Date.parse(chartData.dateRange.startIso);
+  const endTime = Date.parse(chartData.dateRange.endIso);
   const currentUserData = data.filter((datum) => datum.isCurrentUser);
   const getPostSymbolSize = (_value: unknown, params?: { data?: unknown }) => {
     const datum = isPostBubbleDatum(params?.data) ? params.data : null;
