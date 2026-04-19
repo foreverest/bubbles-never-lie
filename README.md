@@ -1,59 +1,30 @@
 # Bubbles Never Lie
 
-Bubbles Never Lie creates an interactive subreddit post that helps people understand recent post activity at a glance. Pick a date range, publish a chart, and use the bubbles to compare when posts were created, how many upvotes they received, how much conversation they generated, and whether the post author's subreddit karma bucket is known.
+Every subreddit has a pulse. Bubbles Never Lie makes that pulse visible.
 
-## What the app does
+It turns the daily drift of posts, comments, votes, and familiar names into a bright little constellation that your community can poke, compare, and argue about. The point is not to rank people, crown winners, or turn moderation into a spreadsheet. The point is to make the shape of a day feel obvious.
 
-Bubbles Never Lie turns subreddit posts into a bubble chart:
+Busy hours pop. Quiet stretches breathe. Odd little outliers float to the surface. The regulars are there, the surprise hits are there, and the "wait, when did that happen?" moments are suddenly much easier to spot.
 
-- Each bubble is one post from the selected date range.
-- The left-to-right position shows when the post was created.
-- The up-and-down position shows the post's upvote score.
-- The bubble size shows how many comments the post received.
-- The bubble color reflects the post author's relative subreddit karma bucket among contributors in the chart when that information is available.
-- Gray bubbles mean the post author's subreddit karma bucket was not available.
+For mods, it is a lightweight ritual: drop a chart post, let the subreddit read itself, repeat whenever the vibes need receipts.
 
-Bubbles Never Lie also includes a comments chart:
+## Screenshots
 
-- Each bubble is one comment from the selected date range.
-- The left-to-right position shows when the comment was created.
-- The up-and-down position shows the comment's upvote score.
-- Comment bubbles stay small and use the same size.
-- Comment bubble color is stable for each parent post.
-- Comments from the same parent post stay grouped during hover.
+> Screenshot placeholder: the main bubble chart.
 
-The charts are useful for spotting busy posting periods, posts that drove conversation, posts and comments with unusually high or low vote scores, and patterns around contributors who have known subreddit karma buckets.
+> Screenshot placeholder: a tooltip over a delightfully suspicious bubble.
 
-## How to create a chart
+> Screenshot placeholder: comments, contributors, or stats in action.
 
-Use the subreddit menu item named "Create Bubbles Never Lie post". The app opens a short form where you can enter:
+## Why Install It?
 
-- A post title.
-- A start year, month, and day.
-- A timezone.
-- A chart length from 1 to 7 days.
+- Give your community a playful way to look back at recent activity.
+- Make recap posts without hand-building recaps.
+- Spot weird spikes, sleeper threads, and conversation-heavy moments.
+- Add a visual toy that still says something real.
 
-The form defaults to the current date in UTC, the UTC timezone, and a 1-day chart length. The selected day starts at midnight in the selected timezone. When the form is submitted, the app creates a new Reddit post and opens it.
+## Small Print
 
-## How to read the chart
+After installing, moderators get a subreddit menu item named **Bubbles Never Lie: New Post**. It creates a chart post for a recent date range.
 
-Open the new Bubbles Never Lie post and use the tabs at the top:
-
-- Posts: Shows the interactive bubble chart.
-- Comments: Shows comments by creation time and upvote score.
-- Contributors: Shows active contributors by total post upvotes and total comment upvotes.
-- Stats: Shows how many posts, comments, and contributors matched the selected date range.
-
-On the chart, hover over or tap a bubble to see the post title, author, author avatar when available, approximate age, upvote score, and comment count. Select a bubble to open the original Reddit post.
-
-On the comments chart, hover over or tap a bubble to see the author, author avatar when available, approximate age, upvote score, and a short comment preview. Select a bubble to open the original Reddit comment.
-
-## Data notes
-
-Bubbles Never Lie is designed for recent subreddit activity. It samples the newest subreddit posts, keeps a rolling cache of recent post and contributor details, and filters that data to the date range you chose. Very old date ranges may not include every historical post.
-
-If the app was just installed or upgraded, a chart may briefly say a cache is warming. Try again shortly. If no posts or comments match the selected range, the chart shows an empty state and suggests trying a wider date range.
-
-The app uses post information that appears in the chart, including title, author name, author avatar when available, creation time, score, comment count, permalink, and an author subreddit karma bucket when available.
-
-The app also caches comment information for the comments chart, including author name, author avatar when available, creation time, score, permalink, and a short preview. Parent post IDs determine stable comment group colors.
+The app keeps a rolling cache of recent subreddit activity, so brand-new installs may need a short warm-up before charts feel full. Very old date ranges are best-effort; Bubbles is built for fresh subreddit weather.
