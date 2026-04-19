@@ -2,9 +2,12 @@ import { Fragment, useEffect, useRef, useState } from 'react';
 import type { MouseEvent as ReactMouseEvent } from 'react';
 
 import type { ChartResponseMetadata } from '../../shared/api';
+import chevronIcon from '../assets/icons/chevron.svg?raw';
+import settingsIcon from '../assets/icons/settings.svg?raw';
 import type { ChartPreferences, TabName, ThemeMode } from '../types';
 import { TABS, getTabLabel } from '../types';
 import { formatDateRangeLabels } from '../utils/date';
+import { TrustedSvgIcon } from './TrustedSvgIcon';
 
 type OpenMenu = 'sections' | 'settings' | 'mobile' | null;
 
@@ -406,42 +409,11 @@ function SettingsSwitches({ settings }: { settings: ChartSetting[] }) {
 }
 
 function ChevronIcon({ className }: { className: string }) {
-  return (
-    <svg aria-hidden="true" className={className} viewBox="0 0 12 12">
-      <path
-        d="M3 4.5 6 7.5l3-3"
-        fill="none"
-        stroke="currentColor"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        strokeWidth="1.6"
-      />
-    </svg>
-  );
+  return <TrustedSvgIcon className={className} svg={chevronIcon} />;
 }
 
 function SettingsIcon() {
   return (
-    <svg
-      aria-hidden="true"
-      className="chart-menu-button__icon"
-      viewBox="0 0 20 20"
-    >
-      <path
-        d="M8.9 2.5h2.2l.4 2.1c.4.1.8.3 1.1.5l1.8-1.2L16 5.5l-1.2 1.8c.2.4.4.7.5 1.1l2.1.4v2.3l-2.1.4c-.1.4-.3.8-.5 1.1l1.2 1.8-1.6 1.6-1.8-1.2c-.4.2-.7.4-1.1.5l-.4 2.1H8.9l-.4-2.1c-.4-.1-.8-.3-1.1-.5l-1.8 1.2L4 14.5l1.2-1.8c-.2-.4-.4-.7-.5-1.1l-2.1-.4V8.9l2.1-.4c.1-.4.3-.8.5-1.1L4 5.5l1.6-1.6 1.8 1.2c.4-.2.7-.4 1.1-.5l.4-2.1Z"
-        fill="none"
-        stroke="currentColor"
-        strokeLinejoin="round"
-        strokeWidth="1.6"
-      />
-      <circle
-        cx="10"
-        cy="10"
-        fill="none"
-        r="2.7"
-        stroke="currentColor"
-        strokeWidth="1.6"
-      />
-    </svg>
+    <TrustedSvgIcon className="chart-menu-button__icon" svg={settingsIcon} />
   );
 }

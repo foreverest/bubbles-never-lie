@@ -95,12 +95,11 @@
   border-radius: 50%;
   background: conic-gradient(
     from 35deg,
-    #267c8c,
-    #d65a31,
-    #2f9e74,
-    #c8325e,
-    #d99a22,
-    #267c8c
+    #8d71ff,
+    #4dffbb,
+    #ff3f79,
+    #eaff29,
+    #8d71ff
   );
   box-shadow: 0 3px 10px rgba(21, 33, 40, 0.18);
 }
