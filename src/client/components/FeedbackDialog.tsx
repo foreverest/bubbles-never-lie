@@ -1,11 +1,10 @@
-import { navigateTo } from '@devvit/web/client';
+import { navigateTo, showToast } from '@devvit/web/client';
 import { useEffect, useId, useRef } from 'react';
 import type { PointerEvent as ReactPointerEvent } from 'react';
 
 export const FEEDBACK_GITHUB_ISSUES_URL =
   'https://github.com/foreverest/bubbles-never-lie/issues';
-export const FEEDBACK_EMAIL_URL =
-  'mailto:bubbles-never-lie@dima.codes?subject=Bubbles%20Never%20Lie%20feedback';
+export const FEEDBACK_EMAIL_ADDRESS = 'bubbles-never-lie@dima.codes';
 export const FEEDBACK_REDDIT_DM_URL =
   'https://www.reddit.com/message/compose/?to=d10o';
 
@@ -15,18 +14,31 @@ type FeedbackDialogProps = {
 
 type FeedbackAction = {
   label: string;
-  url: string;
   primary: boolean;
-};
+} & (
+  | {
+      kind: 'navigate';
+      url: string;
+    }
+  | {
+      kind: 'copy-email';
+    }
+);
 
 const FEEDBACK_ACTIONS: readonly FeedbackAction[] = [
   {
     label: 'Create GitHub issue',
+    kind: 'navigate',
     url: FEEDBACK_GITHUB_ISSUES_URL,
     primary: true,
   },
-  { label: 'Email', url: FEEDBACK_EMAIL_URL, primary: false },
-  { label: 'DM u/d10o', url: FEEDBACK_REDDIT_DM_URL, primary: false },
+  { label: 'Copy email', kind: 'copy-email', primary: false },
+  {
+    label: 'DM u/d10o',
+    kind: 'navigate',
+    url: FEEDBACK_REDDIT_DM_URL,
+    primary: false,
+  },
 ];
 
 export function FeedbackDialog({ onClose }: FeedbackDialogProps) {
@@ -64,8 +76,19 @@ export function FeedbackDialog({ onClose }: FeedbackDialogProps) {
     }
   };
 
-  const handleFeedbackAction = (url: string) => {
-    navigateTo(url);
+  const handleFeedbackAction = async (action: FeedbackAction) => {
+    if (action.kind === 'copy-email') {
+      try {
+        await navigator.clipboard.writeText(FEEDBACK_EMAIL_ADDRESS);
+        showToast('Email address copied');
+      } catch {
+        showToast(FEEDBACK_EMAIL_ADDRESS);
+      }
+
+      return;
+    }
+
+    navigateTo(action.url);
     onClose();
   };
 
@@ -111,8 +134,8 @@ export function FeedbackDialog({ onClose }: FeedbackDialogProps) {
                   ? 'feedback-dialog__action feedback-dialog__action--primary'
                   : 'feedback-dialog__action'
               }
-              key={action.url}
-              onClick={() => handleFeedbackAction(action.url)}
+              key={action.label}
+              onClick={() => void handleFeedbackAction(action)}
               type="button"
             >
               {action.label}
