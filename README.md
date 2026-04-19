@@ -10,11 +10,21 @@ For mods, it is a lightweight ritual: drop a chart post, let the subreddit read 
 
 ## Screenshots
 
-> Screenshot placeholder: the main bubble chart.
+### Posts
 
-> Screenshot placeholder: a tooltip over a delightfully suspicious bubble.
+![Posts bubble chart](docs/images/posts.png)
 
-> Screenshot placeholder: comments, contributors, or insights in action.
+### Comments
+
+![Comments bubble chart](docs/images/comments.png)
+
+### Contributors
+
+![Contributors bubble chart](docs/images/contributors.png)
+
+### Hint
+
+![Bubble hint tooltip](docs/images/hint.png)
 
 ## Why Install It?
 
