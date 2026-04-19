@@ -1,5 +1,5 @@
 const DEV_SUBREDDIT_NAME = 'bubblesneverlie_dev';
-export const TEST_DATA_SOURCE_SUBREDDIT_NAME = 'redditstock';
+export const TEST_DATA_SOURCE_SUBREDDIT_NAME = 'funny';
 
 export const normalizeSubredditName = (subredditName: string): string =>
   subredditName.trim().replace(/^r\//i, '').toLowerCase();
