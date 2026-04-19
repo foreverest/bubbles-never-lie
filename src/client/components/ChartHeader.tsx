@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { Fragment, useEffect, useRef, useState } from 'react';
 import type { MouseEvent as ReactMouseEvent } from 'react';
 
 import type { ChartResponseMetadata } from '../../shared/api';
@@ -337,20 +337,24 @@ function TabItems({
   return (
     <>
       {TABS.map((tab) => (
-        <button
-          aria-checked={activeTab === tab.name}
-          className={
-            activeTab === tab.name
-              ? 'chart-section-menu__item chart-section-menu__item--active'
-              : 'chart-section-menu__item'
-          }
-          key={tab.name}
-          onClick={() => onTabSelect(tab.name)}
-          role="menuitemradio"
-          type="button"
-        >
-          {tab.label}
-        </button>
+        <Fragment key={tab.name}>
+          {tab.name === 'insights' ? (
+            <div className="chart-section-menu__separator" role="separator" />
+          ) : null}
+          <button
+            aria-checked={activeTab === tab.name}
+            className={
+              activeTab === tab.name
+                ? 'chart-section-menu__item chart-section-menu__item--active'
+                : 'chart-section-menu__item'
+            }
+            onClick={() => onTabSelect(tab.name)}
+            role="menuitemradio"
+            type="button"
+          >
+            {tab.label}
+          </button>
+        </Fragment>
       ))}
     </>
   );

@@ -83,6 +83,12 @@
   text-align: left;
 }
 
+.chart-section-menu__separator {
+  height: 1px;
+  margin: 6px 2px;
+  background: var(--color-border);
+}
+
 .chart-section-menu__item--active {
   color: var(--color-accent-strong);
   background: var(--color-accent-soft);
