@@ -28,16 +28,16 @@
   "menu": {
     "items": [
       {
-        "label": "Create Bubbles Never Lie post",
-        "description": "Chart subreddit posts and comments by activity",
+        "label": "Bubbles Never Lie: New Post",
+        "description": "Chart subreddit activity with a fun bubble chart!",
         "location": "subreddit",
-        "forUserType": "user",
-        "endpoint": "/internal/menu/create-chart"
+        "forUserType": "moderator",
+        "endpoint": "/internal/menu/create-post"
       }
     ]
   },
   "forms": {
-    "timeframeForm": "/internal/form/create-chart-submit"
+    "timeframeForm": "/internal/form/create-post-submit"
   },
   "triggers": {
     "onAppInstall": "/internal/triggers/on-app-install"

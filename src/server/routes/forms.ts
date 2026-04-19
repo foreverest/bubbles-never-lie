@@ -5,13 +5,13 @@ import type { TimeframeFormValues } from '../core/timeframe';
 import { createLogger } from '../logging/logger';
 
 export const forms = new Hono();
-const logger = createLogger('forms:create-chart');
+const logger = createLogger('forms:create-post');
 
-forms.post('/create-chart-submit', async (c) => {
+forms.post('/create-post-submit', async (c) => {
   try {
     const values = await c.req.json<TimeframeFormValues>();
     logger.info(
-      'Received create chart form submission',
+      'Received create post form submission',
       createFormLogMetadata(values)
     );
 
@@ -22,7 +22,7 @@ forms.post('/create-chart-submit', async (c) => {
 
     return c.json<UiResponse>(
       {
-        showToast: 'Bubbles Never Lie post created',
+        showToast: 'Bubbles Never Lie: Post created',
         navigateTo: `https://www.reddit.com${post.permalink}`,
       },
       200

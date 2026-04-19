@@ -77,8 +77,8 @@ export const createTimeframeForm = (
     {
       type: 'string',
       name: 'title',
-      label: 'Post title',
-      placeholder: 'Bubbles Never Lie: subreddit activity',
+      label: 'Title',
+      placeholder: 'Subreddit Activity Charts',
       defaultValue: normalizeTitle(defaultValues.title),
     },
     {
@@ -129,7 +129,7 @@ export const createTimeframeForm = (
     {
       type: 'select',
       name: 'durationDays',
-      label: 'Chart length',
+      label: 'Time Range',
       required: true,
       defaultValue: readDefaultSelectValue(defaultValues.durationDays),
       options: createRangeOptions(
@@ -150,10 +150,10 @@ export const createTimeframeForm = (
   }
 
   return {
-    title: 'Create Bubbles Never Lie post',
+    title: 'Create Bubble Chart Post',
     description:
-      'Choose the starting date and timezone. The chart samples the newest subreddit posts and filters them to that range.',
-    acceptLabel: 'Create post',
+      'Give it a name, pick a start date, and decide how many days of activity you want to see.',
+    acceptLabel: 'Create Post',
     cancelLabel: 'Cancel',
     fields,
   };

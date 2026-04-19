@@ -11,20 +11,20 @@ import { createLogger } from '../logging/logger';
 
 export const menu = new Hono();
 const timeZoneHeader = 'devvit-accept-timezone';
-const logger = createLogger('menu:create-chart');
+const logger = createLogger('menu:create-post');
 
-menu.post('/create-chart', async (c) => {
+menu.post('/create-post', async (c) => {
   await c.req.json<MenuItemRequest>();
   const currentTimeZone = resolveCurrentTimeZone(
     context.metadata[timeZoneHeader]?.values[0]
   );
   const defaults = defaultTimeframeFormValues();
   const formDefaults = {
-    title: 'Bubbles Never Lie: subreddit activity',
+    title: 'Subreddit Activity Charts',
     ...defaults,
   };
   const allowTestDataSource = canUseTestDataSource(context.subredditName);
-  logger.info('Opened create chart form', {
+  logger.info('Opened create post form', {
     subredditName: context.subredditName,
     currentTimeZone,
     allowTestDataSource,
