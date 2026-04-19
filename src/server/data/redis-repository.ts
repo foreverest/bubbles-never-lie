@@ -7,6 +7,7 @@ import type {
 } from './types';
 
 const REDIS_CHUNK_SIZE = 100;
+const REDIS_RANGE_READ_CHUNK_SIZE = 1000;
 
 export type RedisDataClient = Pick<
   typeof redis,
@@ -123,16 +124,33 @@ export const createRedisTimeIndexedRepository = <Entity>({
     startTime,
     endTime,
   }: TimeRange): Promise<string[]> => {
-    const indexedEntities = await redisClient.zRange(
-      indexKey,
-      startTime,
-      endTime,
-      {
-        by: 'score',
-      }
-    );
+    const ids: string[] = [];
+    let offset = 0;
 
-    return indexedEntities.map((entity) => entity.member);
+    while (true) {
+      const indexedEntities = await redisClient.zRange(
+        indexKey,
+        startTime,
+        endTime,
+        {
+          by: 'score',
+          limit: {
+            offset,
+            count: REDIS_RANGE_READ_CHUNK_SIZE,
+          },
+        }
+      );
+
+      ids.push(...indexedEntities.map((entity) => entity.member));
+
+      if (indexedEntities.length < REDIS_RANGE_READ_CHUNK_SIZE) {
+        break;
+      }
+
+      offset += indexedEntities.length;
+    }
+
+    return ids;
   };
 
   const getLatestIds = async (limit: number): Promise<string[]> => {

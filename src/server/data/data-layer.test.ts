@@ -228,6 +228,40 @@ test('time indexed repositories maintain createdAt indexes and skip malformed hy
   );
 });
 
+test('time indexed repositories page score range reads beyond Redis default limits', async () => {
+  const redisClient = new FakeRedisDataClient();
+  const dataLayer = createDataLayer('ExampleSub', redisClient);
+  const commentCount = 2005;
+  const createdAt = '2026-04-15T12:00:00.000Z';
+  const comments = Array.from({ length: commentCount }, (_, index) =>
+    createComment(`t1_comment_${String(index).padStart(4, '0')}`, createdAt)
+  );
+  const expectedIds = comments
+    .map((comment) => comment.id)
+    .sort((a, b) => a.localeCompare(b));
+  const startTime = Date.parse('2026-04-15T11:00:00.000Z');
+  const endTime = Date.parse('2026-04-15T13:00:00.000Z');
+
+  await dataLayer.comments.upsertMany(comments);
+
+  const commentIds = await dataLayer.comments.getIdsInTimeRange({
+    startTime,
+    endTime,
+  });
+  const cachedComments = await dataLayer.comments.getInTimeRange({
+    startTime,
+    endTime,
+  });
+
+  assert.equal(commentIds.length, commentCount);
+  assert.deepEqual(commentIds, expectedIds);
+  assert.equal(cachedComments.length, commentCount);
+  assert.deepEqual(
+    cachedComments.map((comment) => comment.id),
+    expectedIds
+  );
+});
+
 test('comment repositories treat missing bodyPreviewKind as text', async () => {
   const redisClient = new FakeRedisDataClient();
   const dataLayer = createDataLayer('ExampleSub', redisClient);
