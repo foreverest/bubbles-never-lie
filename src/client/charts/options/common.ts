@@ -1,5 +1,6 @@
 import type { ResolvedTheme } from '../../types';
 import type { EChartsCoreOption } from '../echarts';
+import { formatCompactUpvoteCount } from '../formatting';
 import { formatXAxisLabel } from '../timeAxis';
 import type {
   GetVisibleTimeRange,
@@ -11,6 +12,7 @@ export const SOAP_BUBBLE_FILL_ALPHA = 0.9;
 export const COMMENT_BUBBLE_FILL_ALPHA = 0.94;
 
 type TooltipVariant = 'light' | 'dark';
+type AxisLabelFormatter = (value: number) => string;
 
 export type ChartTheme = {
   mode: ResolvedTheme;
@@ -183,7 +185,7 @@ export function createUpvotesYAxis(theme = LIGHT_CHART_THEME) {
     axisTick: {
       show: false,
     },
-    axisLabel: createAxisLabel(theme),
+    axisLabel: createAxisLabel(theme, formatCompactUpvoteCount),
   };
 }
 
@@ -215,7 +217,7 @@ export function createValueAxis(
     axisTick: {
       show: false,
     },
-    axisLabel: createAxisLabel(theme),
+    axisLabel: createAxisLabel(theme, formatCompactUpvoteCount),
   };
 }
 
@@ -310,12 +312,17 @@ function createAxisLine(theme: ChartTheme) {
   };
 }
 
-function createAxisLabel(theme: ChartTheme) {
-  return {
+function createAxisLabel(
+  theme: ChartTheme,
+  formatter?: AxisLabelFormatter
+) {
+  const axisLabel = {
     color: theme.axisLabelColor,
     fontSize: 12,
     fontWeight: 600,
   };
+
+  return formatter ? { ...axisLabel, formatter } : axisLabel;
 }
 
 function createAxisNameTextStyle(theme: ChartTheme) {
