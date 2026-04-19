@@ -1,6 +1,10 @@
 import { expect, test, vi } from 'vitest';
 
-import { USER_AVATAR_FALLBACK_URL } from '../../shared/api';
+import {
+  COMMENT_GIF_PREVIEW_MARKER,
+  COMMENT_IMAGE_PREVIEW_MARKER,
+  USER_AVATAR_FALLBACK_URL,
+} from '../../shared/api';
 import { renderCommentTooltip, renderPostTooltip } from './tooltips';
 import type { CommentBubbleDatum, PostBubbleDatum } from './types';
 
@@ -62,19 +66,17 @@ test('renders escaped text comment tooltip content', () => {
   const tooltip = renderCommentTooltip(
     createCommentDatum({
       bodyPreview: '<img src=x onerror=alert("x")>',
-      bodyPreviewKind: 'text',
     })
   );
 
   expect(tooltip).toMatch(/&lt;img src=x onerror=alert\(&quot;x&quot;\)&gt;/);
-  expect(tooltip).not.toMatch(/chart-tooltip__title--media/);
+  expect(tooltip).not.toMatch(/chart-tooltip__media-label/);
 });
 
 test('renders literal media label text comments as ordinary text', () => {
   const tooltip = renderCommentTooltip(
     createCommentDatum({
       bodyPreview: 'GIF comment',
-      bodyPreviewKind: 'text',
     })
   );
 
@@ -85,12 +87,10 @@ test('renders literal media label text comments as ordinary text', () => {
 test('renders gif comment preview as a compact media label', () => {
   const tooltip = renderCommentTooltip(
     createCommentDatum({
-      bodyPreview: '![gif](giphy|VCn7Example)',
-      bodyPreviewKind: 'gif',
+      bodyPreview: COMMENT_GIF_PREVIEW_MARKER,
     })
   );
 
-  expect(tooltip).toMatch(/chart-tooltip__title--media/);
   expect(tooltip).toMatch(/chart-tooltip__media-label/);
   expect(tooltip).toMatch(/GIF/);
   expect(tooltip).not.toMatch(/content/i);
@@ -101,17 +101,29 @@ test('renders gif comment preview as a compact media label', () => {
 test('renders image comment preview as a compact media label', () => {
   const tooltip = renderCommentTooltip(
     createCommentDatum({
-      bodyPreview: 'https://preview.redd.it/example.jpeg?width=770',
-      bodyPreviewKind: 'image',
+      bodyPreview: COMMENT_IMAGE_PREVIEW_MARKER,
     })
   );
 
-  expect(tooltip).toMatch(/chart-tooltip__title--media/);
   expect(tooltip).toMatch(/chart-tooltip__media-label/);
   expect(tooltip).toMatch(/Image/);
   expect(tooltip).not.toMatch(/content/i);
   expect(tooltip).not.toMatch(/chart-tooltip__media-icon/);
   expect(tooltip).not.toMatch(/preview\.redd\.it/);
+});
+
+test('renders mixed comment preview markers inline with escaped text', () => {
+  const tooltip = renderCommentTooltip(
+    createCommentDatum({
+      bodyPreview: `look ${COMMENT_GIF_PREVIEW_MARKER} then <b>move</b>`,
+    })
+  );
+
+  expect(tooltip).toMatch(/look /);
+  expect(tooltip).toMatch(/chart-tooltip__media-label/);
+  expect(tooltip).toMatch(/GIF/);
+  expect(tooltip).toMatch(/ then &lt;b&gt;move&lt;\/b&gt;/);
+  expect(tooltip).not.toMatch(/giphy/);
 });
 
 const createCommentDatum = (
@@ -121,7 +133,6 @@ const createCommentDatum = (
   value: [Date.parse('2024-02-29T11:00:00.000Z'), 10],
   score: 10,
   bodyPreview: 'Comment',
-  bodyPreviewKind: 'text',
   authorName: 'Alice',
   authorAvatarUrl: null,
   createdAt: '2024-02-29T11:00:00.000Z',

@@ -1,6 +1,10 @@
 import assert from 'node:assert/strict';
 import type { Comment } from '@devvit/web/server';
 import { test } from 'vitest';
+import {
+  COMMENT_GIF_PREVIEW_MARKER,
+  COMMENT_IMAGE_PREVIEW_MARKER,
+} from '../../shared/api';
 import { createDataLayer, getDataKeys, type RedisDataClient } from '../data';
 import {
   processCommentCacheQueue,
@@ -280,30 +284,27 @@ test('processCommentCacheQueue caches post comments and fetches child comments w
   assert.equal(result.fetchedCommentCount, 2);
   assert.equal(result.cachedCommentCount, 2);
   assert.deepEqual(
-    cachedComments.map(({ id, postId, bodyPreview, bodyPreviewKind }) => ({
+    cachedComments.map(({ id, postId, bodyPreview }) => ({
       id,
       postId,
       bodyPreview,
-      bodyPreviewKind,
     })),
     [
       {
         id: 't1_parent',
         postId: 't3_post_1',
         bodyPreview: 'Parent body',
-        bodyPreviewKind: 'text',
       },
       {
         id: 't1_child',
         postId: 't3_post_1',
         bodyPreview: 'Child body',
-        bodyPreviewKind: 'text',
       },
     ]
   );
 });
 
-test('processCommentCacheQueue stores typed media comment previews before truncating text', async () => {
+test('processCommentCacheQueue stores inline media markers before truncating text', async () => {
   const redisClient = new FakeRedisClient();
   const redditClient = new FakeRedditClient();
   const dataLayer = createDataLayer('ExampleSub', redisClient);
@@ -320,11 +321,36 @@ test('processCommentCacheQueue stores typed media comment previews before trunca
       't3_post_1',
       'https://preview.redd.it/april-13-2026-daily-rddt-discussion-thread-v0-e5rpml9730vg1.jpeg?width=770&format=pjpg&auto=webp&s=84de852e1c1a2410d7df4d47c6ac283fbf3efc6c'
     ),
+    createComment(
+      't1_middle_gif',
+      't3_post_1',
+      'text before ![gif](giphy|Middle) text after'
+    ),
+    createComment(
+      't1_middle_image',
+      't3_post_1',
+      'text before https://example.com/photo.jpg text after'
+    ),
+    createComment(
+      't1_multiple_media',
+      't3_post_1',
+      '![gif](giphy|First) https://example.com/photo.jpg'
+    ),
+    createComment(
+      't1_late_media',
+      't3_post_1',
+      'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ ![gif](giphy|Late)'
+    ),
     createComment('t1_literal_gif', 't3_post_1', 'GIF comment'),
     createComment(
       't1_long_text',
       't3_post_1',
       'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ'
+    ),
+    createComment(
+      't1_long_mixed',
+      't3_post_1',
+      'Hello ![gif](giphy|Long) abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ'
     ),
   ]);
 
@@ -342,28 +368,50 @@ test('processCommentCacheQueue stores typed media comment previews before trunca
   const cachedComments = await dataLayer.comments.getByIds([
     't1_gif',
     't1_image',
+    't1_middle_gif',
+    't1_middle_image',
+    't1_multiple_media',
+    't1_late_media',
     't1_literal_gif',
     't1_long_text',
+    't1_long_mixed',
   ]);
 
   assert.deepEqual(
-    cachedComments.map(({ id, bodyPreview, bodyPreviewKind }) => ({
+    cachedComments.map(({ id, bodyPreview }) => ({
       id,
       bodyPreview,
-      bodyPreviewKind,
     })),
     [
-      { id: 't1_gif', bodyPreview: '', bodyPreviewKind: 'gif' },
-      { id: 't1_image', bodyPreview: '', bodyPreviewKind: 'image' },
+      { id: 't1_gif', bodyPreview: COMMENT_GIF_PREVIEW_MARKER },
+      { id: 't1_image', bodyPreview: COMMENT_IMAGE_PREVIEW_MARKER },
+      {
+        id: 't1_middle_gif',
+        bodyPreview: `text before ${COMMENT_GIF_PREVIEW_MARKER} text after`,
+      },
+      {
+        id: 't1_middle_image',
+        bodyPreview: `text before ${COMMENT_IMAGE_PREVIEW_MARKER} text after`,
+      },
+      {
+        id: 't1_multiple_media',
+        bodyPreview: COMMENT_GIF_PREVIEW_MARKER,
+      },
+      {
+        id: 't1_late_media',
+        bodyPreview: 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTU...',
+      },
       {
         id: 't1_literal_gif',
         bodyPreview: 'GIF comment',
-        bodyPreviewKind: 'text',
       },
       {
         id: 't1_long_text',
         bodyPreview: 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTU...',
-        bodyPreviewKind: 'text',
+      },
+      {
+        id: 't1_long_mixed',
+        bodyPreview: `Hello ${COMMENT_GIF_PREVIEW_MARKER} abcdefghijklmnopqrstuvwxyzABCDEFGHI...`,
       },
     ]
   );

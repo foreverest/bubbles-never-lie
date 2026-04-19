@@ -155,7 +155,6 @@ const createComment = (
   authorName,
   score: 5,
   bodyPreview: `Comment ${id}`,
-  bodyPreviewKind: 'text',
   createdAt,
   permalink: `/r/example/comments/t3_post/${id}`,
 });
@@ -262,7 +261,7 @@ test('time indexed repositories page score range reads beyond Redis default limi
   );
 });
 
-test('comment repositories treat missing bodyPreviewKind as text', async () => {
+test('comment repositories parse comment previews without preview kind metadata', async () => {
   const redisClient = new FakeRedisDataClient();
   const dataLayer = createDataLayer('ExampleSub', redisClient);
   const keys = getDataKeys('ExampleSub');
@@ -282,7 +281,6 @@ test('comment repositories treat missing bodyPreviewKind as text', async () => {
 
   assert.deepEqual(await dataLayer.comments.getById(legacyComment.id), {
     ...legacyComment,
-    bodyPreviewKind: 'text',
   });
 });
 

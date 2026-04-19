@@ -31,7 +31,6 @@ const createComment = (
   authorName,
   score,
   bodyPreview: `Comment ${id}`,
-  bodyPreviewKind: 'text',
   createdAt: '2026-04-15T10:30:00.000Z',
   permalink: `/r/example/comments/t3_post_1/${id}`,
 });

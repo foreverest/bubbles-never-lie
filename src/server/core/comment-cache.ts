@@ -1,9 +1,10 @@
 import { reddit, redis } from '@devvit/web/server';
 import type { Comment } from '@devvit/web/server';
 import {
+  COMMENT_GIF_PREVIEW_MARKER,
+  COMMENT_IMAGE_PREVIEW_MARKER,
   resolveUserAvatarUrl,
   type ChartComment,
-  type CommentBodyPreviewKind,
 } from '../../shared/api';
 import { createDataLayer, getDataKeys, type DataLayer } from '../data';
 import type { CommentEntity, HydratedComment } from '../data';
@@ -107,8 +108,16 @@ type QueueItemRefreshResult = {
 type CommentWithAuthor = HydratedComment<{ author: true }>;
 type CommentBodyPreview = Pick<
   CommentEntity,
-  'bodyPreview' | 'bodyPreviewKind'
+  'bodyPreview'
 >;
+type CommentBodyMediaPreviewMarker =
+  | typeof COMMENT_GIF_PREVIEW_MARKER
+  | typeof COMMENT_IMAGE_PREVIEW_MARKER;
+type CommentBodyMediaMatch = {
+  start: number;
+  end: number;
+  marker: CommentBodyMediaPreviewMarker;
+};
 
 export const readCommentsInDateRange = async ({
   subredditName,
@@ -480,7 +489,6 @@ const toCommentEntity = (comment: Comment): CommentEntity => {
     authorName: comment.authorName,
     score: comment.score,
     bodyPreview: bodyPreview.bodyPreview,
-    bodyPreviewKind: bodyPreview.bodyPreviewKind,
     createdAt: comment.createdAt.toISOString(),
     permalink: comment.permalink,
   };
@@ -493,25 +501,17 @@ const toChartComment = (comment: CommentWithAuthor): ChartComment => ({
   authorAvatarUrl: resolveUserAvatarUrl(comment.author?.avatarUrl),
   score: comment.score,
   bodyPreview: comment.bodyPreview,
-  bodyPreviewKind: comment.bodyPreviewKind,
   createdAt: comment.createdAt,
   permalink: comment.permalink,
 });
 
 const createCommentBodyPreview = (body: string): CommentBodyPreview => {
   const normalized = normalizeCommentBody(body);
-  const mediaKind = getMediaOnlyCommentPreviewKind(normalized);
-
-  if (mediaKind) {
-    return {
-      bodyPreview: '',
-      bodyPreviewKind: mediaKind,
-    };
-  }
 
   return {
-    bodyPreview: truncateCommentPreview(normalized),
-    bodyPreviewKind: 'text',
+    bodyPreview: truncateCommentPreview(
+      replaceFirstMediaPreviewToken(normalized)
+    ),
   };
 };
 
@@ -528,28 +528,56 @@ const truncateCommentPreview = (normalized: string): string => {
 const normalizeCommentBody = (body: string): string =>
   body.replace(/\s+/g, ' ').trim();
 
-const getMediaOnlyCommentPreviewKind = (
-  normalized: string
-): Exclude<CommentBodyPreviewKind, 'text'> | null => {
-  if (isGiphyMarkdownComment(normalized)) {
-    return 'gif';
+const replaceFirstMediaPreviewToken = (normalized: string): string => {
+  const match = findFirstMediaPreviewToken(normalized);
+
+  if (!match) {
+    return normalized;
   }
 
-  if (isImageUrlComment(normalized)) {
-    return 'image';
+  const withFirstMarker = `${normalized.slice(0, match.start)}${match.marker}${normalized.slice(
+    match.end
+  )}`;
+
+  return normalizeCommentBody(removeMediaPreviewTokens(withFirstMarker));
+};
+
+const findFirstMediaPreviewToken = (
+  normalized: string
+): CommentBodyMediaMatch | null =>
+  getEarlierMediaMatch(
+    findFirstGiphyMarkdownPreviewToken(normalized),
+    findFirstImageUrlPreviewToken(normalized)
+  );
+
+const findFirstGiphyMarkdownPreviewToken = (
+  normalized: string
+): CommentBodyMediaMatch | null => {
+  const pattern = /!\[\s*gif\s*\]\(([^)\s]+)\)/giu;
+
+  for (const match of normalized.matchAll(pattern)) {
+    const start = match.index;
+
+    if (start >= COMMENT_PREVIEW_LENGTH) {
+      return null;
+    }
+
+    const source = match[0];
+    const target = match[1];
+
+    if (source && target && isGiphyTarget(target)) {
+      return {
+        start,
+        end: start + source.length,
+        marker: COMMENT_GIF_PREVIEW_MARKER,
+      };
+    }
   }
 
   return null;
 };
 
-const isGiphyMarkdownComment = (normalized: string): boolean => {
-  const match = /^!\[\s*gif\s*\]\(([^)\s]+)\)$/iu.exec(normalized);
-  const target = match?.[1];
-
-  if (!target) {
-    return false;
-  }
-
+const isGiphyTarget = (target: string): boolean => {
   if (target.startsWith('giphy|')) {
     return true;
   }
@@ -560,14 +588,66 @@ const isGiphyMarkdownComment = (normalized: string): boolean => {
   );
 };
 
-const isImageUrlComment = (normalized: string): boolean =>
-  isUrlWithHost(normalized, (host, url) => {
+const removeMediaPreviewTokens = (value: string): string =>
+  value
+    .replace(
+      /!\[\s*gif\s*\]\(([^)\s]+)\)/giu,
+      (source: string, target: string | undefined) =>
+        target && isGiphyTarget(target) ? '' : source
+    )
+    .replace(/https?:\/\/[^\s<>()]+/giu, (source: string) =>
+      isImageUrl(source) ? '' : source
+    );
+
+const findFirstImageUrlPreviewToken = (
+  normalized: string
+): CommentBodyMediaMatch | null => {
+  const pattern = /https?:\/\/[^\s<>()]+/giu;
+
+  for (const match of normalized.matchAll(pattern)) {
+    const start = match.index;
+
+    if (start >= COMMENT_PREVIEW_LENGTH) {
+      return null;
+    }
+
+    const target = match[0];
+
+    if (target && isImageUrl(target)) {
+      return {
+        start,
+        end: start + target.length,
+        marker: COMMENT_IMAGE_PREVIEW_MARKER,
+      };
+    }
+  }
+
+  return null;
+};
+
+const isImageUrl = (value: string): boolean =>
+  isUrlWithHost(value, (host, url) => {
     if (host === 'preview.redd.it' || host === 'i.redd.it') {
       return true;
     }
 
     return /\.(?:avif|jpe?g|png|webp)$/iu.test(url.pathname);
   });
+
+const getEarlierMediaMatch = (
+  first: CommentBodyMediaMatch | null,
+  second: CommentBodyMediaMatch | null
+): CommentBodyMediaMatch | null => {
+  if (!first) {
+    return second;
+  }
+
+  if (!second) {
+    return first;
+  }
+
+  return first.start <= second.start ? first : second;
+};
 
 const isUrlWithHost = (
   value: string,

@@ -1,7 +1,4 @@
-import type {
-  CommentBodyPreviewKind,
-  SubredditKarmaBucket,
-} from '../../shared/api';
+import type { SubredditKarmaBucket } from '../../shared/api';
 
 export type CurrentUserDatumFields = {
   isCurrentUser: boolean;
@@ -25,7 +22,6 @@ export type CommentBubbleDatum = {
   value: [createdAtTime: number, score: number];
   score: number;
   bodyPreview: string;
-  bodyPreviewKind: CommentBodyPreviewKind;
   authorName: string;
   authorAvatarUrl: string | null;
   createdAt: string;

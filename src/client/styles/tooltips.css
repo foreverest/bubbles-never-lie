@@ -73,10 +73,6 @@
   white-space: normal;
 }
 
-.chart-tooltip__title--media {
-  display: flex;
-}
-
 .chart-tooltip__media-label {
   display: inline-flex;
   height: 18px;
@@ -92,6 +88,7 @@
   line-height: 1;
   overflow: hidden;
   text-overflow: ellipsis;
+  vertical-align: text-bottom;
   white-space: nowrap;
 }
 

@@ -1,5 +1,3 @@
-import type { CommentBodyPreviewKind } from '../../shared/api';
-
 export type TimeRange = {
   startTime: number;
   endTime: number;
@@ -21,7 +19,6 @@ export type CommentEntity = {
   authorName: string;
   score: number;
   bodyPreview: string;
-  bodyPreviewKind: CommentBodyPreviewKind;
   createdAt: string;
   permalink: string;
 };

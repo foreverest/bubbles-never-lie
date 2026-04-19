@@ -1,4 +1,8 @@
-import { resolveUserAvatarUrl } from '../../shared/api';
+import {
+  COMMENT_GIF_PREVIEW_MARKER,
+  COMMENT_IMAGE_PREVIEW_MARKER,
+  resolveUserAvatarUrl,
+} from '../../shared/api';
 import { formatRelativeAge } from '../utils/date';
 import { escapeHtml } from '../utils/html';
 import type {
@@ -119,19 +123,35 @@ function renderCurrentUserTooltipBadge(isCurrentUser: boolean): string {
 }
 
 function renderCommentTooltipTitle(datum: CommentBubbleDatum): string {
-  if (datum.bodyPreviewKind === 'gif') {
-    return renderMediaCommentTooltipTitle('GIF');
-  }
-
-  if (datum.bodyPreviewKind === 'image') {
-    return renderMediaCommentTooltipTitle('Image');
-  }
-
-  return `<strong class="chart-tooltip__title">${escapeHtml(datum.bodyPreview)}</strong>`;
+  return `<strong class="chart-tooltip__title">${renderCommentPreview(datum.bodyPreview)}</strong>`;
 }
 
-function renderMediaCommentTooltipTitle(label: string): string {
-  return `<strong class="chart-tooltip__title chart-tooltip__title--media"><span class="chart-tooltip__media-label">${escapeHtml(label)}</span></strong>`;
+function renderCommentPreview(bodyPreview: string): string {
+  return bodyPreview
+    .split(
+      new RegExp(
+        `(${COMMENT_GIF_PREVIEW_MARKER}|${COMMENT_IMAGE_PREVIEW_MARKER})`,
+        'gu'
+      )
+    )
+    .map(renderCommentPreviewPart)
+    .join('');
+}
+
+function renderCommentPreviewPart(part: string): string {
+  if (part === COMMENT_GIF_PREVIEW_MARKER) {
+    return renderMediaCommentTooltipLabel('GIF');
+  }
+
+  if (part === COMMENT_IMAGE_PREVIEW_MARKER) {
+    return renderMediaCommentTooltipLabel('Image');
+  }
+
+  return escapeHtml(part);
+}
+
+function renderMediaCommentTooltipLabel(label: string): string {
+  return `<span class="chart-tooltip__media-label">${escapeHtml(label)}</span>`;
 }
 
 function renderTooltipVotePill(value: number, label = 'upvotes'): string {

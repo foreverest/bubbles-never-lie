@@ -1,6 +1,8 @@
 export const SUBREDDIT_KARMA_BUCKET_COUNT = 10;
 export const USER_AVATAR_FALLBACK_URL =
   'https://www.redditstatic.com/avatars/defaults/v2/avatar_default_4.png';
+export const COMMENT_GIF_PREVIEW_MARKER = '<gif>';
+export const COMMENT_IMAGE_PREVIEW_MARKER = '<image>';
 
 export const resolveUserAvatarUrl = (
   avatarUrl: string | null | undefined
@@ -31,8 +33,6 @@ export type ChartPost = {
   permalink: string;
 };
 
-export type CommentBodyPreviewKind = 'text' | 'gif' | 'image';
-
 export type ChartComment = {
   id: string;
   postId: string;
@@ -40,7 +40,6 @@ export type ChartComment = {
   authorAvatarUrl: string | null;
   score: number;
   bodyPreview: string;
-  bodyPreviewKind: CommentBodyPreviewKind;
   createdAt: string;
   permalink: string;
 };

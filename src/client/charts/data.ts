@@ -41,7 +41,6 @@ export function toCommentBubbleDatum(
     value: [Date.parse(comment.createdAt), comment.score],
     score: comment.score,
     bodyPreview: comment.bodyPreview,
-    bodyPreviewKind: comment.bodyPreviewKind,
     authorName: comment.authorName,
     authorAvatarUrl: comment.authorAvatarUrl,
     createdAt: comment.createdAt,

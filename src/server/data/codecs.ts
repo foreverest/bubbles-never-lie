@@ -1,4 +1,3 @@
-import type { CommentBodyPreviewKind } from '../../shared/api';
 import type { ContributorEntity, CommentEntity, PostEntity } from './types';
 
 export type EntityCodec<Entity> = {
@@ -39,7 +38,6 @@ export const postEntityCodec: EntityCodec<PostEntity> = {
 export const commentEntityCodec: EntityCodec<CommentEntity> = {
   parse(value) {
     const parsed = parseJsonRecord(value);
-    const bodyPreviewKind = parsed?.bodyPreviewKind ?? 'text';
 
     if (
       !parsed ||
@@ -48,7 +46,6 @@ export const commentEntityCodec: EntityCodec<CommentEntity> = {
       typeof parsed.authorName !== 'string' ||
       !isFiniteNumber(parsed.score) ||
       typeof parsed.bodyPreview !== 'string' ||
-      !isCommentBodyPreviewKind(bodyPreviewKind) ||
       !isValidDateString(parsed.createdAt) ||
       typeof parsed.permalink !== 'string'
     ) {
@@ -61,7 +58,6 @@ export const commentEntityCodec: EntityCodec<CommentEntity> = {
       authorName: parsed.authorName,
       score: parsed.score,
       bodyPreview: parsed.bodyPreview,
-      bodyPreviewKind,
       createdAt: parsed.createdAt,
       permalink: parsed.permalink,
     };
@@ -115,11 +111,6 @@ const isFiniteNumber = (value: unknown): value is number =>
 
 const isNullableFiniteNumber = (value: unknown): value is number | null =>
   value === null || isFiniteNumber(value);
-
-const isCommentBodyPreviewKind = (
-  value: unknown
-): value is CommentBodyPreviewKind =>
-  value === 'text' || value === 'gif' || value === 'image';
 
 const isValidDateString = (value: unknown): value is string =>
   typeof value === 'string' && !Number.isNaN(Date.parse(value));
