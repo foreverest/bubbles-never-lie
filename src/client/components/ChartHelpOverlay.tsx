@@ -6,7 +6,11 @@ import type {
   ReactNode,
 } from 'react';
 
+import chartHelpSizeIcon from '../assets/icons/chart-help-size.svg?raw';
+import chartHelpXAxisIcon from '../assets/icons/chart-help-x-axis.svg?raw';
+import chartHelpYAxisIcon from '../assets/icons/chart-help-y-axis.svg?raw';
 import type { ChartHelpDetails, ChartHelpItemKind } from '../charts/help';
+import { TrustedSvgIcon } from './TrustedSvgIcon';
 
 export function ChartHelpOverlay({ details }: { details: ChartHelpDetails }) {
   const tooltipId = useId();
@@ -139,41 +143,17 @@ function renderChartHelpIcon(kind: ChartHelpItemKind): ReactNode {
 
   if (kind === 'size') {
     return (
-      <svg
-        className="chart-help__icon"
-        aria-hidden="true"
-        fill="none"
-        viewBox="0 0 24 24"
-      >
-        <circle cx="8" cy="15" r="3.25" />
-        <circle cx="15" cy="9" r="5.25" />
-      </svg>
+      <TrustedSvgIcon className="chart-help__icon" svg={chartHelpSizeIcon} />
     );
   }
 
   if (kind === 'y-axis') {
     return (
-      <svg
-        className="chart-help__icon"
-        aria-hidden="true"
-        fill="none"
-        viewBox="0 0 24 24"
-      >
-        <path d="M12 20V5" />
-        <path d="M6 11l6-6 6 6" />
-      </svg>
+      <TrustedSvgIcon className="chart-help__icon" svg={chartHelpYAxisIcon} />
     );
   }
 
   return (
-    <svg
-      className="chart-help__icon"
-      aria-hidden="true"
-      fill="none"
-      viewBox="0 0 24 24"
-    >
-      <path d="M4 12h15" />
-      <path d="M13 6l6 6-6 6" />
-    </svg>
+    <TrustedSvgIcon className="chart-help__icon" svg={chartHelpXAxisIcon} />
   );
 }
