@@ -5,8 +5,8 @@ import type {
   ChartResponseMetadata,
   CommentsChartDataResponse,
   ErrorResponse,
+  InsightsDataResponse,
   PostsChartDataResponse,
-  StatsDataResponse,
 } from '../../shared/api';
 import {
   readContributorCountInDateRange,
@@ -34,7 +34,7 @@ export const api = new Hono();
 const postsApiLogger = createLogger('posts-api');
 const commentsApiLogger = createLogger('comments-api');
 const contributorsApiLogger = createLogger('contributors-api');
-const statsApiLogger = createLogger('stats-api');
+const insightsApiLogger = createLogger('insights-api');
 const chartDataCacheTtlSeconds = 30;
 const missingDateRangeMessage =
   'This post is missing a Bubbles Never Lie date range.';
@@ -44,8 +44,8 @@ const commentsErrorMessage =
   'Unable to load subreddit comment chart data. Try again shortly.';
 const contributorsErrorMessage =
   'Unable to load subreddit contributor chart data. Try again shortly.';
-const statsErrorMessage =
-  'Unable to load subreddit stats data. Try again shortly.';
+const insightsErrorMessage =
+  'Unable to load subreddit insights data. Try again shortly.';
 
 api.get('/posts', async (c) => {
   const logger = postsApiLogger;
@@ -242,14 +242,14 @@ api.get('/contributors', async (c) => {
   }
 });
 
-api.get('/stats', async (c) => {
-  const logger = statsApiLogger;
+api.get('/insights', async (c) => {
+  const logger = insightsApiLogger;
   const chartContext = readChartContext();
-  logger.info('Received stats data request', createRequestLogMetadata());
+  logger.info('Received insights data request', createRequestLogMetadata());
 
   if (!chartContext) {
     logger.warn(
-      'Missing date range for stats data request',
+      'Missing date range for insights data request',
       createRequestLogMetadata()
     );
 
@@ -264,7 +264,7 @@ api.get('/stats', async (c) => {
 
   try {
     const response = await readCachedChartDataResponse(
-      'stats',
+      'insights',
       chartContext,
       logger,
       async () => {
@@ -287,7 +287,7 @@ api.get('/stats', async (c) => {
         ]);
 
         return {
-          type: 'stats-data',
+          type: 'insights-data',
           postCount: posts.postCount,
           commentCount: comments.commentCount,
           contributorCount: contributors.contributorCount,
@@ -295,17 +295,17 @@ api.get('/stats', async (c) => {
       }
     );
 
-    logger.info('Loaded stats data', {
+    logger.info('Loaded insights data', {
       ...createChartLogMetadata(chartContext),
       postCount: response.postCount,
       commentCount: response.commentCount,
       contributorCount: response.contributorCount,
     });
 
-    return c.json<StatsDataResponse>(response, 200);
+    return c.json<InsightsDataResponse>(response, 200);
   } catch (error) {
-    const message = getErrorMessage(error, statsErrorMessage);
-    logger.error('Stats data request failed', {
+    const message = getErrorMessage(error, insightsErrorMessage);
+    logger.error('Insights data request failed', {
       ...createChartLogMetadata(chartContext),
       error: message,
     });
@@ -313,7 +313,7 @@ api.get('/stats', async (c) => {
     return c.json<ErrorResponse>(
       {
         status: 'error',
-        message: statsErrorMessage,
+        message: insightsErrorMessage,
       },
       500
     );
@@ -331,7 +331,7 @@ type CacheableChartDataResponse =
   | PostsChartDataResponse
   | CommentsChartDataResponse
   | ContributorsChartDataResponse
-  | StatsDataResponse;
+  | InsightsDataResponse;
 type CacheableJsonValue =
   | boolean
   | null

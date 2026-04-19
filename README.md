@@ -14,7 +14,7 @@ For mods, it is a lightweight ritual: drop a chart post, let the subreddit read 
 
 > Screenshot placeholder: a tooltip over a delightfully suspicious bubble.
 
-> Screenshot placeholder: comments, contributors, or stats in action.
+> Screenshot placeholder: comments, contributors, or insights in action.
 
 ## Why Install It?
 

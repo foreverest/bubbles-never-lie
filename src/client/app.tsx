@@ -4,16 +4,16 @@ import type { MouseEvent as ReactMouseEvent } from 'react';
 import type {
   CommentsChartDataResponse,
   ContributorsChartDataResponse,
+  InsightsDataResponse,
   PostsChartDataResponse,
-  StatsDataResponse,
 } from '../shared/api';
 import { CommentsChart } from './charts/CommentsChart';
 import { ContributorsChart } from './charts/ContributorsChart';
 import { PostsChart } from './charts/PostsChart';
 import { ChartHeader } from './components/ChartHeader';
 import { EmptyState } from './components/EmptyState';
+import { InsightsPanel } from './components/InsightsPanel';
 import { PanelState } from './components/PanelState';
-import { StatsPanel } from './components/StatsPanel';
 import { useApiResource } from './hooks/useApiResource';
 import { useChartPreferences } from './hooks/useChartPreferences';
 import { useResolvedTheme } from './hooks/useResolvedTheme';
@@ -46,11 +46,11 @@ export function App({ onRequestExpandedMode }: AppProps) {
     errorLogLabel: 'Error loading contributor chart data:',
     enabled: activeTab === 'contributors',
   });
-  const statsState = useApiResource<StatsDataResponse>({
-    path: '/api/stats',
-    fallbackMessage: 'Unable to load stats data.',
-    errorLogLabel: 'Error loading stats data:',
-    enabled: activeTab === 'stats',
+  const insightsState = useApiResource<InsightsDataResponse>({
+    path: '/api/insights',
+    fallbackMessage: 'Unable to load insights data.',
+    errorLogLabel: 'Error loading insights data:',
+    enabled: activeTab === 'insights',
   });
 
   useTooltipAvatarFallback();
@@ -128,7 +128,7 @@ export function App({ onRequestExpandedMode }: AppProps) {
             resolvedTheme={resolvedTheme}
           />
         ) : (
-          <StatsPanel state={statsState} />
+          <InsightsPanel state={insightsState} />
         )}
       </section>
     </main>

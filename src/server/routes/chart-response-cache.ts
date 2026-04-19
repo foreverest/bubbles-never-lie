@@ -4,7 +4,7 @@ export type ChartDataCacheEndpoint =
   | 'posts'
   | 'comments'
   | 'contributors'
-  | 'stats';
+  | 'insights';
 
 export type ChartDataCacheKeyOptions = {
   endpoint: ChartDataCacheEndpoint;

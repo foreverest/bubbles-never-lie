@@ -4,7 +4,7 @@ export type DataState<Data> =
   | { status: 'ready'; data: Data }
   | { status: 'error'; message: string };
 
-export type TabName = 'posts' | 'comments' | 'contributors' | 'stats';
+export type TabName = 'posts' | 'comments' | 'contributors' | 'insights';
 
 export type TabDefinition = {
   name: TabName;
@@ -29,7 +29,7 @@ export const TABS: readonly TabDefinition[] = [
     label: 'Contributors',
     panelId: 'contributors-panel',
   },
-  { name: 'stats', label: 'Stats', panelId: 'stats-panel' },
+  { name: 'insights', label: 'Insights', panelId: 'insights-panel' },
 ];
 
 export function getTabLabel(tab: TabName): string {

@@ -20,8 +20,8 @@
   --color-button-icon: #40535d;
   --color-switch-track: #ccd6dc;
   --color-focus-ring: rgba(38, 124, 140, 0.2);
-  --color-stats-card-start: rgba(255, 255, 255, 0.94);
-  --color-stats-card-end: rgba(244, 247, 248, 0.94);
+  --color-insights-card-start: rgba(255, 255, 255, 0.94);
+  --color-insights-card-end: rgba(244, 247, 248, 0.94);
   --shadow-panel: 0 16px 34px rgba(21, 33, 40, 0.08);
   --shadow-header: 0 10px 24px rgba(21, 33, 40, 0.06);
   --shadow-menu: 0 18px 44px rgba(21, 33, 40, 0.16);
@@ -62,8 +62,8 @@
   --color-button-icon: #c3d0ca;
   --color-switch-track: #46534e;
   --color-focus-ring: rgba(85, 184, 197, 0.28);
-  --color-stats-card-start: rgba(31, 39, 36, 0.94);
-  --color-stats-card-end: rgba(23, 29, 27, 0.94);
+  --color-insights-card-start: rgba(31, 39, 36, 0.94);
+  --color-insights-card-end: rgba(23, 29, 27, 0.94);
   --shadow-panel: 0 16px 34px rgba(0, 0, 0, 0.28);
   --shadow-header: 0 10px 24px rgba(0, 0, 0, 0.22);
   --shadow-menu: 0 18px 44px rgba(0, 0, 0, 0.38);

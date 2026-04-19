@@ -18,6 +18,7 @@ test('chart data cache keys distinguish endpoint, post, subreddit, and date rang
     createChartDataCacheKey(baseOptions),
     createChartDataCacheKey({ ...baseOptions, endpoint: 'comments' }),
     createChartDataCacheKey({ ...baseOptions, endpoint: 'contributors' }),
+    createChartDataCacheKey({ ...baseOptions, endpoint: 'insights' }),
     createChartDataCacheKey({ ...baseOptions, postId: 't3_other_chart' }),
     createChartDataCacheKey({ ...baseOptions, postId: undefined }),
     createChartDataCacheKey({ ...baseOptions, subredditName: 'OtherSub' }),

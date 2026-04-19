@@ -79,8 +79,8 @@ export type ContributorsChartDataResponse = ChartResponseMetadata & {
   contributors: ChartContributor[];
 };
 
-export type StatsDataResponse = {
-  type: 'stats-data';
+export type InsightsDataResponse = {
+  type: 'insights-data';
   postCount: number;
   commentCount: number;
   contributorCount: number;
