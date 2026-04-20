@@ -126,6 +126,51 @@ test('contributors option uses dual-axis zoom when enabled', () => {
   expect(readSeries(option).length).toBe(2);
 });
 
+test('upvote axes use compact tick labels', () => {
+  const datum = toPostBubbleDatum(post, 'alice');
+  const postsOption = createPostsOption([datum], metadata, false, false);
+  const commentsOption = createCommentsOption([], metadata, false, false);
+  const contributorsOption = createContributorsOption(
+    [
+      {
+        kind: 'contributor',
+        value: [1_200_000, -3_624, 7],
+        contributorName: 'Alice',
+        contributorAvatarUrl: null,
+        contributorSubredditKarmaBucket: 3,
+        postCount: 2,
+        commentCount: 5,
+        contributionCount: 7,
+        postScore: -3_624,
+        commentScore: 1_200_000,
+        profileUrl: '/user/Alice',
+        isCurrentUser: true,
+      },
+    ],
+    false,
+    false
+  );
+
+  expect(
+    formatAxisLabel(readObject(readOptionField(postsOption, 'yAxis')), 3_624)
+  ).toBe('3.6K');
+  expect(
+    formatAxisLabel(readObject(readOptionField(commentsOption, 'yAxis')), 2_000)
+  ).toBe('2K');
+  expect(
+    formatAxisLabel(
+      readObject(readOptionField(contributorsOption, 'xAxis')),
+      1_200_000
+    )
+  ).toBe('1.2M');
+  expect(
+    formatAxisLabel(
+      readObject(readOptionField(contributorsOption, 'yAxis')),
+      -3_624
+    )
+  ).toBe('-3.6K');
+});
+
 test('time charts use a narrow axis media override without changing contributors', () => {
   const datum = toPostBubbleDatum(post, 'alice');
   const expectedMedia = [
@@ -173,6 +218,22 @@ function readObject(value: unknown): Record<string, unknown> {
 function readLineColor(axis: Record<string, unknown>, key: string): unknown {
   const axisSection = readObject(axis[key]);
   return readObject(axisSection.lineStyle).color;
+}
+
+function formatAxisLabel(
+  axis: Record<string, unknown>,
+  value: number
+): unknown {
+  const axisLabel = readObject(axis.axisLabel);
+  const formatter = axisLabel.formatter;
+
+  expect(typeof formatter).toBe('function');
+
+  if (typeof formatter !== 'function') {
+    return null;
+  }
+
+  return formatter(value);
 }
 
 function readFirstSeriesColor(option: unknown, datum: unknown): string {

@@ -5,8 +5,25 @@ import {
   COMMENT_IMAGE_PREVIEW_MARKER,
   USER_AVATAR_FALLBACK_URL,
 } from '../../shared/api';
-import { renderCommentTooltip, renderPostTooltip } from './tooltips';
-import type { CommentBubbleDatum, PostBubbleDatum } from './types';
+import { formatCompactUpvoteCount } from './formatting';
+import {
+  renderCommentTooltip,
+  renderContributorTooltip,
+  renderPostTooltip,
+} from './tooltips';
+import type {
+  CommentBubbleDatum,
+  ContributorBubbleDatum,
+  PostBubbleDatum,
+} from './types';
+
+test('formats compact upvote counts with stable en-US notation', () => {
+  expect(formatCompactUpvoteCount(999)).toBe('999');
+  expect(formatCompactUpvoteCount(2_000)).toBe('2K');
+  expect(formatCompactUpvoteCount(3_624)).toBe('3.6K');
+  expect(formatCompactUpvoteCount(-3_624)).toBe('-3.6K');
+  expect(formatCompactUpvoteCount(1_200_000)).toBe('1.2M');
+});
 
 test('renders escaped post tooltip content with fallback avatar and current-user badge', () => {
   vi.useFakeTimers();
@@ -60,6 +77,48 @@ test('renders dark themed post tooltip class when requested', () => {
   };
 
   expect(renderPostTooltip(datum, 'dark')).toMatch(/chart-tooltip--dark/);
+});
+
+test('renders compact tooltip upvotes while keeping count metrics exact', () => {
+  const postTooltip = renderPostTooltip(
+    createPostDatum({
+      score: 3_624,
+      comments: 2_000,
+      value: [Date.parse('2024-02-29T11:00:00.000Z'), 3_624],
+    })
+  );
+  const commentTooltip = renderCommentTooltip(
+    createCommentDatum({
+      score: 2_000,
+      value: [Date.parse('2024-02-29T11:00:00.000Z'), 2_000],
+    })
+  );
+  const contributorTooltip = renderContributorTooltip(
+    createContributorDatum({
+      postCount: 1_200,
+      commentCount: 2_300,
+      postScore: 3_624,
+      commentScore: 1_200_000,
+      value: [1_200_000, 3_624, 3_500],
+    })
+  );
+
+  expect(postTooltip).toContain('aria-label="3.6K upvotes"');
+  expect(postTooltip).toContain(
+    '<span class="chart-tooltip__metric-value">3.6K</span>'
+  );
+  expect(postTooltip).toContain('aria-label="2,000 comments"');
+  expect(postTooltip).toContain(
+    '<span class="chart-tooltip__metric-value">2,000</span>'
+  );
+  expect(commentTooltip).toContain('aria-label="2K upvotes"');
+  expect(commentTooltip).toContain(
+    '<span class="chart-tooltip__metric-value">2K</span>'
+  );
+  expect(contributorTooltip).toContain('aria-label="3.6K post upvotes"');
+  expect(contributorTooltip).toContain('aria-label="1.2M comment upvotes"');
+  expect(contributorTooltip).toContain('aria-label="1,200 posts"');
+  expect(contributorTooltip).toContain('aria-label="2,300 comments"');
 });
 
 test('renders escaped text comment tooltip content', () => {
@@ -126,6 +185,23 @@ test('renders mixed comment preview markers inline with escaped text', () => {
   expect(tooltip).not.toMatch(/giphy/);
 });
 
+const createPostDatum = (
+  overrides: Partial<PostBubbleDatum> = {}
+): PostBubbleDatum => ({
+  kind: 'post',
+  value: [Date.parse('2024-02-29T11:00:00.000Z'), 10],
+  score: 10,
+  comments: 2,
+  authorSubredditKarmaBucket: null,
+  title: 'Post',
+  authorName: 'Alice',
+  authorAvatarUrl: null,
+  createdAt: '2024-02-29T11:00:00.000Z',
+  permalink: '/r/example/comments/post-1',
+  isCurrentUser: false,
+  ...overrides,
+});
+
 const createCommentDatum = (
   overrides: Partial<CommentBubbleDatum> = {}
 ): CommentBubbleDatum => ({
@@ -138,6 +214,24 @@ const createCommentDatum = (
   createdAt: '2024-02-29T11:00:00.000Z',
   permalink: '/r/example/comments/post-1/comment-1',
   postId: 'post-1',
+  isCurrentUser: false,
+  ...overrides,
+});
+
+const createContributorDatum = (
+  overrides: Partial<ContributorBubbleDatum> = {}
+): ContributorBubbleDatum => ({
+  kind: 'contributor',
+  value: [30, 20, 7],
+  contributorName: 'Alice',
+  contributorAvatarUrl: null,
+  contributorSubredditKarmaBucket: 3,
+  postCount: 2,
+  commentCount: 5,
+  contributionCount: 7,
+  postScore: 20,
+  commentScore: 30,
+  profileUrl: '/user/Alice',
   isCurrentUser: false,
   ...overrides,
 });

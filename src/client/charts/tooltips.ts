@@ -9,6 +9,7 @@ import TOOLTIP_POST_ICON from '../assets/icons/tooltip-post.svg?raw';
 import TOOLTIP_UPVOTE_ICON from '../assets/icons/tooltip-upvote.svg?raw';
 import { formatRelativeAge } from '../utils/date';
 import { escapeHtml } from '../utils/html';
+import { formatCompactUpvoteCount } from './formatting';
 import type {
   CommentBubbleDatum,
   ContributorBubbleDatum,
@@ -88,7 +89,8 @@ export function renderContributorTooltip(
     renderTooltipInlineLabeledMetric(
       TOOLTIP_UPVOTE_ICON,
       datum.postScore,
-      'post upvotes'
+      'post upvotes',
+      formatCompactUpvoteCount
     ),
     '</div>',
     '<div class="chart-tooltip__stats chart-tooltip__contributor-line">',
@@ -100,7 +102,8 @@ export function renderContributorTooltip(
     renderTooltipInlineLabeledMetric(
       TOOLTIP_UPVOTE_ICON,
       datum.commentScore,
-      'comment upvotes'
+      'comment upvotes',
+      formatCompactUpvoteCount
     ),
     '</div>',
     '</article>',
@@ -150,7 +153,7 @@ function renderMediaCommentTooltipLabel(label: string): string {
 }
 
 function renderTooltipVotePill(value: number, label = 'upvotes'): string {
-  const valueLabel = value.toLocaleString();
+  const valueLabel = formatCompactUpvoteCount(value);
 
   return `<span class="chart-tooltip__metric chart-tooltip__metric--pill chart-tooltip__metric--vote" aria-label="${escapeHtml(`${valueLabel} ${label}`)}">${TOOLTIP_UPVOTE_ICON}<span class="chart-tooltip__metric-value">${valueLabel}</span>${TOOLTIP_DOWNVOTE_ICON}</span>`;
 }
@@ -165,7 +168,7 @@ function renderTooltipInlineVoteMetric(
   value: number,
   label = 'upvotes'
 ): string {
-  const valueLabel = value.toLocaleString();
+  const valueLabel = formatCompactUpvoteCount(value);
 
   return `<span class="chart-tooltip__metric chart-tooltip__metric--inline-vote" aria-label="${escapeHtml(`${valueLabel} ${label}`)}">${TOOLTIP_UPVOTE_ICON}<span class="chart-tooltip__metric-value">${valueLabel}</span>${TOOLTIP_DOWNVOTE_ICON}</span>`;
 }
@@ -173,9 +176,11 @@ function renderTooltipInlineVoteMetric(
 function renderTooltipInlineLabeledMetric(
   icon: string,
   value: number,
-  label: string
+  label: string,
+  formatValue: (value: number) => string = (metricValue) =>
+    metricValue.toLocaleString()
 ): string {
-  const valueLabel = value.toLocaleString();
+  const valueLabel = formatValue(value);
 
   return `<span class="chart-tooltip__metric chart-tooltip__metric--inline-labeled" aria-label="${escapeHtml(`${valueLabel} ${label}`)}">${icon}<span class="chart-tooltip__metric-value">${valueLabel}</span><span class="chart-tooltip__metric-label">${escapeHtml(label)}</span></span>`;
 }
