@@ -312,10 +312,7 @@ function createAxisLine(theme: ChartTheme) {
   };
 }
 
-function createAxisLabel(
-  theme: ChartTheme,
-  formatter?: AxisLabelFormatter
-) {
+function createAxisLabel(theme: ChartTheme, formatter?: AxisLabelFormatter) {
   const axisLabel = {
     color: theme.axisLabelColor,
     fontSize: 12,
