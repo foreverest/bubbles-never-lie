@@ -29,31 +29,38 @@ const post: ChartPost = {
   permalink: '/r/example/comments/post-1',
 };
 
-test('posts option toggles zoom and current-user ripple series', () => {
+test('posts option uses initially idle zoom and toggles current-user ripple series', () => {
   const data = [toPostBubbleDatum(post, 'alice')];
-  const option = createPostsOption(data, metadata, true, true);
+  const option = createPostsOption(data, metadata, true);
 
-  expect(readOptionField(option, 'dataZoom')).toEqual({
-    type: 'inside',
-    filterMode: 'none',
-    minSpan: 10,
-  });
+  expect(readOptionField(option, 'dataZoom')).toEqual(
+    createExpectedSingleAxisDataZoom(10)
+  );
   expect(readSeries(option).length).toBe(2);
 
-  const noRippleOption = createPostsOption(data, metadata, false, false);
+  const noRippleOption = createPostsOption(data, metadata, false);
 
-  expect(readOptionField(noRippleOption, 'dataZoom')).toBe(undefined);
+  expect(readOptionField(noRippleOption, 'dataZoom')).toEqual(
+    createExpectedSingleAxisDataZoom(10)
+  );
   expect(readSeries(noRippleOption).length).toBe(1);
   expect(readOptionField(noRippleOption, 'darkMode')).toBe(false);
 });
 
+test('comments option uses initially idle single-axis zoom', () => {
+  const option = createCommentsOption([], metadata, false);
+
+  expect(readOptionField(option, 'dataZoom')).toEqual(
+    createExpectedSingleAxisDataZoom(10)
+  );
+});
+
 test('posts option applies dark mode and dark chart chrome without changing data colors', () => {
   const datum = toPostBubbleDatum(post, 'alice');
-  const lightOption = createPostsOption([datum], metadata, false, false);
+  const lightOption = createPostsOption([datum], metadata, false);
   const darkOption = createPostsOption(
     [datum],
     metadata,
-    false,
     false,
     undefined,
     'dark'
@@ -68,7 +75,7 @@ test('posts option applies dark mode and dark chart chrome without changing data
   const grid = readObject(readOptionField(darkOption, 'grid'));
   expect(grid).toMatchObject({
     top: 24,
-    right: 10,
+    right: 18,
     bottom: 16,
     left: 20,
     outerBoundsMode: 'same',
@@ -77,10 +84,13 @@ test('posts option applies dark mode and dark chart chrome without changing data
   expect(grid.containLabel).toBe(undefined);
 
   const xAxis = readObject(readOptionField(darkOption, 'xAxis'));
+  const yAxis = readObject(readOptionField(darkOption, 'yAxis'));
   expect(xAxis.splitNumber).toBe(6);
   expect(readLineColor(xAxis, 'splitLine')).toBe(darkTheme.gridLineColor);
   expect(readLineColor(xAxis, 'axisLine')).toBe(darkTheme.axisLineColor);
   expect(readObject(xAxis.axisLabel).color).toBe(darkTheme.axisLabelColor);
+  expectAxisNameHidden(xAxis);
+  expectAxisNameHidden(yAxis);
   expect(readObject(xAxis.axisLabel)).toMatchObject({
     hideOverlap: true,
     textMargin: [0, 4],
@@ -99,7 +109,7 @@ test('posts option applies dark mode and dark chart chrome without changing data
   );
 });
 
-test('contributors option uses dual-axis zoom when enabled', () => {
+test('contributors option uses posts-style grid and x-axis zoom', () => {
   const option = createContributorsOption(
     [
       {
@@ -117,19 +127,43 @@ test('contributors option uses dual-axis zoom when enabled', () => {
         isCurrentUser: true,
       },
     ],
-    true,
     true
   );
   const dataZoom = readOptionField(option, 'dataZoom');
+  const grid = readObject(readOptionField(option, 'grid'));
+  const xAxis = readObject(readOptionField(option, 'xAxis'));
+  const yAxis = readObject(readOptionField(option, 'yAxis'));
 
-  expect(Array.isArray(dataZoom)).toBe(true);
+  expect(grid).toMatchObject({
+    top: 24,
+    right: 32,
+    bottom: 16,
+    left: 20,
+    outerBoundsMode: 'same',
+    outerBoundsContain: 'axisLabel',
+  });
+  expect(readObject(xAxis.axisLabel)).toMatchObject({
+    margin: 14,
+    lineHeight: 24,
+    textMargin: [0, 4],
+    hideOverlap: true,
+    showMinLabel: true,
+    alignMinLabel: 'right',
+    showMaxLabel: true,
+    alignMaxLabel: 'left',
+  });
+  expect(xAxis.max).toBe(undefined);
+  expect(yAxis.max).toBe(undefined);
+  expectAxisNameHidden(xAxis);
+  expectAxisNameHidden(yAxis);
+  expect(dataZoom).toEqual(createExpectedSingleAxisDataZoom(10));
   expect(readSeries(option).length).toBe(2);
 });
 
 test('upvote axes use compact tick labels', () => {
   const datum = toPostBubbleDatum(post, 'alice');
-  const postsOption = createPostsOption([datum], metadata, false, false);
-  const commentsOption = createCommentsOption([], metadata, false, false);
+  const postsOption = createPostsOption([datum], metadata, false);
+  const commentsOption = createCommentsOption([], metadata, false);
   const contributorsOption = createContributorsOption(
     [
       {
@@ -147,7 +181,6 @@ test('upvote axes use compact tick labels', () => {
         isCurrentUser: true,
       },
     ],
-    false,
     false
   );
 
@@ -187,15 +220,30 @@ test('time charts use a narrow axis media override without changing contributors
   ];
 
   expect(
-    readOptionField(createPostsOption([datum], metadata, false, false), 'media')
+    readOptionField(createPostsOption([datum], metadata, false), 'media')
   ).toEqual(expectedMedia);
   expect(
-    readOptionField(createCommentsOption([], metadata, false, false), 'media')
+    readOptionField(createCommentsOption([], metadata, false), 'media')
   ).toEqual(expectedMedia);
-  expect(
-    readOptionField(createContributorsOption([], false, false), 'media')
-  ).toBe(undefined);
+  expect(readOptionField(createContributorsOption([], false), 'media')).toBe(
+    undefined
+  );
 });
+
+function createExpectedSingleAxisDataZoom(minSpan: number) {
+  return {
+    type: 'inside',
+    xAxisIndex: 0,
+    filterMode: 'none',
+    minSpan,
+    disabled: true,
+    zoomLock: true,
+    zoomOnMouseWheel: false,
+    moveOnMouseMove: false,
+    moveOnMouseWheel: false,
+    preventDefaultMouseMove: false,
+  };
+}
 
 function readOptionField(option: unknown, key: string): unknown {
   expect(typeof option).toBe('object');
@@ -218,6 +266,13 @@ function readObject(value: unknown): Record<string, unknown> {
 function readLineColor(axis: Record<string, unknown>, key: string): unknown {
   const axisSection = readObject(axis[key]);
   return readObject(axisSection.lineStyle).color;
+}
+
+function expectAxisNameHidden(axis: Record<string, unknown>): void {
+  expect(axis.name).toBe(undefined);
+  expect(axis.nameGap).toBe(undefined);
+  expect(axis.nameLocation).toBe(undefined);
+  expect(axis.nameTextStyle).toBe(undefined);
 }
 
 function formatAxisLabel(

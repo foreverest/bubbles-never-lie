@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef } from 'react';
 
 import type { CommentsChartDataResponse } from '../../shared/api';
 import { ChartHelpOverlay } from '../components/ChartHelpOverlay';
+import { ChartZoomControls } from '../components/ChartZoomControls';
 import { useCurrentUsername } from '../hooks/useCurrentUsername';
 import type { ResolvedTheme } from '../types';
 import { openRedditUrl } from '../utils/navigation';
@@ -23,12 +24,10 @@ import { useEChart } from './useEChart';
 
 export function CommentsChart({
   data,
-  zoomEnabled,
   currentUserRippleEnabled,
   resolvedTheme,
 }: {
   data: CommentsChartDataResponse;
-  zoomEnabled: boolean;
   currentUserRippleEnabled: boolean;
   resolvedTheme: ResolvedTheme;
 }) {
@@ -148,21 +147,13 @@ export function CommentsChart({
       createCommentsOption(
         chartData,
         data,
-        zoomEnabled,
         currentUserRippleEnabled,
         () => readVisibleTimeRange(chart),
         resolvedTheme
       ),
       true
     );
-  }, [
-    chartData,
-    chartRef,
-    currentUserRippleEnabled,
-    data,
-    resolvedTheme,
-    zoomEnabled,
-  ]);
+  }, [chartData, chartRef, currentUserRippleEnabled, data, resolvedTheme]);
 
   return (
     <div className="chart-stage-shell">
@@ -173,6 +164,7 @@ export function CommentsChart({
         aria-label={`Comments in r/${data.subredditName} plotted by creation time and upvotes`}
       />
       <ChartHelpOverlay details={helpDetails} />
+      <ChartZoomControls chartRef={chartRef} />
     </div>
   );
 }

@@ -6,7 +6,6 @@ import type { ChartPreferences, ThemeMode } from '../types';
 export const CHART_PREFERENCES_STORAGE_KEY = 'chart-preferences:v1';
 
 export const DEFAULT_CHART_PREFERENCES: ChartPreferences = {
-  zoomEnabled: false,
   currentUserRippleEnabled: false,
   themeMode: 'system',
 };
@@ -27,25 +26,27 @@ export function useChartPreferences(): [
 }
 
 export function normalizeChartPreferences(value: unknown): ChartPreferences {
-  if (!value || typeof value !== 'object') {
+  if (!isPreferenceRecord(value)) {
     return DEFAULT_CHART_PREFERENCES;
   }
 
-  const preferences = value as Partial<Record<keyof ChartPreferences, unknown>>;
-
   return {
-    zoomEnabled:
-      typeof preferences.zoomEnabled === 'boolean'
-        ? preferences.zoomEnabled
-        : DEFAULT_CHART_PREFERENCES.zoomEnabled,
     currentUserRippleEnabled:
-      typeof preferences.currentUserRippleEnabled === 'boolean'
-        ? preferences.currentUserRippleEnabled
+      typeof value.currentUserRippleEnabled === 'boolean'
+        ? value.currentUserRippleEnabled
         : DEFAULT_CHART_PREFERENCES.currentUserRippleEnabled,
-    themeMode: isThemeMode(preferences.themeMode)
-      ? preferences.themeMode
+    themeMode: isThemeMode(value.themeMode)
+      ? value.themeMode
       : DEFAULT_CHART_PREFERENCES.themeMode,
   };
+}
+
+type PreferenceRecord = {
+  readonly [key: string]: unknown;
+};
+
+function isPreferenceRecord(value: unknown): value is PreferenceRecord {
+  return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
 
 function isThemeMode(value: unknown): value is ThemeMode {
@@ -65,7 +66,7 @@ function readStoredChartPreferences(): ChartPreferences {
       return DEFAULT_CHART_PREFERENCES;
     }
 
-    return normalizeChartPreferences(JSON.parse(storedPreferences) as unknown);
+    return normalizeChartPreferences(JSON.parse(storedPreferences));
   } catch {
     return DEFAULT_CHART_PREFERENCES;
   }

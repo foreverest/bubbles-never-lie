@@ -11,10 +11,10 @@ import {
   createChartGrid,
   createChartTooltip,
   createCurrentUserRippleSeries,
+  createSingleAxisDataZoom,
   createTimeXAxis,
   createUpvotesYAxis,
   enableNarrowTimeAxisMedia,
-  enableSingleAxisZoom,
   getChartTheme,
 } from './common';
 
@@ -23,7 +23,6 @@ const CURRENT_USER_POST_RIPPLE_SERIES_ID = 'current-user-post-ripple';
 export function createPostsOption(
   data: PostBubbleDatum[],
   chartData: ChartResponseMetadata,
-  zoomEnabled: boolean,
   currentUserRippleEnabled: boolean,
   getVisibleTimeRange?: GetVisibleTimeRange,
   resolvedTheme: ResolvedTheme = 'light'
@@ -55,6 +54,7 @@ export function createPostsOption(
       const datum = isPostBubbleDatum(params.data) ? params.data : null;
       return datum ? renderPostTooltip(datum, chartTheme.tooltipVariant) : '';
     }, chartTheme),
+    dataZoom: createSingleAxisDataZoom(10),
     xAxis: createTimeXAxis(startTime, endTime, getVisibleTimeRange, chartTheme),
     yAxis: {
       ...createUpvotesYAxis(chartTheme),
@@ -97,10 +97,6 @@ export function createPostsOption(
         : []),
     ],
   };
-
-  if (zoomEnabled) {
-    enableSingleAxisZoom(option);
-  }
 
   enableNarrowTimeAxisMedia(option);
 

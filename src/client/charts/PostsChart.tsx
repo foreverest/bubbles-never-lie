@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo } from 'react';
 
 import type { PostsChartDataResponse } from '../../shared/api';
 import { ChartHelpOverlay } from '../components/ChartHelpOverlay';
+import { ChartZoomControls } from '../components/ChartZoomControls';
 import { useCurrentUsername } from '../hooks/useCurrentUsername';
 import type { ResolvedTheme } from '../types';
 import { openRedditUrl } from '../utils/navigation';
@@ -15,12 +16,10 @@ import { useEChart } from './useEChart';
 
 export function PostsChart({
   data,
-  zoomEnabled,
   currentUserRippleEnabled,
   resolvedTheme,
 }: {
   data: PostsChartDataResponse;
-  zoomEnabled: boolean;
   currentUserRippleEnabled: boolean;
   resolvedTheme: ResolvedTheme;
 }) {
@@ -58,21 +57,13 @@ export function PostsChart({
       createPostsOption(
         chartData,
         data,
-        zoomEnabled,
         currentUserRippleEnabled,
         () => readVisibleTimeRange(chart),
         resolvedTheme
       ),
       true
     );
-  }, [
-    chartData,
-    chartRef,
-    currentUserRippleEnabled,
-    data,
-    resolvedTheme,
-    zoomEnabled,
-  ]);
+  }, [chartData, chartRef, currentUserRippleEnabled, data, resolvedTheme]);
 
   return (
     <div className="chart-stage-shell">
@@ -83,6 +74,7 @@ export function PostsChart({
         aria-label={`Posts in r/${data.subredditName} plotted by comments and upvotes`}
       />
       <ChartHelpOverlay details={helpDetails} />
+      <ChartZoomControls chartRef={chartRef} />
     </div>
   );
 }

@@ -29,7 +29,7 @@ export function App({ onRequestExpandedMode }: AppProps) {
   const [activeTab, setActiveTab] = useState<TabName>('posts');
   const [feedbackDialogOpen, setFeedbackDialogOpen] = useState(false);
   const [chartPreferences, setChartPreferences] = useChartPreferences();
-  const { zoomEnabled, currentUserRippleEnabled, themeMode } = chartPreferences;
+  const { currentUserRippleEnabled, themeMode } = chartPreferences;
   const resolvedTheme = useResolvedTheme(themeMode);
   const postsState = useApiResource<PostsChartDataResponse>({
     path: '/api/posts',
@@ -82,12 +82,6 @@ export function App({ onRequestExpandedMode }: AppProps) {
     data: postsData,
     activeTab,
     onTabChange: setActiveTab,
-    zoomEnabled,
-    onZoomEnabledChange: (nextZoomEnabled: boolean) =>
-      setChartPreferences((preferences) => ({
-        ...preferences,
-        zoomEnabled: nextZoomEnabled,
-      })),
     currentUserRippleEnabled,
     onCurrentUserRippleEnabledChange: (nextCurrentUserRippleEnabled: boolean) =>
       setChartPreferences((preferences) => ({
@@ -112,21 +106,18 @@ export function App({ onRequestExpandedMode }: AppProps) {
         {activeTab === 'posts' ? (
           <PostsPanel
             data={postsData}
-            zoomEnabled={zoomEnabled}
             currentUserRippleEnabled={currentUserRippleEnabled}
             resolvedTheme={resolvedTheme}
           />
         ) : activeTab === 'comments' ? (
           <CommentsPanel
             state={commentsState}
-            zoomEnabled={zoomEnabled}
             currentUserRippleEnabled={currentUserRippleEnabled}
             resolvedTheme={resolvedTheme}
           />
         ) : activeTab === 'contributors' ? (
           <ContributorsPanel
             state={contributorsState}
-            zoomEnabled={zoomEnabled}
             currentUserRippleEnabled={currentUserRippleEnabled}
             resolvedTheme={resolvedTheme}
           />
@@ -143,12 +134,10 @@ export function App({ onRequestExpandedMode }: AppProps) {
 
 function PostsPanel({
   data,
-  zoomEnabled,
   currentUserRippleEnabled,
   resolvedTheme,
 }: {
   data: PostsChartDataResponse;
-  zoomEnabled: boolean;
   currentUserRippleEnabled: boolean;
   resolvedTheme: ResolvedTheme;
 }) {
@@ -157,7 +146,6 @@ function PostsPanel({
       {data.posts.length > 0 ? (
         <PostsChart
           data={data}
-          zoomEnabled={zoomEnabled}
           currentUserRippleEnabled={currentUserRippleEnabled}
           resolvedTheme={resolvedTheme}
         />
@@ -174,12 +162,10 @@ function PostsPanel({
 
 function CommentsPanel({
   state,
-  zoomEnabled,
   currentUserRippleEnabled,
   resolvedTheme,
 }: {
   state: DataState<CommentsChartDataResponse>;
-  zoomEnabled: boolean;
   currentUserRippleEnabled: boolean;
   resolvedTheme: ResolvedTheme;
 }) {
@@ -189,7 +175,6 @@ function CommentsPanel({
         state.data.comments.length > 0 ? (
           <CommentsChart
             data={state.data}
-            zoomEnabled={zoomEnabled}
             currentUserRippleEnabled={currentUserRippleEnabled}
             resolvedTheme={resolvedTheme}
           />
@@ -212,12 +197,10 @@ function CommentsPanel({
 
 function ContributorsPanel({
   state,
-  zoomEnabled,
   currentUserRippleEnabled,
   resolvedTheme,
 }: {
   state: DataState<ContributorsChartDataResponse>;
-  zoomEnabled: boolean;
   currentUserRippleEnabled: boolean;
   resolvedTheme: ResolvedTheme;
 }) {
@@ -231,7 +214,6 @@ function ContributorsPanel({
         state.data.contributors.length > 0 ? (
           <ContributorsChart
             data={state.data}
-            zoomEnabled={zoomEnabled}
             currentUserRippleEnabled={currentUserRippleEnabled}
             resolvedTheme={resolvedTheme}
           />

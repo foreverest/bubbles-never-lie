@@ -16,17 +16,16 @@ import {
   createChartGrid,
   createChartTooltip,
   createCurrentUserRippleSeries,
+  createSingleAxisDataZoom,
   createTimeXAxis,
   createUpvotesYAxis,
   enableNarrowTimeAxisMedia,
-  enableSingleAxisZoom,
   getChartTheme,
 } from './common';
 
 export function createCommentsOption(
   data: CommentBubbleDatum[],
   chartData: ChartResponseMetadata,
-  zoomEnabled: boolean,
   currentUserRippleEnabled: boolean,
   getVisibleTimeRange?: GetVisibleTimeRange,
   resolvedTheme: ResolvedTheme = 'light'
@@ -46,6 +45,7 @@ export function createCommentsOption(
         ? renderCommentTooltip(datum, chartTheme.tooltipVariant)
         : '';
     }, chartTheme),
+    dataZoom: createSingleAxisDataZoom(10),
     xAxis: createTimeXAxis(startTime, endTime, getVisibleTimeRange, chartTheme),
     yAxis: {
       ...createUpvotesYAxis(chartTheme),
@@ -105,10 +105,6 @@ export function createCommentsOption(
       ];
     }),
   };
-
-  if (zoomEnabled) {
-    enableSingleAxisZoom(option);
-  }
 
   enableNarrowTimeAxisMedia(option);
 

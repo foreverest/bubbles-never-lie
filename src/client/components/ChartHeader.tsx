@@ -15,8 +15,6 @@ type ChartHeaderProps = {
   data: ChartResponseMetadata;
   activeTab: TabName;
   onTabChange: (tab: TabName) => void;
-  zoomEnabled: boolean;
-  onZoomEnabledChange: (enabled: boolean) => void;
   currentUserRippleEnabled: boolean;
   onCurrentUserRippleEnabledChange: (enabled: boolean) => void;
   themeMode: ThemeMode;
@@ -42,8 +40,6 @@ export function ChartHeader({
   data,
   activeTab,
   onTabChange,
-  zoomEnabled,
-  onZoomEnabledChange,
   currentUserRippleEnabled,
   onCurrentUserRippleEnabledChange,
   themeMode,
@@ -60,12 +56,6 @@ export function ChartHeader({
   const activePanelId =
     TABS.find((tab) => tab.name === activeTab)?.panelId ?? `${activeTab}-panel`;
   const settings: ChartSetting[] = [
-    {
-      key: 'zoomEnabled',
-      label: 'Zoom',
-      enabled: zoomEnabled,
-      onToggle: () => onZoomEnabledChange(!zoomEnabled),
-    },
     {
       key: 'currentUserRippleEnabled',
       label: 'My bubbles',

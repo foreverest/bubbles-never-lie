@@ -16,7 +16,6 @@ export type ThemeMode = 'system' | 'light' | 'dark';
 export type ResolvedTheme = Exclude<ThemeMode, 'system'>;
 
 export type ChartPreferences = {
-  zoomEnabled: boolean;
   currentUserRippleEnabled: boolean;
   themeMode: ThemeMode;
 };

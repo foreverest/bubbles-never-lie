@@ -17,7 +17,6 @@ test('normalizes stored chart preferences that predate theme mode', () => {
       currentUserRippleEnabled: true,
     })
   ).toEqual({
-    zoomEnabled: true,
     currentUserRippleEnabled: true,
     themeMode: 'system',
   });
@@ -31,7 +30,6 @@ test('normalizes invalid chart preference values to defaults', () => {
       themeMode: 'night',
     })
   ).toEqual({
-    zoomEnabled: false,
     currentUserRippleEnabled: false,
     themeMode: 'system',
   });
