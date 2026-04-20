@@ -9,6 +9,7 @@ import type {
   RippleColorOption,
   SymbolSizeOption,
 } from '../types';
+import { CHART_MAX_ZOOM_MIN_SPAN } from '../zoom';
 
 export const SOAP_BUBBLE_FILL_ALPHA = 0.9;
 export const COMMENT_BUBBLE_FILL_ALPHA = 0.94;
@@ -226,7 +227,7 @@ export function createValueAxis(
 }
 
 export function createSingleAxisDataZoom(
-  minSpan: number
+  minSpan = CHART_MAX_ZOOM_MIN_SPAN
 ): DataZoomComponentOption {
   return {
     type: 'inside',

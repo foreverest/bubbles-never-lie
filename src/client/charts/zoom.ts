@@ -15,11 +15,13 @@ type DataZoomRangeSnapshot = {
   minSpan: number;
 };
 
-const CHART_ZOOM_IN_FACTOR = 0.7;
-const ZOOM_OUT_FULL_RANGE_THRESHOLD = 96;
-const FULL_RANGE_TOLERANCE = 0.001;
 const MIN_PERCENT = 0;
 const MAX_PERCENT = 100;
+export const CHART_MAX_ZOOM_MULTIPLIER = 8;
+export const CHART_MAX_ZOOM_MIN_SPAN = MAX_PERCENT / CHART_MAX_ZOOM_MULTIPLIER;
+const FULL_RANGE_TOLERANCE = 0.001;
+const ZOOM_MULTIPLIERS = [1, 2, 4, CHART_MAX_ZOOM_MULTIPLIER];
+const REVERSED_ZOOM_MULTIPLIERS = [CHART_MAX_ZOOM_MULTIPLIER, 4, 2, 1];
 
 export function zoomChart(
   chart: EChartsInstance,
@@ -47,22 +49,71 @@ export function zoomChart(
   syncDataZoomPan(chart, nextRanges);
 }
 
+export function resetChartZoom(chart: EChartsInstance): void {
+  const dataZoomRanges = collectDataZoomRanges(chart.getOption().dataZoom);
+  if (dataZoomRanges.length === 0) {
+    return;
+  }
+
+  const nextRanges = dataZoomRanges.map(({ dataZoomIndex }) => ({
+    dataZoomIndex,
+    start: MIN_PERCENT,
+    end: MAX_PERCENT,
+  }));
+
+  chart.dispatchAction({
+    type: 'dataZoom',
+    batch: nextRanges,
+  });
+  syncDataZoomPan(chart, nextRanges);
+}
+
+export function readChartZoomMultiplier(chart: EChartsInstance): number | null {
+  return calculateZoomMultiplier(
+    collectDataZoomRanges(chart.getOption().dataZoom)
+  );
+}
+
+export function calculateZoomMultiplier(
+  ranges: readonly ZoomRange[]
+): number | null {
+  const spans = ranges.map(({ start, end }) => {
+    const normalizedStart = clampPercent(Math.min(start, end));
+    const normalizedEnd = clampPercent(Math.max(start, end));
+
+    return normalizedEnd - normalizedStart;
+  });
+
+  if (
+    spans.length === 0 ||
+    spans.every((span) => span >= MAX_PERCENT - FULL_RANGE_TOLERANCE)
+  ) {
+    return null;
+  }
+
+  const visibleSpan = Math.max(Math.min(...spans), FULL_RANGE_TOLERANCE);
+  const zoomMultiplier = MAX_PERCENT / visibleSpan;
+
+  return findNearestVisibleZoomMultiplier(zoomMultiplier);
+}
+
 export function calculateZoomRange(
   range: ZoomRange,
   direction: ChartZoomDirection
 ): ZoomRange {
   const start = clampPercent(Math.min(range.start, range.end));
   const end = clampPercent(Math.max(range.start, range.end));
-  const minSpan = clampPercent(range.minSpan ?? MIN_PERCENT);
-  const currentSpan = Math.max(end - start, minSpan);
-  const targetSpan =
-    direction === 'in'
-      ? currentSpan * CHART_ZOOM_IN_FACTOR
-      : currentSpan / CHART_ZOOM_IN_FACTOR;
+  const minSpan = calculateEffectiveMinSpan(range.minSpan);
+  const currentSpan = clamp(end - start, minSpan, MAX_PERCENT);
+  const currentMultiplier = MAX_PERCENT / currentSpan;
+  const nextMultiplier = calculateNextZoomMultiplier(
+    currentMultiplier,
+    direction
+  );
   const nextSpan =
-    direction === 'out' && targetSpan >= ZOOM_OUT_FULL_RANGE_THRESHOLD
+    nextMultiplier === 1
       ? MAX_PERCENT
-      : clamp(targetSpan, minSpan, MAX_PERCENT);
+      : Math.max(MAX_PERCENT / nextMultiplier, minSpan);
   const center = (start + end) / 2;
 
   return createCenteredRange(center, nextSpan, minSpan);
@@ -84,6 +135,7 @@ function syncDataZoomPan(
       type: 'inside',
       start,
       end,
+      minSpan: CHART_MAX_ZOOM_MIN_SPAN,
       disabled: !panEnabled,
       zoomLock: true,
       zoomOnMouseWheel: false,
@@ -120,6 +172,44 @@ function readDataZoomRange(
     end: clampPercent(readFiniteNumber(value, 'end') ?? MAX_PERCENT),
     minSpan: clampPercent(readFiniteNumber(value, 'minSpan') ?? MIN_PERCENT),
   };
+}
+
+function calculateNextZoomMultiplier(
+  currentMultiplier: number,
+  direction: ChartZoomDirection
+): number {
+  if (direction === 'in') {
+    for (const zoomMultiplier of ZOOM_MULTIPLIERS) {
+      if (zoomMultiplier > currentMultiplier + FULL_RANGE_TOLERANCE) {
+        return zoomMultiplier;
+      }
+    }
+
+    return CHART_MAX_ZOOM_MULTIPLIER;
+  }
+
+  for (const zoomMultiplier of REVERSED_ZOOM_MULTIPLIERS) {
+    if (zoomMultiplier < currentMultiplier - FULL_RANGE_TOLERANCE) {
+      return zoomMultiplier;
+    }
+  }
+
+  return 1;
+}
+
+function findNearestVisibleZoomMultiplier(currentMultiplier: number): number {
+  return ZOOM_MULTIPLIERS.slice(1).reduce((nearest, zoomMultiplier) => {
+    const nearestDistance = Math.abs(currentMultiplier - nearest);
+    const zoomMultiplierDistance = Math.abs(currentMultiplier - zoomMultiplier);
+
+    return zoomMultiplierDistance < nearestDistance ? zoomMultiplier : nearest;
+  }, 2);
+}
+
+function calculateEffectiveMinSpan(minSpan: number | undefined): number {
+  const normalizedMinSpan = clampPercent(minSpan ?? CHART_MAX_ZOOM_MIN_SPAN);
+
+  return Math.min(normalizedMinSpan, CHART_MAX_ZOOM_MIN_SPAN);
 }
 
 function createCenteredRange(

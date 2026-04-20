@@ -2,64 +2,120 @@ import { SVGRenderer } from 'echarts/renderers';
 import { expect, test } from 'vitest';
 
 import { echarts } from './echarts';
-import { calculateZoomRange, zoomChart } from './zoom';
+import {
+  CHART_MAX_ZOOM_MIN_SPAN,
+  calculateZoomMultiplier,
+  calculateZoomRange,
+  readChartZoomMultiplier,
+  resetChartZoom,
+  zoomChart,
+} from './zoom';
 
 echarts.use([SVGRenderer]);
 
 test('zooms in from the full range', () => {
-  expect(calculateZoomRange({ start: 0, end: 100, minSpan: 10 }, 'in')).toEqual(
-    {
-      start: 15,
-      end: 85,
-      minSpan: 10,
-    }
-  );
+  expect(
+    calculateZoomRange(
+      { start: 0, end: 100, minSpan: CHART_MAX_ZOOM_MIN_SPAN },
+      'in'
+    )
+  ).toEqual({
+    start: 25,
+    end: 75,
+    minSpan: CHART_MAX_ZOOM_MIN_SPAN,
+  });
 });
 
-test('zooms out from a partial range', () => {
-  const range = calculateZoomRange({ start: 25, end: 75, minSpan: 10 }, 'out');
+test('zooms in through fixed multipliers', () => {
+  expect(
+    calculateZoomRange(
+      { start: 25, end: 75, minSpan: CHART_MAX_ZOOM_MIN_SPAN },
+      'in'
+    )
+  ).toEqual({
+    start: 37.5,
+    end: 62.5,
+    minSpan: CHART_MAX_ZOOM_MIN_SPAN,
+  });
+  expect(
+    calculateZoomRange(
+      { start: 37.5, end: 62.5, minSpan: CHART_MAX_ZOOM_MIN_SPAN },
+      'in'
+    )
+  ).toEqual({
+    start: 43.75,
+    end: 56.25,
+    minSpan: CHART_MAX_ZOOM_MIN_SPAN,
+  });
+});
 
-  expect(range.start).toBeCloseTo(14.285714);
-  expect(range.end).toBeCloseTo(85.714286);
-  expect(range.minSpan).toBe(10);
+test('zooms out through fixed multipliers', () => {
+  expect(
+    calculateZoomRange(
+      { start: 37.5, end: 62.5, minSpan: CHART_MAX_ZOOM_MIN_SPAN },
+      'out'
+    )
+  ).toEqual({
+    start: 25,
+    end: 75,
+    minSpan: CHART_MAX_ZOOM_MIN_SPAN,
+  });
 });
 
 test('clamps zoom out at the full range', () => {
   expect(
-    calculateZoomRange({ start: 0, end: 100, minSpan: 10 }, 'out')
+    calculateZoomRange(
+      { start: 0, end: 100, minSpan: CHART_MAX_ZOOM_MIN_SPAN },
+      'out'
+    )
   ).toEqual({
     start: 0,
     end: 100,
-    minSpan: 10,
+    minSpan: CHART_MAX_ZOOM_MIN_SPAN,
   });
 });
 
-test('snaps zoom out to the full range near the end', () => {
-  expect(calculateZoomRange({ start: 2, end: 95, minSpan: 10 }, 'out')).toEqual(
-    {
-      start: 0,
-      end: 100,
-      minSpan: 10,
-    }
-  );
-});
-
-test('respects minimum span while zooming in', () => {
-  expect(calculateZoomRange({ start: 20, end: 31, minSpan: 10 }, 'in')).toEqual(
-    {
-      start: 20.5,
-      end: 30.5,
-      minSpan: 10,
-    }
-  );
+test('clamps zoom in at 8x', () => {
+  expect(
+    calculateZoomRange(
+      { start: 43.75, end: 56.25, minSpan: CHART_MAX_ZOOM_MIN_SPAN },
+      'in'
+    )
+  ).toEqual({
+    start: 43.75,
+    end: 56.25,
+    minSpan: CHART_MAX_ZOOM_MIN_SPAN,
+  });
 });
 
 test('preserves centered ranges near edges when possible', () => {
-  expect(calculateZoomRange({ start: 5, end: 25, minSpan: 0 }, 'in')).toEqual({
-    start: 8,
-    end: 22,
-    minSpan: 0,
+  expect(
+    calculateZoomRange(
+      { start: 0, end: 50, minSpan: CHART_MAX_ZOOM_MIN_SPAN },
+      'in'
+    )
+  ).toEqual({
+    start: 12.5,
+    end: 37.5,
+    minSpan: CHART_MAX_ZOOM_MIN_SPAN,
   });
+});
+
+test('hides zoom multiplier at the full range', () => {
+  expect(calculateZoomMultiplier([{ start: 0, end: 100 }])).toBeNull();
+});
+
+test('calculates zoom multiplier from the visible range', () => {
+  expect(calculateZoomMultiplier([{ start: 25, end: 75 }])).toBe(2);
+});
+
+test('uses the most zoomed range for zoom multiplier', () => {
+  expect(
+    calculateZoomMultiplier([
+      { start: 0, end: 100 },
+      { start: 37.5, end: 62.5 },
+    ])
+  ).toBe(4);
 });
 
 test('enables pan after zooming in and disables pan at full range', () => {
@@ -79,7 +135,7 @@ test('enables pan after zooming in and disables pan at full range', () => {
           xAxisIndex: 0,
           start: 0,
           end: 100,
-          minSpan: 10,
+          minSpan: CHART_MAX_ZOOM_MIN_SPAN,
           disabled: true,
           zoomLock: true,
           zoomOnMouseWheel: false,
@@ -92,7 +148,7 @@ test('enables pan after zooming in and disables pan at full range', () => {
           yAxisIndex: 0,
           start: 0,
           end: 100,
-          minSpan: 10,
+          minSpan: CHART_MAX_ZOOM_MIN_SPAN,
           disabled: true,
           zoomLock: true,
           zoomOnMouseWheel: false,
@@ -114,7 +170,10 @@ test('enables pan after zooming in and disables pan at full range', () => {
       series: [],
     });
 
+    expect(readChartZoomMultiplier(chart)).toBeNull();
+
     zoomChart(chart, 'in');
+    expect(readChartZoomMultiplier(chart)).toBe(2);
 
     const dataZoom = chart.getOption().dataZoom;
     expect(Array.isArray(dataZoom)).toBe(true);
@@ -123,20 +182,24 @@ test('enables pan after zooming in and disables pan at full range', () => {
       return;
     }
 
-    expect(readOptionNumber(dataZoom[0], 'start')).toBe(15);
-    expect(readOptionNumber(dataZoom[0], 'end')).toBe(85);
+    expect(readOptionNumber(dataZoom[0], 'start')).toBe(25);
+    expect(readOptionNumber(dataZoom[0], 'end')).toBe(75);
     expect(readOptionNumber(dataZoom[0], 'xAxisIndex')).toBe(0);
+    expect(readOptionNumber(dataZoom[0], 'minSpan')).toBe(
+      CHART_MAX_ZOOM_MIN_SPAN
+    );
     expect(readOptionBoolean(dataZoom[0], 'disabled')).toBe(false);
     expect(readOptionBoolean(dataZoom[0], 'moveOnMouseMove')).toBe(true);
     expect(readOptionBoolean(dataZoom[0], 'preventDefaultMouseMove')).toBe(
       true
     );
-    expect(readOptionNumber(dataZoom[1], 'start')).toBe(15);
-    expect(readOptionNumber(dataZoom[1], 'end')).toBe(85);
+    expect(readOptionNumber(dataZoom[1], 'start')).toBe(25);
+    expect(readOptionNumber(dataZoom[1], 'end')).toBe(75);
     expect(readOptionNumber(dataZoom[1], 'yAxisIndex')).toBe(0);
     expect(readOptionBoolean(dataZoom[1], 'disabled')).toBe(false);
 
-    zoomChart(chart, 'out');
+    resetChartZoom(chart);
+    expect(readChartZoomMultiplier(chart)).toBeNull();
 
     const resetDataZoom = chart.getOption().dataZoom;
     expect(Array.isArray(resetDataZoom)).toBe(true);

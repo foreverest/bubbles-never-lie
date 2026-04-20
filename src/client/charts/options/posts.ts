@@ -54,7 +54,7 @@ export function createPostsOption(
       const datum = isPostBubbleDatum(params.data) ? params.data : null;
       return datum ? renderPostTooltip(datum, chartTheme.tooltipVariant) : '';
     }, chartTheme),
-    dataZoom: createSingleAxisDataZoom(10),
+    dataZoom: createSingleAxisDataZoom(),
     xAxis: createTimeXAxis(startTime, endTime, getVisibleTimeRange, chartTheme),
     yAxis: {
       ...createUpvotesYAxis(chartTheme),

@@ -2,6 +2,7 @@ import { expect, test } from 'vitest';
 
 import type { ChartResponseMetadata, ChartPost } from '../../../shared/api';
 import { toPostBubbleDatum } from '../data';
+import { CHART_MAX_ZOOM_MIN_SPAN } from '../zoom';
 import { createCommentsOption } from './comments';
 import { createContributorsOption } from './contributors';
 import { getChartTheme } from './common';
@@ -34,14 +35,14 @@ test('posts option uses initially idle zoom and toggles current-user ripple seri
   const option = createPostsOption(data, metadata, true);
 
   expect(readOptionField(option, 'dataZoom')).toEqual(
-    createExpectedSingleAxisDataZoom(10)
+    createExpectedSingleAxisDataZoom(CHART_MAX_ZOOM_MIN_SPAN)
   );
   expect(readSeries(option).length).toBe(2);
 
   const noRippleOption = createPostsOption(data, metadata, false);
 
   expect(readOptionField(noRippleOption, 'dataZoom')).toEqual(
-    createExpectedSingleAxisDataZoom(10)
+    createExpectedSingleAxisDataZoom(CHART_MAX_ZOOM_MIN_SPAN)
   );
   expect(readSeries(noRippleOption).length).toBe(1);
   expect(readOptionField(noRippleOption, 'darkMode')).toBe(false);
@@ -51,7 +52,7 @@ test('comments option uses initially idle single-axis zoom', () => {
   const option = createCommentsOption([], metadata, false);
 
   expect(readOptionField(option, 'dataZoom')).toEqual(
-    createExpectedSingleAxisDataZoom(10)
+    createExpectedSingleAxisDataZoom(CHART_MAX_ZOOM_MIN_SPAN)
   );
 });
 
@@ -156,7 +157,9 @@ test('contributors option uses posts-style grid and x-axis zoom', () => {
   expect(yAxis.max).toBe(undefined);
   expectAxisNameHidden(xAxis);
   expectAxisNameHidden(yAxis);
-  expect(dataZoom).toEqual(createExpectedSingleAxisDataZoom(10));
+  expect(dataZoom).toEqual(
+    createExpectedSingleAxisDataZoom(CHART_MAX_ZOOM_MIN_SPAN)
+  );
   expect(readSeries(option).length).toBe(2);
 });
 
