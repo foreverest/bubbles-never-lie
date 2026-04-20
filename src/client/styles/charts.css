@@ -87,6 +87,12 @@
   stroke-width: 2.25;
 }
 
+.chart-my-bubbles-toggle-shell {
+  position: relative;
+  display: inline-flex;
+  pointer-events: auto;
+}
+
 .chart-my-bubbles-toggle {
   display: inline-flex;
   width: 32px;
@@ -114,6 +120,39 @@
   overflow: visible;
   fill: currentColor;
   stroke: none;
+}
+
+.chart-my-bubbles-toggle__tooltip {
+  position: absolute;
+  top: 50%;
+  right: calc(100% + 8px);
+  z-index: 1;
+  width: max-content;
+  max-width: calc(100vw - 64px);
+  padding: 7px 9px;
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  background: var(--color-surface);
+  box-shadow: var(--shadow-menu);
+  color: var(--color-text);
+  font-size: 0.76rem;
+  font-weight: 800;
+  line-height: 1.15;
+  opacity: 0;
+  overflow-wrap: anywhere;
+  pointer-events: none;
+  transform: translate(4px, -50%);
+  transition:
+    opacity 120ms ease,
+    transform 120ms ease,
+    visibility 120ms ease;
+  visibility: hidden;
+}
+
+.chart-my-bubbles-toggle:hover + .chart-my-bubbles-toggle__tooltip {
+  opacity: 1;
+  transform: translate(0, -50%);
+  visibility: visible;
 }
 
 .chart-my-bubbles-toggle--enabled,

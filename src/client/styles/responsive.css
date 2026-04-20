@@ -57,6 +57,10 @@
     height: 34px;
   }
 
+  .chart-my-bubbles-toggle__tooltip {
+    display: none;
+  }
+
   .section-menu-button,
   .chart-menu-button {
     height: 34px;
