@@ -3,7 +3,7 @@ import type { MouseEvent as ReactMouseEvent } from 'react';
 
 import type { ChartResponseMetadata } from '../../shared/api';
 import chevronIcon from '../assets/icons/chevron.svg?raw';
-import settingsIcon from '../assets/icons/settings.svg?raw';
+import menuIcon from '../assets/icons/menu.svg?raw';
 import type { TabName, ThemeMode } from '../types';
 import { TABS, getTabLabel } from '../types';
 import { formatDateRangeLabels } from '../utils/date';
@@ -351,7 +351,5 @@ function ChevronIcon({ className }: { className: string }) {
 }
 
 function SettingsIcon() {
-  return (
-    <TrustedSvgIcon className="chart-menu-button__icon" svg={settingsIcon} />
-  );
+  return <TrustedSvgIcon className="chart-menu-button__icon" svg={menuIcon} />;
 }
