@@ -149,24 +149,33 @@
   visibility: hidden;
 }
 
-.chart-my-bubbles-toggle:hover + .chart-my-bubbles-toggle__tooltip {
-  opacity: 1;
-  transform: translate(0, -50%);
-  visibility: visible;
-}
-
 .chart-my-bubbles-toggle--enabled,
-.chart-my-bubbles-toggle:hover,
 .chart-my-bubbles-toggle:focus-visible,
-.chart-zoom-controls__button:hover,
 .chart-zoom-controls__button:focus-visible,
-.chart-zoom-controls__label:hover,
-.chart-zoom-controls__label:focus-visible {
+.chart-zoom-controls__button:hover,
+.chart-zoom-controls__label:focus-visible,
+.chart-zoom-controls__label:hover {
   border-color: var(--color-accent);
   background: var(--color-accent-soft);
   color: var(--color-accent-strong);
   outline: none;
   box-shadow: 0 0 0 3px var(--color-focus-ring);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .chart-my-bubbles-toggle:hover + .chart-my-bubbles-toggle__tooltip {
+    opacity: 1;
+    transform: translate(0, -50%);
+    visibility: visible;
+  }
+
+  .chart-my-bubbles-toggle:hover {
+    border-color: var(--color-accent);
+    background: var(--color-accent-soft);
+    color: var(--color-accent-strong);
+    outline: none;
+    box-shadow: 0 0 0 3px var(--color-focus-ring);
+  }
 }
 
 .chart-help {
