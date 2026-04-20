@@ -45,7 +45,7 @@ export function createCommentsOption(
         ? renderCommentTooltip(datum, chartTheme.tooltipVariant)
         : '';
     }, chartTheme),
-    dataZoom: createSingleAxisDataZoom(10),
+    dataZoom: createSingleAxisDataZoom(),
     xAxis: createTimeXAxis(startTime, endTime, getVisibleTimeRange, chartTheme),
     yAxis: {
       ...createUpvotesYAxis(chartTheme),

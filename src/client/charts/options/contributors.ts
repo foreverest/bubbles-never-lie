@@ -62,7 +62,7 @@ export function createContributorsOption(
     backgroundColor: chartTheme.backgroundColor,
     darkMode: chartTheme.mode === 'dark',
     grid: createChartGrid({ right: CONTRIBUTOR_GRID_RIGHT }),
-    dataZoom: createSingleAxisDataZoom(10),
+    dataZoom: createSingleAxisDataZoom(),
     tooltip: createChartTooltip((params) => {
       const datum = isContributorBubbleDatum(params.data) ? params.data : null;
       return datum

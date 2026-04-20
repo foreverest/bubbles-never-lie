@@ -23,6 +23,25 @@
   pointer-events: none;
 }
 
+.chart-zoom-controls__label {
+  justify-self: center;
+  min-width: 32px;
+  padding: 3px 6px;
+  border: 1px solid var(--color-border-strong);
+  border-radius: 8px;
+  background: var(--color-header-surface);
+  box-shadow: var(--shadow-button);
+  color: var(--color-muted);
+  cursor: pointer;
+  font-family: inherit;
+  font-size: 0.68rem;
+  font-weight: 800;
+  line-height: 1;
+  pointer-events: auto;
+  text-align: center;
+  touch-action: manipulation;
+}
+
 .chart-zoom-controls__button {
   display: inline-flex;
   width: 32px;
@@ -55,7 +74,9 @@
 }
 
 .chart-zoom-controls__button:hover,
-.chart-zoom-controls__button:focus-visible {
+.chart-zoom-controls__button:focus-visible,
+.chart-zoom-controls__label:hover,
+.chart-zoom-controls__label:focus-visible {
   border-color: var(--color-accent);
   background: var(--color-accent-soft);
   color: var(--color-accent-strong);
