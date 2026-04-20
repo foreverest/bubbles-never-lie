@@ -27,7 +27,7 @@ export function zoomChart(
   chart: EChartsInstance,
   direction: ChartZoomDirection
 ): void {
-  const dataZoomRanges = collectDataZoomRanges(chart.getOption().dataZoom);
+  const dataZoomRanges = collectDataZoomRanges(readChartDataZoomOption(chart));
   if (dataZoomRanges.length === 0) {
     return;
   }
@@ -50,7 +50,7 @@ export function zoomChart(
 }
 
 export function resetChartZoom(chart: EChartsInstance): void {
-  const dataZoomRanges = collectDataZoomRanges(chart.getOption().dataZoom);
+  const dataZoomRanges = collectDataZoomRanges(readChartDataZoomOption(chart));
   if (dataZoomRanges.length === 0) {
     return;
   }
@@ -70,8 +70,31 @@ export function resetChartZoom(chart: EChartsInstance): void {
 
 export function readChartZoomMultiplier(chart: EChartsInstance): number | null {
   return calculateZoomMultiplier(
-    collectDataZoomRanges(chart.getOption().dataZoom)
+    collectDataZoomRanges(readChartDataZoomOption(chart))
   );
+}
+
+export function applyChartOptionPreservingZoom(
+  chart: EChartsInstance,
+  applyOption: () => void
+): void {
+  const dataZoomRanges = collectDataZoomRanges(
+    readChartDataZoomOption(chart)
+  ).map(({ start, end }) => ({ start, end }));
+
+  applyOption();
+
+  if (dataZoomRanges.length === 0) {
+    return;
+  }
+
+  syncDataZoomPan(chart, dataZoomRanges);
+}
+
+function readChartDataZoomOption(chart: EChartsInstance): unknown {
+  const option: unknown = chart.getOption();
+
+  return isOptionRecord(option) ? option.dataZoom : undefined;
 }
 
 export function calculateZoomMultiplier(

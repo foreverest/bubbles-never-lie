@@ -14,6 +14,7 @@ import { createPostsOption } from './options/posts';
 import { readVisibleTimeRange } from './timeAxis';
 import type { ChartEventParams, PostBubbleDatum } from './types';
 import { useEChart } from './useEChart';
+import { applyChartOptionPreservingZoom } from './zoom';
 
 export function PostsChart({
   data,
@@ -56,16 +57,18 @@ export function PostsChart({
       return;
     }
 
-    chart.setOption(
-      createPostsOption(
-        chartData,
-        data,
-        currentUserRippleEnabled,
-        () => readVisibleTimeRange(chart),
-        resolvedTheme
-      ),
-      true
-    );
+    applyChartOptionPreservingZoom(chart, () => {
+      chart.setOption(
+        createPostsOption(
+          chartData,
+          data,
+          currentUserRippleEnabled,
+          () => readVisibleTimeRange(chart),
+          resolvedTheme
+        ),
+        true
+      );
+    });
   }, [chartData, chartRef, currentUserRippleEnabled, data, resolvedTheme]);
 
   return (

@@ -4,6 +4,7 @@ import { expect, test } from 'vitest';
 import { echarts } from './echarts';
 import {
   CHART_MAX_ZOOM_MIN_SPAN,
+  applyChartOptionPreservingZoom,
   calculateZoomMultiplier,
   calculateZoomRange,
   readChartZoomMultiplier,
@@ -220,9 +221,105 @@ test('enables pan after zooming in and disables pan at full range', () => {
   }
 });
 
+test('preserves zoom range across a full chart option replacement', () => {
+  const chart = echarts.init(null, undefined, {
+    renderer: 'svg',
+    ssr: true,
+    width: 220,
+    height: 240,
+  });
+
+  try {
+    chart.setOption(createZoomableChartOption([]));
+    zoomChart(chart, 'in');
+
+    applyChartOptionPreservingZoom(chart, () => {
+      chart.setOption(createZoomableChartOption([{ type: 'scatter' }]), true);
+    });
+
+    expect(readChartZoomMultiplier(chart)).toBe(2);
+
+    const dataZoom = chart.getOption().dataZoom;
+    expect(Array.isArray(dataZoom)).toBe(true);
+
+    if (!Array.isArray(dataZoom)) {
+      return;
+    }
+
+    expect(readOptionNumber(dataZoom[0], 'start')).toBe(25);
+    expect(readOptionNumber(dataZoom[0], 'end')).toBe(75);
+    expect(readOptionBoolean(dataZoom[0], 'disabled')).toBe(false);
+    expect(readOptionBoolean(dataZoom[0], 'moveOnMouseMove')).toBe(true);
+  } finally {
+    chart.dispose();
+  }
+});
+
+test('applies initial chart option when there is no zoom state yet', () => {
+  const chart = echarts.init(null, undefined, {
+    renderer: 'svg',
+    ssr: true,
+    width: 220,
+    height: 240,
+  });
+
+  try {
+    applyChartOptionPreservingZoom(chart, () => {
+      chart.setOption(createZoomableChartOption([]), true);
+    });
+
+    expect(readChartZoomMultiplier(chart)).toBeNull();
+
+    const dataZoom = chart.getOption().dataZoom;
+    expect(Array.isArray(dataZoom)).toBe(true);
+
+    if (!Array.isArray(dataZoom)) {
+      return;
+    }
+
+    expect(readOptionNumber(dataZoom[0], 'start')).toBe(0);
+    expect(readOptionNumber(dataZoom[0], 'end')).toBe(100);
+    expect(readOptionBoolean(dataZoom[0], 'disabled')).toBe(true);
+  } finally {
+    chart.dispose();
+  }
+});
+
 type OptionRecord = {
   readonly [key: string]: unknown;
 };
+
+function createZoomableChartOption(series: readonly object[]) {
+  return {
+    grid: {},
+    dataZoom: [
+      {
+        type: 'inside',
+        xAxisIndex: 0,
+        start: 0,
+        end: 100,
+        minSpan: CHART_MAX_ZOOM_MIN_SPAN,
+        disabled: true,
+        zoomLock: true,
+        zoomOnMouseWheel: false,
+        moveOnMouseMove: false,
+        moveOnMouseWheel: false,
+        preventDefaultMouseMove: false,
+      },
+    ],
+    xAxis: {
+      type: 'value',
+      min: 0,
+      max: 100,
+    },
+    yAxis: {
+      type: 'value',
+      min: 0,
+      max: 100,
+    },
+    series,
+  };
+}
 
 function readOptionNumber(value: unknown, key: string): number | null {
   if (!isOptionRecord(value)) {

@@ -22,6 +22,7 @@ import {
 import { readVisibleTimeRange } from './timeAxis';
 import type { ChartEventParams, CommentBubbleDatum } from './types';
 import { useEChart } from './useEChart';
+import { applyChartOptionPreservingZoom } from './zoom';
 
 export function CommentsChart({
   data,
@@ -146,16 +147,18 @@ export function CommentsChart({
     }
 
     emphasizedCommentGroupRef.current = null;
-    chart.setOption(
-      createCommentsOption(
-        chartData,
-        data,
-        currentUserRippleEnabled,
-        () => readVisibleTimeRange(chart),
-        resolvedTheme
-      ),
-      true
-    );
+    applyChartOptionPreservingZoom(chart, () => {
+      chart.setOption(
+        createCommentsOption(
+          chartData,
+          data,
+          currentUserRippleEnabled,
+          () => readVisibleTimeRange(chart),
+          resolvedTheme
+        ),
+        true
+      );
+    });
   }, [chartData, chartRef, currentUserRippleEnabled, data, resolvedTheme]);
 
   return (

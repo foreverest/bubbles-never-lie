@@ -13,6 +13,7 @@ import { createContributorsChartHelpDetails } from './help';
 import { createContributorsOption } from './options/contributors';
 import type { ChartEventParams, ContributorBubbleDatum } from './types';
 import { useEChart } from './useEChart';
+import { applyChartOptionPreservingZoom } from './zoom';
 
 export function ContributorsChart({
   data,
@@ -58,14 +59,16 @@ export function ContributorsChart({
       return;
     }
 
-    chart.setOption(
-      createContributorsOption(
-        chartData,
-        currentUserRippleEnabled,
-        resolvedTheme
-      ),
-      true
-    );
+    applyChartOptionPreservingZoom(chart, () => {
+      chart.setOption(
+        createContributorsOption(
+          chartData,
+          currentUserRippleEnabled,
+          resolvedTheme
+        ),
+        true
+      );
+    });
   }, [chartData, chartRef, currentUserRippleEnabled, resolvedTheme]);
 
   return (
