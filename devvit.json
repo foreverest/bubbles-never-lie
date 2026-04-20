@@ -25,6 +25,9 @@
       "scope": "moderator"
     }
   },
+  "marketingAssets": {
+    "icon": "assets/icon.png"
+  },
   "menu": {
     "items": [
       {
