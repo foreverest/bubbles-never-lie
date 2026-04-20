@@ -1,10 +1,11 @@
-import { context } from '@devvit/web/server';
+import { context, reddit } from '@devvit/web/server';
 import type {
   CommentV2,
   OnCommentCreateRequest,
   OnPostCreateRequest,
   PostV2,
   SubredditV2,
+  T2,
   UserV2,
 } from '@devvit/web/shared';
 import { createDataLayer, type DataLayer } from '../data';
@@ -31,9 +32,12 @@ type EventContributorRefresh = (
   options: EventContributorRefreshOptions
 ) => Promise<number>;
 
+type EventUsernameResolver = (authorId: T2) => Promise<string | null>;
+
 export type EventCacheDependencies = {
   createDataLayerForSubreddit?: (subredditName: string) => EventDataLayer;
   refreshContributor?: EventContributorRefresh;
+  resolveUsernameById?: EventUsernameResolver;
   currentSubredditName?: string;
   now?: () => Date;
 };
@@ -53,6 +57,7 @@ export const cachePostCreateEvent = async (
   {
     createDataLayerForSubreddit = createDataLayer,
     refreshContributor = refreshEventContributor,
+    resolveUsernameById = resolveEventUsernameById,
     currentSubredditName = context.subredditName,
     now = () => new Date(),
   }: EventCacheDependencies = {}
@@ -61,7 +66,11 @@ export const cachePostCreateEvent = async (
     input.subreddit,
     currentSubredditName
   );
-  const post = createPostEntityFromEvent(input.post, input.author);
+  const post = await createPostEntityFromEvent(
+    input.post,
+    input.author,
+    resolveUsernameById
+  );
 
   if (!post) {
     return createSkippedEventCacheResult({
@@ -96,6 +105,7 @@ export const cacheCommentCreateEvent = async (
   {
     createDataLayerForSubreddit = createDataLayer,
     refreshContributor = refreshEventContributor,
+    resolveUsernameById = resolveEventUsernameById,
     currentSubredditName = context.subredditName,
     now = () => new Date(),
   }: EventCacheDependencies = {}
@@ -104,10 +114,11 @@ export const cacheCommentCreateEvent = async (
     input.subreddit,
     currentSubredditName
   );
-  const comment = createCommentEntityFromEvent(
+  const comment = await createCommentEntityFromEvent(
     input.comment,
     input.post,
-    input.author
+    input.author,
+    resolveUsernameById
   );
 
   if (!comment) {
@@ -148,6 +159,12 @@ const refreshEventContributor: EventContributorRefresh = async ({
   return result.refreshedContributorCount;
 };
 
+const resolveEventUsernameById: EventUsernameResolver = async (authorId) => {
+  const user = await reddit.getUserById(authorId);
+
+  return user?.username ?? null;
+};
+
 const refreshContributorForAuthor = async ({
   subredditName,
   authorName,
@@ -178,15 +195,28 @@ const refreshContributorForAuthor = async ({
 
 const createPostEntityFromEvent = (
   post: PostV2 | undefined,
-  author: UserV2 | undefined
-): PostEntity | null => {
+  author: UserV2 | undefined,
+  resolveUsernameById: EventUsernameResolver
+): Promise<PostEntity | null> => {
   if (!post) {
-    return null;
+    return Promise.resolve(null);
   }
 
+  return createPostEntityFromValidEvent(post, author, resolveUsernameById);
+};
+
+const createPostEntityFromValidEvent = async (
+  post: PostV2,
+  author: UserV2 | undefined,
+  resolveUsernameById: EventUsernameResolver
+): Promise<PostEntity | null> => {
   const id = normalizeThingId(post.id, 't3_');
   const title = readRequiredText(post.title);
-  const authorName = readRequiredText(author?.name);
+  const authorName = await resolveEventAuthorName({
+    candidates: [author?.name],
+    authorIds: [author?.id, post.authorId],
+    resolveUsernameById,
+  });
   const createdAt = readEventCreatedAt(post.createdAt);
   const permalink = readRequiredText(post.permalink);
   const comments = readFiniteNumber(post.numComments);
@@ -215,11 +245,12 @@ const createPostEntityFromEvent = (
   };
 };
 
-const createCommentEntityFromEvent = (
+const createCommentEntityFromEvent = async (
   comment: CommentV2 | undefined,
   post: PostV2 | undefined,
-  author: UserV2 | undefined
-): CommentEntity | null => {
+  author: UserV2 | undefined,
+  resolveUsernameById: EventUsernameResolver
+): Promise<CommentEntity | null> => {
   if (!comment) {
     return null;
   }
@@ -228,8 +259,11 @@ const createCommentEntityFromEvent = (
   const postId =
     normalizeThingId(comment.postId, 't3_') ??
     normalizeThingId(post?.id, 't3_');
-  const authorName =
-    readRequiredText(comment.author) ?? readRequiredText(author?.name);
+  const authorName = await resolveEventAuthorName({
+    candidates: [author?.name, comment.author],
+    authorIds: [author?.id],
+    resolveUsernameById,
+  });
   const createdAt = readEventCreatedAt(comment.createdAt);
   const permalink = readRequiredText(comment.permalink);
   const score = readFiniteNumber(comment.score);
@@ -254,6 +288,74 @@ const createCommentEntityFromEvent = (
     createdAt,
     permalink,
   };
+};
+
+const resolveEventAuthorName = async ({
+  candidates,
+  authorIds,
+  resolveUsernameById,
+}: {
+  candidates: Array<string | undefined>;
+  authorIds: Array<string | undefined>;
+  resolveUsernameById: EventUsernameResolver;
+}): Promise<string | null> => {
+  for (const candidate of candidates) {
+    const normalizedCandidate = readRequiredText(candidate);
+
+    if (!normalizedCandidate) {
+      continue;
+    }
+
+    if (!isThingId(normalizedCandidate)) {
+      return normalizedCandidate;
+    }
+
+    if (isAccountId(normalizedCandidate)) {
+      const username = await tryResolveUsernameById(
+        normalizedCandidate,
+        resolveUsernameById
+      );
+
+      if (username) {
+        return username;
+      }
+    }
+  }
+
+  for (const authorId of authorIds) {
+    const normalizedAuthorId = readRequiredText(authorId);
+
+    if (!isAccountId(normalizedAuthorId)) {
+      continue;
+    }
+
+    const username = await tryResolveUsernameById(
+      normalizedAuthorId,
+      resolveUsernameById
+    );
+
+    if (username) {
+      return username;
+    }
+  }
+
+  return null;
+};
+
+const tryResolveUsernameById = async (
+  authorId: T2,
+  resolveUsernameById: EventUsernameResolver
+): Promise<string | null> => {
+  try {
+    return readRequiredText(await resolveUsernameById(authorId));
+  } catch (error) {
+    logger.warn('Unable to resolve event author username by id', {
+      authorId,
+      error: getErrorMessage(error),
+    });
+
+    return null;
+  }
 };
 
 const upsertExistingParentPostFromEvent = async (
@@ -354,6 +456,11 @@ const readRequiredText = (value: string | null | undefined): string | null => {
 
   return trimmed === '' ? null : trimmed;
 };
+
+const isThingId = (value: string): boolean => /^t\d_/.test(value);
+
+const isAccountId = (value: string | null): value is T2 =>
+  value?.startsWith('t2_') ?? false;
 
 const readFiniteNumber = (value: number): number | null =>
   Number.isFinite(value) ? value : null;

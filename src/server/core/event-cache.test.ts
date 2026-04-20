@@ -115,13 +115,14 @@ type ContributorRefreshCall = {
   username: string;
 };
 
+type UsernameResolutionCall = {
+  authorId: string;
+};
+
 test('post create events write posts and refresh the post author contributor', async () => {
   const redisClient = new FakeRedisDataClient();
   const contributorRefreshCalls: ContributorRefreshCall[] = [];
-  const dependencies = createDependencies(
-    redisClient,
-    contributorRefreshCalls
-  );
+  const dependencies = createDependencies(redisClient, contributorRefreshCalls);
   const createdAt = Date.parse('2026-04-15T10:00:00.000Z') / 1000;
 
   const result = await cachePostCreateEvent(
@@ -165,14 +166,88 @@ test('post create events write posts and refresh the post author contributor', a
   ]);
 });
 
+test('event author account ids are resolved before caching contributors', async () => {
+  const redisClient = new FakeRedisDataClient();
+  const contributorRefreshCalls: ContributorRefreshCall[] = [];
+  const usernameResolutionCalls: UsernameResolutionCall[] = [];
+  const dependencies = createDependencies(
+    redisClient,
+    contributorRefreshCalls,
+    usernameResolutionCalls,
+    new Map([
+      ['t2_aliceid', 'alice'],
+      ['t2_bobid', 'bob'],
+    ])
+  );
+
+  await cachePostCreateEvent(
+    createPostCreateRequest({
+      post: createEventPost({
+        id: 'post_by_id',
+        authorId: 't2_aliceid',
+      }),
+      author: createEventUser({
+        id: 't2_aliceid',
+        name: 't2_aliceid',
+      }),
+    }),
+    dependencies
+  );
+  await cacheCommentCreateEvent(
+    createCommentCreateRequest({
+      comment: createEventComment({
+        id: 'comment_by_id',
+        author: 't2_bobid',
+      }),
+      author: createEventUser({
+        id: 't2_bobid',
+        name: 't2_bobid',
+      }),
+    }),
+    dependencies
+  );
+
+  const dataLayer = createDataLayer('examplesub', redisClient);
+
+  assert.deepEqual(await dataLayer.posts.getById('t3_post_by_id'), {
+    id: 't3_post_by_id',
+    title: 'Post title',
+    authorName: 'alice',
+    comments: 1,
+    score: 10,
+    createdAt: '2026-04-15T09:00:00.000Z',
+    permalink: '/r/ExampleSub/comments/post_1/post_title/',
+  });
+  assert.deepEqual(await dataLayer.comments.getById('t1_comment_by_id'), {
+    id: 't1_comment_by_id',
+    postId: 't3_post_1',
+    authorName: 'bob',
+    score: 5,
+    bodyPreview: 'Comment body',
+    createdAt: '2026-04-15T10:00:00.000Z',
+    permalink: '/r/ExampleSub/comments/post_1/comment_1/',
+  });
+  assert.deepEqual(contributorRefreshCalls, [
+    {
+      subredditName: 'examplesub',
+      username: 'alice',
+    },
+    {
+      subredditName: 'examplesub',
+      username: 'bob',
+    },
+  ]);
+  assert.deepEqual(usernameResolutionCalls, [
+    { authorId: 't2_aliceid' },
+    { authorId: 't2_bobid' },
+  ]);
+});
+
 test('comment create events write comments and update cached parent post counts', async () => {
   const redisClient = new FakeRedisDataClient();
   const dataLayer = createDataLayer('examplesub', redisClient);
   const contributorRefreshCalls: ContributorRefreshCall[] = [];
-  const dependencies = createDependencies(
-    redisClient,
-    contributorRefreshCalls
-  );
+  const dependencies = createDependencies(redisClient, contributorRefreshCalls);
 
   await dataLayer.posts.upsert({
     id: 't3_post_1',
@@ -245,10 +320,7 @@ test('comment create events write comments and update cached parent post counts'
 test('missing post or comment payloads are no-op successes', async () => {
   const redisClient = new FakeRedisDataClient();
   const contributorRefreshCalls: ContributorRefreshCall[] = [];
-  const dependencies = createDependencies(
-    redisClient,
-    contributorRefreshCalls
-  );
+  const dependencies = createDependencies(redisClient, contributorRefreshCalls);
 
   const postResult = await cachePostCreateEvent(
     {
@@ -294,10 +366,7 @@ test('missing post or comment payloads are no-op successes', async () => {
 test('deleted authors are cached without contributor metadata refresh', async () => {
   const redisClient = new FakeRedisDataClient();
   const contributorRefreshCalls: ContributorRefreshCall[] = [];
-  const dependencies = createDependencies(
-    redisClient,
-    contributorRefreshCalls
-  );
+  const dependencies = createDependencies(redisClient, contributorRefreshCalls);
 
   const result = await cacheCommentCreateEvent(
     createCommentCreateRequest({
@@ -316,13 +385,19 @@ test('deleted authors are cached without contributor metadata refresh', async ()
 
 const createDependencies = (
   redisClient: RedisDataClient,
-  contributorRefreshCalls: ContributorRefreshCall[]
+  contributorRefreshCalls: ContributorRefreshCall[],
+  usernameResolutionCalls: UsernameResolutionCall[] = [],
+  usernamesById: Map<string, string> = new Map()
 ): EventCacheDependencies => ({
   createDataLayerForSubreddit: (subredditName) =>
     createDataLayer(subredditName, redisClient),
   refreshContributor: async (options) => {
     contributorRefreshCalls.push(options);
     return 1;
+  },
+  resolveUsernameById: async (authorId) => {
+    usernameResolutionCalls.push({ authorId });
+    return usernamesById.get(authorId) ?? null;
   },
   currentSubredditName: 'FallbackSub',
   now: () => new Date('2026-04-15T12:00:00.000Z'),
@@ -407,9 +482,7 @@ const createEventPost = (overrides: Partial<PostV2> = {}): PostV2 => ({
   ...overrides,
 });
 
-const createEventComment = (
-  overrides: Partial<CommentV2> = {}
-): CommentV2 => ({
+const createEventComment = (overrides: Partial<CommentV2> = {}): CommentV2 => ({
   id: 'comment_1',
   parentId: 't3_post_1',
   body: 'Comment body',

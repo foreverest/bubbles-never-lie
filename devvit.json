@@ -44,6 +44,30 @@
     "onPostCreate": "/internal/triggers/on-post-create",
     "onCommentCreate": "/internal/triggers/on-comment-create"
   },
+  "scheduler": {
+    "tasks": {
+      "refreshPostCache": {
+        "endpoint": "/internal/cache/refresh-post-cache",
+        "cron": "* * * * *"
+      },
+      "refreshCommentCache": {
+        "endpoint": "/internal/cache/refresh-comment-cache",
+        "cron": "0 * * * *"
+      },
+      "refreshCommentCacheQueue": {
+        "endpoint": "/internal/cache/refresh-comment-cache-queue",
+        "cron": "* * * * *"
+      },
+      "refreshContributorCache": {
+        "endpoint": "/internal/cache/refresh-contributor-cache",
+        "cron": "*/30 * * * *"
+      },
+      "refreshSubredditIcons": {
+        "endpoint": "/internal/cache/refresh-subreddit-icons",
+        "cron": "0 * * * *"
+      }
+    }
+  },
   "scripts": {
     "dev": "vite build --watch",
     "build": "vite build"
