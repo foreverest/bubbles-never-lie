@@ -31,6 +31,17 @@ export type ValidatedPostConfig = {
   end: Date;
 };
 
+export class PostFormValidationError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = 'PostFormValidationError';
+  }
+}
+
+export const isPostFormValidationError = (
+  error: unknown
+): error is PostFormValidationError => error instanceof PostFormValidationError;
+
 type DateParts = {
   year: number;
   month: number;
@@ -72,7 +83,7 @@ export const createPostForm = (options: CreatePostFormOptions = {}): Form => {
       name: 'title',
       label: 'Title',
       placeholder: 'Subreddit Activity Charts',
-      defaultValue: normalizeTitle(defaultValues.title),
+      defaultValue: defaultValues.title ?? normalizeTitle(defaultValues.title),
     },
     {
       type: 'select',
@@ -138,7 +149,7 @@ export const createPostForm = (options: CreatePostFormOptions = {}): Form => {
       type: 'boolean',
       name: 'useTestDataSource',
       label: `Use r/${TEST_DATA_SOURCE_SUBREDDIT_NAME} as data source`,
-      defaultValue: false,
+      defaultValue: defaultValues.useTestDataSource === true,
     });
   }
 
@@ -259,7 +270,7 @@ export const resolveCurrentTimeZone = (
 };
 
 const createDateRangeFromParts = (parts: DateRangeParts): DateRange => {
-  validateDateParts(parts);
+  validateDateParts(parts, 'start date');
 
   const start = zonedDateTimeToUtc(parts);
   const endDate = addCalendarDays(parts, parts.durationDays);
@@ -348,7 +359,7 @@ const parseSelectNumber = (
     selectedNumber < min ||
     selectedNumber > max
   ) {
-    throw new Error(`Select a valid ${fieldLabel}.`);
+    throw new PostFormValidationError(`Select a valid ${fieldLabel}.`);
   }
 
   return selectedNumber;
@@ -358,7 +369,7 @@ const parseTimeZone = (value: SelectValue): string => {
   const timeZone = readSingleSelectValue(value, 'timezone');
 
   if (!isValidTimeZone(timeZone)) {
-    throw new Error('Select a valid timezone.');
+    throw new PostFormValidationError('Select a valid timezone.');
   }
 
   return timeZone;
@@ -373,7 +384,7 @@ const readSingleSelectValue = (
     typeof selectedValue === 'string' ? selectedValue.trim() : '';
 
   if (!normalized) {
-    throw new Error(`Select a ${fieldLabel}.`);
+    throw new PostFormValidationError(`Select a ${fieldLabel}.`);
   }
 
   return normalized;
@@ -398,9 +409,48 @@ const validateDateParts = (parts: DateParts, fieldName = 'date'): void => {
     date.getUTCMonth() !== parts.month - 1 ||
     date.getUTCDate() !== parts.day
   ) {
-    throw new Error(`Invalid ${fieldName}.`);
+    throw new PostFormValidationError(
+      createInvalidDateMessage(parts, fieldName)
+    );
   }
 };
+
+const createInvalidDateMessage = (
+  parts: DateParts,
+  fieldName: string
+): string => {
+  if (fieldName === 'start date' && canFormatDateParts(parts)) {
+    const formattedDate = `${formatMonthName(parts.month)} ${parts.day}, ${parts.year}`;
+    return `Select a valid start date. ${formattedDate} does not exist.`;
+  }
+
+  return `Select a valid ${fieldName}.`;
+};
+
+const canFormatDateParts = (parts: DateParts): boolean =>
+  Number.isInteger(parts.year) &&
+  Number.isInteger(parts.month) &&
+  Number.isInteger(parts.day) &&
+  parts.month >= 1 &&
+  parts.month <= monthNames.length;
+
+const monthNames = [
+  'January',
+  'February',
+  'March',
+  'April',
+  'May',
+  'June',
+  'July',
+  'August',
+  'September',
+  'October',
+  'November',
+  'December',
+];
+
+const formatMonthName = (month: number): string =>
+  monthNames[month - 1] ?? 'Month';
 
 const isValidTimeZone = (timeZone: string): boolean => {
   try {
@@ -440,7 +490,9 @@ const zonedDateTimeToUtc = (parts: ZonedDateParts): Date => {
     actualParts.day !== parts.day ||
     actualParts.hour !== defaultStartHour
   ) {
-    throw new Error('Selected start time does not exist in that timezone.');
+    throw new PostFormValidationError(
+      'Selected start time does not exist in that timezone.'
+    );
   }
 
   return date;

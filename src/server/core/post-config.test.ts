@@ -4,6 +4,7 @@ import {
   createPostData,
   createPostForm,
   parseFormDateRange,
+  PostFormValidationError,
   readPostConfig,
   type CreatePostFormValues,
 } from './post-config';
@@ -21,6 +22,23 @@ test('parses selected day from midnight in the selected timezone', () => {
     startIso: '2026-01-01T15:00:00.000Z',
     endIso: '2026-01-02T15:00:00.000Z',
   });
+});
+
+test('rejects impossible selected start dates before date rollover', () => {
+  const invalidValues: CreatePostFormValues = {
+    ...formValues,
+    startMonth: ['2'],
+    startDay: ['30'],
+  };
+  const rolledDate = new Date(Date.UTC(2026, 1, 30));
+
+  expect(rolledDate.toISOString()).toBe('2026-03-02T00:00:00.000Z');
+  expect(() => parseFormDateRange(invalidValues)).toThrow(
+    PostFormValidationError
+  );
+  expect(() => parseFormDateRange(invalidValues)).toThrow(
+    'Select a valid start date. February 30, 2026 does not exist.'
+  );
 });
 
 test('create post form omits hour and prioritizes timezone options', () => {
