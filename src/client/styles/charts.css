@@ -43,6 +43,17 @@
   touch-action: manipulation;
 }
 
+.chart-zoom-controls__icon {
+  display: block;
+  width: 16px;
+  height: 16px;
+  overflow: visible;
+  fill: none;
+  stroke: currentColor;
+  stroke-linecap: round;
+  stroke-width: 2.25;
+}
+
 .chart-zoom-controls__button:hover,
 .chart-zoom-controls__button:focus-visible {
   border-color: var(--color-accent);
@@ -50,11 +61,6 @@
   color: var(--color-accent-strong);
   outline: none;
   box-shadow: 0 0 0 3px var(--color-focus-ring);
-}
-
-.chart-zoom-controls__button--out span {
-  display: inline-block;
-  transform: scaleX(1.7);
 }
 
 .chart-help {

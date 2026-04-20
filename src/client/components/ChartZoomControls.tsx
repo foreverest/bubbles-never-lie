@@ -25,7 +25,15 @@ export function ChartZoomControls({ chartRef }: ChartZoomControlsProps) {
         onClick={() => handleZoom('in')}
         type="button"
       >
-        <span aria-hidden="true">+</span>
+        <svg
+          aria-hidden="true"
+          className="chart-zoom-controls__icon"
+          focusable="false"
+          viewBox="0 0 16 16"
+        >
+          <path d="M3 8h10" />
+          <path d="M8 3v10" />
+        </svg>
       </button>
       <button
         aria-label="Zoom out"
@@ -33,7 +41,14 @@ export function ChartZoomControls({ chartRef }: ChartZoomControlsProps) {
         onClick={() => handleZoom('out')}
         type="button"
       >
-        <span aria-hidden="true">-</span>
+        <svg
+          aria-hidden="true"
+          className="chart-zoom-controls__icon"
+          focusable="false"
+          viewBox="0 0 16 16"
+        >
+          <path d="M3 8h10" />
+        </svg>
       </button>
     </div>
   );
