@@ -82,7 +82,14 @@ export function ChartZoomControls({ chartRef }: ChartZoomControlsProps) {
         >
           {zoomMultiplier}X
         </button>
-      ) : null}
+      ) : (
+        <span
+          aria-hidden="true"
+          className="chart-zoom-controls__label chart-zoom-controls__label--placeholder"
+        >
+          1X
+        </span>
+      )}
       <button
         aria-label="Zoom in"
         className="chart-zoom-controls__button"

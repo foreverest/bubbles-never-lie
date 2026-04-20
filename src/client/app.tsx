@@ -78,16 +78,17 @@ export function App({ onRequestExpandedMode }: AppProps) {
   }
 
   const { data: postsData } = postsState;
+  const handleCurrentUserRippleEnabledChange = (
+    nextCurrentUserRippleEnabled: boolean
+  ) =>
+    setChartPreferences((preferences) => ({
+      ...preferences,
+      currentUserRippleEnabled: nextCurrentUserRippleEnabled,
+    }));
   const chartHeaderProps = {
     data: postsData,
     activeTab,
     onTabChange: setActiveTab,
-    currentUserRippleEnabled,
-    onCurrentUserRippleEnabledChange: (nextCurrentUserRippleEnabled: boolean) =>
-      setChartPreferences((preferences) => ({
-        ...preferences,
-        currentUserRippleEnabled: nextCurrentUserRippleEnabled,
-      })),
     themeMode,
     onThemeModeChange: (nextThemeMode: ThemeMode) =>
       setChartPreferences((preferences) => ({
@@ -107,18 +108,27 @@ export function App({ onRequestExpandedMode }: AppProps) {
           <PostsPanel
             data={postsData}
             currentUserRippleEnabled={currentUserRippleEnabled}
+            onCurrentUserRippleEnabledChange={
+              handleCurrentUserRippleEnabledChange
+            }
             resolvedTheme={resolvedTheme}
           />
         ) : activeTab === 'comments' ? (
           <CommentsPanel
             state={commentsState}
             currentUserRippleEnabled={currentUserRippleEnabled}
+            onCurrentUserRippleEnabledChange={
+              handleCurrentUserRippleEnabledChange
+            }
             resolvedTheme={resolvedTheme}
           />
         ) : activeTab === 'contributors' ? (
           <ContributorsPanel
             state={contributorsState}
             currentUserRippleEnabled={currentUserRippleEnabled}
+            onCurrentUserRippleEnabledChange={
+              handleCurrentUserRippleEnabledChange
+            }
             resolvedTheme={resolvedTheme}
           />
         ) : (
@@ -135,10 +145,12 @@ export function App({ onRequestExpandedMode }: AppProps) {
 function PostsPanel({
   data,
   currentUserRippleEnabled,
+  onCurrentUserRippleEnabledChange,
   resolvedTheme,
 }: {
   data: PostsChartDataResponse;
   currentUserRippleEnabled: boolean;
+  onCurrentUserRippleEnabledChange: (enabled: boolean) => void;
   resolvedTheme: ResolvedTheme;
 }) {
   return (
@@ -147,6 +159,7 @@ function PostsPanel({
         <PostsChart
           data={data}
           currentUserRippleEnabled={currentUserRippleEnabled}
+          onCurrentUserRippleEnabledChange={onCurrentUserRippleEnabledChange}
           resolvedTheme={resolvedTheme}
         />
       ) : (
@@ -163,10 +176,12 @@ function PostsPanel({
 function CommentsPanel({
   state,
   currentUserRippleEnabled,
+  onCurrentUserRippleEnabledChange,
   resolvedTheme,
 }: {
   state: DataState<CommentsChartDataResponse>;
   currentUserRippleEnabled: boolean;
+  onCurrentUserRippleEnabledChange: (enabled: boolean) => void;
   resolvedTheme: ResolvedTheme;
 }) {
   return (
@@ -176,6 +191,7 @@ function CommentsPanel({
           <CommentsChart
             data={state.data}
             currentUserRippleEnabled={currentUserRippleEnabled}
+            onCurrentUserRippleEnabledChange={onCurrentUserRippleEnabledChange}
             resolvedTheme={resolvedTheme}
           />
         ) : (
@@ -198,10 +214,12 @@ function CommentsPanel({
 function ContributorsPanel({
   state,
   currentUserRippleEnabled,
+  onCurrentUserRippleEnabledChange,
   resolvedTheme,
 }: {
   state: DataState<ContributorsChartDataResponse>;
   currentUserRippleEnabled: boolean;
+  onCurrentUserRippleEnabledChange: (enabled: boolean) => void;
   resolvedTheme: ResolvedTheme;
 }) {
   return (
@@ -215,6 +233,7 @@ function ContributorsPanel({
           <ContributorsChart
             data={state.data}
             currentUserRippleEnabled={currentUserRippleEnabled}
+            onCurrentUserRippleEnabledChange={onCurrentUserRippleEnabledChange}
             resolvedTheme={resolvedTheme}
           />
         ) : (

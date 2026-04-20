@@ -4,7 +4,7 @@ import type { MouseEvent as ReactMouseEvent } from 'react';
 import type { ChartResponseMetadata } from '../../shared/api';
 import chevronIcon from '../assets/icons/chevron.svg?raw';
 import settingsIcon from '../assets/icons/settings.svg?raw';
-import type { ChartPreferences, TabName, ThemeMode } from '../types';
+import type { TabName, ThemeMode } from '../types';
 import { TABS, getTabLabel } from '../types';
 import { formatDateRangeLabels } from '../utils/date';
 import { TrustedSvgIcon } from './TrustedSvgIcon';
@@ -15,19 +15,10 @@ type ChartHeaderProps = {
   data: ChartResponseMetadata;
   activeTab: TabName;
   onTabChange: (tab: TabName) => void;
-  currentUserRippleEnabled: boolean;
-  onCurrentUserRippleEnabledChange: (enabled: boolean) => void;
   themeMode: ThemeMode;
   onThemeModeChange: (themeMode: ThemeMode) => void;
   onFeedbackOpen: () => void;
   onRequestExpandedMode?: (event: ReactMouseEvent<HTMLButtonElement>) => void;
-};
-
-type ChartSetting = {
-  key: Exclude<keyof ChartPreferences, 'themeMode'>;
-  label: string;
-  enabled: boolean;
-  onToggle: () => void;
 };
 
 const THEME_OPTIONS: readonly { mode: ThemeMode; label: string }[] = [
@@ -40,8 +31,6 @@ export function ChartHeader({
   data,
   activeTab,
   onTabChange,
-  currentUserRippleEnabled,
-  onCurrentUserRippleEnabledChange,
   themeMode,
   onThemeModeChange,
   onFeedbackOpen,
@@ -55,15 +44,6 @@ export function ChartHeader({
   const dateRangeLabel = formatDateRangeLabels(data.dateRange);
   const activePanelId =
     TABS.find((tab) => tab.name === activeTab)?.panelId ?? `${activeTab}-panel`;
-  const settings: ChartSetting[] = [
-    {
-      key: 'currentUserRippleEnabled',
-      label: 'My bubbles',
-      enabled: currentUserRippleEnabled,
-      onToggle: () =>
-        onCurrentUserRippleEnabledChange(!currentUserRippleEnabled),
-    },
-  ];
 
   useEffect(() => {
     if (!openMenu) {
@@ -211,7 +191,6 @@ export function ChartHeader({
               role="group"
             >
               <SettingsMenuContent
-                settings={settings}
                 themeMode={themeMode}
                 onThemeModeChange={onThemeModeChange}
                 onFeedbackOpen={handleFeedbackOpen}
@@ -262,7 +241,6 @@ export function ChartHeader({
               role="group"
             >
               <SettingsMenuContent
-                settings={settings}
                 themeMode={themeMode}
                 onThemeModeChange={onThemeModeChange}
                 onFeedbackOpen={handleFeedbackOpen}
@@ -279,13 +257,11 @@ export function ChartHeader({
 }
 
 function SettingsMenuContent({
-  settings,
   themeMode,
   onThemeModeChange,
   onFeedbackOpen,
   onRequestExpandedMode,
 }: {
-  settings: ChartSetting[];
   themeMode: ThemeMode;
   onThemeModeChange: (themeMode: ThemeMode) => void;
   onFeedbackOpen: () => void;
@@ -305,8 +281,6 @@ function SettingsMenuContent({
           <div className="chart-settings__divider" />
         </>
       ) : null}
-      <SettingsSwitches settings={settings} />
-      <div className="chart-settings__divider" />
       <div className="chart-theme-control" aria-label="Theme">
         <span className="chart-theme-control__label">Theme</span>
         <div className="chart-theme-control__options">
@@ -367,32 +341,6 @@ function TabItems({
             {tab.label}
           </button>
         </Fragment>
-      ))}
-    </>
-  );
-}
-
-function SettingsSwitches({ settings }: { settings: ChartSetting[] }) {
-  return (
-    <>
-      {settings.map((setting) => (
-        <button
-          aria-checked={setting.enabled}
-          className={
-            setting.enabled
-              ? 'chart-settings__switch chart-settings__switch--on'
-              : 'chart-settings__switch'
-          }
-          key={setting.key}
-          onClick={setting.onToggle}
-          role="switch"
-          type="button"
-        >
-          <span>{setting.label}</span>
-          <span className="chart-settings__switch-track" aria-hidden="true">
-            <span className="chart-settings__switch-thumb" />
-          </span>
-        </button>
       ))}
     </>
   );
