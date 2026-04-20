@@ -40,7 +40,9 @@
     "createPostForm": "/internal/form/create-post-submit"
   },
   "triggers": {
-    "onAppInstall": "/internal/triggers/on-app-install"
+    "onAppInstall": "/internal/triggers/on-app-install",
+    "onPostCreate": "/internal/triggers/on-post-create",
+    "onCommentCreate": "/internal/triggers/on-comment-create"
   },
   "scheduler": {
     "tasks": {

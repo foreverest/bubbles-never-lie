@@ -18,6 +18,11 @@ export type ContributorCacheRefreshResult = {
   generatedAt: string;
 };
 
+export type ContributorMetadataRefreshResult = {
+  refreshedContributorCount: number;
+  generatedAt: string;
+};
+
 export const refreshContributorCache = async (
   subredditName: string
 ): Promise<ContributorCacheRefreshResult> => {
@@ -82,6 +87,58 @@ export const refreshContributorCache = async (
     });
     throw error;
   }
+};
+
+export const refreshContributorMetadata = async (
+  subredditName: string,
+  username: string
+): Promise<ContributorMetadataRefreshResult> => {
+  const contributorName = readRefreshableContributorName(username);
+  const fetchedAt = new Date();
+  const generatedAt = fetchedAt.toISOString();
+
+  if (!contributorName) {
+    logger.info('Skipped contributor metadata refresh', {
+      subredditName,
+      username,
+      generatedAt,
+    });
+
+    return {
+      refreshedContributorCount: 0,
+      generatedAt,
+    };
+  }
+
+  const dataLayer = createDataLayer(subredditName);
+  const contributor = await getContributorEntity(
+    contributorName,
+    fetchedAt,
+    shouldUseSyntheticContributorKarma(subredditName)
+  );
+
+  await dataLayer.contributors.upsert(contributor);
+
+  logger.info('Stored contributor metadata cache entry', {
+    subredditName,
+    username: contributorName,
+    generatedAt,
+  });
+
+  return {
+    refreshedContributorCount: 1,
+    generatedAt,
+  };
+};
+
+export const readRefreshableContributorName = (
+  username: string
+): string | null => {
+  const trimmed = username.trim();
+
+  return trimmed === '' || trimmed.toLowerCase() === '[deleted]'
+    ? null
+    : trimmed;
 };
 
 const getContributorEntity = async (
@@ -151,8 +208,8 @@ const getUniqueRefreshableContributorNames = (
         ...posts.map((post) => post.authorName),
         ...comments.map((comment) => comment.authorName),
       ]
-        .map((username) => username.trim())
-        .filter((username) => username !== '' && username !== '[deleted]')
+        .map(readRefreshableContributorName)
+        .filter((username): username is string => username !== null)
     )
   );
 

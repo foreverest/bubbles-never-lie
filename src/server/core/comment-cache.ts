@@ -503,13 +503,15 @@ const toChartComment = (comment: CommentWithAuthor): ChartComment => ({
 });
 
 const createCommentBodyPreview = (body: string): CommentBodyPreview => {
+  return {
+    bodyPreview: createCommentBodyPreviewText(body),
+  };
+};
+
+export const createCommentBodyPreviewText = (body: string): string => {
   const normalized = normalizeCommentBody(body);
 
-  return {
-    bodyPreview: truncateCommentPreview(
-      replaceFirstMediaPreviewToken(normalized)
-    ),
-  };
+  return truncateCommentPreview(replaceFirstMediaPreviewToken(normalized));
 };
 
 const truncateCommentPreview = (normalized: string): string => {
