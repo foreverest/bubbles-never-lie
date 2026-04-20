@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef } from 'react';
 
 import type { CommentsChartDataResponse } from '../../shared/api';
 import { ChartHelpOverlay } from '../components/ChartHelpOverlay';
+import { ChartMyBubblesToggle } from '../components/ChartMyBubblesToggle';
 import { ChartZoomControls } from '../components/ChartZoomControls';
 import { useCurrentUsername } from '../hooks/useCurrentUsername';
 import type { ResolvedTheme } from '../types';
@@ -21,14 +22,17 @@ import {
 import { readVisibleTimeRange } from './timeAxis';
 import type { ChartEventParams, CommentBubbleDatum } from './types';
 import { useEChart } from './useEChart';
+import { applyChartOptionPreservingZoom } from './zoom';
 
 export function CommentsChart({
   data,
   currentUserRippleEnabled,
+  onCurrentUserRippleEnabledChange,
   resolvedTheme,
 }: {
   data: CommentsChartDataResponse;
   currentUserRippleEnabled: boolean;
+  onCurrentUserRippleEnabledChange: (enabled: boolean) => void;
   resolvedTheme: ResolvedTheme;
 }) {
   const emphasizedCommentGroupRef = useRef<string | null>(null);
@@ -143,16 +147,18 @@ export function CommentsChart({
     }
 
     emphasizedCommentGroupRef.current = null;
-    chart.setOption(
-      createCommentsOption(
-        chartData,
-        data,
-        currentUserRippleEnabled,
-        () => readVisibleTimeRange(chart),
-        resolvedTheme
-      ),
-      true
-    );
+    applyChartOptionPreservingZoom(chart, () => {
+      chart.setOption(
+        createCommentsOption(
+          chartData,
+          data,
+          currentUserRippleEnabled,
+          () => readVisibleTimeRange(chart),
+          resolvedTheme
+        ),
+        true
+      );
+    });
   }, [chartData, chartRef, currentUserRippleEnabled, data, resolvedTheme]);
 
   return (
@@ -164,7 +170,13 @@ export function CommentsChart({
         aria-label={`Comments in r/${data.subredditName} plotted by creation time and upvotes`}
       />
       <ChartHelpOverlay details={helpDetails} />
-      <ChartZoomControls chartRef={chartRef} />
+      <div className="chart-side-controls">
+        <ChartMyBubblesToggle
+          enabled={currentUserRippleEnabled}
+          onEnabledChange={onCurrentUserRippleEnabledChange}
+        />
+        <ChartZoomControls chartRef={chartRef} />
+      </div>
     </div>
   );
 }

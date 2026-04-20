@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo } from 'react';
 
 import type { ContributorsChartDataResponse } from '../../shared/api';
 import { ChartHelpOverlay } from '../components/ChartHelpOverlay';
+import { ChartMyBubblesToggle } from '../components/ChartMyBubblesToggle';
 import { ChartZoomControls } from '../components/ChartZoomControls';
 import { useCurrentUsername } from '../hooks/useCurrentUsername';
 import type { ResolvedTheme } from '../types';
@@ -12,14 +13,17 @@ import { createContributorsChartHelpDetails } from './help';
 import { createContributorsOption } from './options/contributors';
 import type { ChartEventParams, ContributorBubbleDatum } from './types';
 import { useEChart } from './useEChart';
+import { applyChartOptionPreservingZoom } from './zoom';
 
 export function ContributorsChart({
   data,
   currentUserRippleEnabled,
+  onCurrentUserRippleEnabledChange,
   resolvedTheme,
 }: {
   data: ContributorsChartDataResponse;
   currentUserRippleEnabled: boolean;
+  onCurrentUserRippleEnabledChange: (enabled: boolean) => void;
   resolvedTheme: ResolvedTheme;
 }) {
   const currentUsername = useCurrentUsername();
@@ -55,14 +59,16 @@ export function ContributorsChart({
       return;
     }
 
-    chart.setOption(
-      createContributorsOption(
-        chartData,
-        currentUserRippleEnabled,
-        resolvedTheme
-      ),
-      true
-    );
+    applyChartOptionPreservingZoom(chart, () => {
+      chart.setOption(
+        createContributorsOption(
+          chartData,
+          currentUserRippleEnabled,
+          resolvedTheme
+        ),
+        true
+      );
+    });
   }, [chartData, chartRef, currentUserRippleEnabled, resolvedTheme]);
 
   return (
@@ -74,7 +80,13 @@ export function ContributorsChart({
         aria-label={`Contributors in r/${data.subredditName} plotted by total comment upvotes and total post upvotes`}
       />
       <ChartHelpOverlay details={helpDetails} />
-      <ChartZoomControls chartRef={chartRef} />
+      <div className="chart-side-controls">
+        <ChartMyBubblesToggle
+          enabled={currentUserRippleEnabled}
+          onEnabledChange={onCurrentUserRippleEnabledChange}
+        />
+        <ChartZoomControls chartRef={chartRef} />
+      </div>
     </div>
   );
 }

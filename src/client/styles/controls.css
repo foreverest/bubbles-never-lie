@@ -182,59 +182,6 @@
   outline: none;
 }
 
-.chart-settings__switch {
-  display: flex;
-  width: 100%;
-  min-height: 36px;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  padding: 6px 8px;
-  border: 0;
-  border-radius: 6px;
-  color: var(--color-text);
-  background: transparent;
-  cursor: pointer;
-  font-size: 0.84rem;
-  font-weight: 800;
-  letter-spacing: 0;
-  text-align: left;
-}
-
-.chart-settings__switch:hover,
-.chart-settings__switch:focus-visible {
-  background: var(--color-accent-soft);
-  outline: none;
-}
-
-.chart-settings__switch-track {
-  position: relative;
-  width: 34px;
-  height: 20px;
-  flex: 0 0 auto;
-  border-radius: 8px;
-  background: var(--color-switch-track);
-}
-
-.chart-settings__switch-thumb {
-  position: absolute;
-  top: 2px;
-  left: 2px;
-  width: 16px;
-  height: 16px;
-  border-radius: 50%;
-  background: var(--color-surface);
-  box-shadow: var(--shadow-switch-thumb);
-}
-
-.chart-settings__switch--on .chart-settings__switch-track {
-  background: var(--color-accent);
-}
-
-.chart-settings__switch--on .chart-settings__switch-thumb {
-  transform: translateX(14px);
-}
-
 .chart-theme-control {
   display: grid;
   gap: 6px;
