@@ -10,13 +10,15 @@ import {
   createChartGrid,
   createChartTooltip,
   createCurrentUserRippleSeries,
-  createDualAxisDataZoom,
+  createSingleAxisDataZoom,
   createValueAxis,
   getChartTheme,
 } from './common';
 
 const CURRENT_USER_CONTRIBUTOR_RIPPLE_SERIES_ID =
   'current-user-contributor-ripple';
+const CONTRIBUTOR_GRID_RIGHT = 32;
+const CONTRIBUTOR_X_AXIS_LABEL_LINE_HEIGHT = 24;
 const CONTRIBUTOR_ENCODE = {
   x: 0,
   y: 1,
@@ -24,7 +26,6 @@ const CONTRIBUTOR_ENCODE = {
 
 export function createContributorsOption(
   data: ContributorBubbleDatum[],
-  zoomEnabled: boolean,
   currentUserRippleEnabled: boolean,
   resolvedTheme: ResolvedTheme = 'light'
 ): EChartsCoreOption {
@@ -33,12 +34,7 @@ export function createContributorsOption(
     0,
     ...data.map((datum) => datum.commentScore)
   );
-  const maxCommentScore = Math.max(
-    0,
-    ...data.map((datum) => datum.commentScore)
-  );
   const minPostScore = Math.min(0, ...data.map((datum) => datum.postScore));
-  const maxPostScore = Math.max(0, ...data.map((datum) => datum.postScore));
   const maxContributionCount = Math.max(
     0,
     ...data.map((datum) => datum.contributionCount)
@@ -65,7 +61,8 @@ export function createContributorsOption(
   const option: EChartsCoreOption = {
     backgroundColor: chartTheme.backgroundColor,
     darkMode: chartTheme.mode === 'dark',
-    grid: createChartGrid({ bottom: 44, left: 52 }),
+    grid: createChartGrid({ right: CONTRIBUTOR_GRID_RIGHT }),
+    dataZoom: createSingleAxisDataZoom(10),
     tooltip: createChartTooltip((params) => {
       const datum = isContributorBubbleDatum(params.data) ? params.data : null;
       return datum
@@ -74,19 +71,23 @@ export function createContributorsOption(
     }, chartTheme),
     xAxis: createValueAxis(
       {
-        name: 'Comment Upvotes',
         min: minCommentScore,
-        max: maxCommentScore,
-        nameGap: 30,
+        axisLabelOverrides: {
+          margin: 14,
+          lineHeight: CONTRIBUTOR_X_AXIS_LABEL_LINE_HEIGHT,
+          textMargin: [0, 4],
+          hideOverlap: true,
+          showMinLabel: true,
+          alignMinLabel: 'right',
+          showMaxLabel: true,
+          alignMaxLabel: 'left',
+        },
       },
       chartTheme
     ),
     yAxis: createValueAxis(
       {
-        name: 'Post Upvotes',
         min: minPostScore,
-        max: maxPostScore,
-        nameGap: 40,
       },
       chartTheme
     ),
@@ -129,10 +130,6 @@ export function createContributorsOption(
         : []),
     ],
   };
-
-  if (zoomEnabled) {
-    option.dataZoom = createDualAxisDataZoom();
-  }
 
   return option;
 }

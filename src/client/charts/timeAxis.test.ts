@@ -1,6 +1,10 @@
+import { SVGRenderer } from 'echarts/renderers';
 import { expect, test } from 'vitest';
 
-import { formatXAxisLabel } from './timeAxis';
+import { echarts } from './echarts';
+import { formatXAxisLabel, readVisibleTimeRange } from './timeAxis';
+
+echarts.use([SVGRenderer]);
 
 test('formats boundary ticks with dates and non-boundary ticks with time', () => {
   const start = new Date(2024, 0, 1, 0, 0, 0, 0).getTime();
@@ -24,6 +28,42 @@ test('uses visible zoom range edges as boundary labels', () => {
       { start: visibleStart, end }
     )
   ).toBe('Jan 01\n01:00');
+});
+
+test('reads visible time range from percent data zoom', () => {
+  const start = new Date(2024, 0, 1, 0, 0, 0, 0).getTime();
+  const end = new Date(2024, 0, 1, 4, 0, 0, 0).getTime();
+  const chart = echarts.init(null, undefined, {
+    renderer: 'svg',
+    ssr: true,
+    width: 220,
+    height: 240,
+  });
+
+  try {
+    chart.setOption({
+      grid: {},
+      dataZoom: {
+        type: 'inside',
+        start: 25,
+        end: 75,
+      },
+      xAxis: {
+        type: 'time',
+        min: start,
+        max: end,
+      },
+      yAxis: {},
+      series: [],
+    });
+
+    expect(readVisibleTimeRange(chart)).toEqual({
+      start: new Date(2024, 0, 1, 1, 0, 0, 0).getTime(),
+      end: new Date(2024, 0, 1, 3, 0, 0, 0).getTime(),
+    });
+  } finally {
+    chart.dispose();
+  }
 });
 
 test('formats end boundary ticks without rounding to the next minute', () => {

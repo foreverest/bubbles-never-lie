@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo } from 'react';
 
 import type { ContributorsChartDataResponse } from '../../shared/api';
 import { ChartHelpOverlay } from '../components/ChartHelpOverlay';
+import { ChartZoomControls } from '../components/ChartZoomControls';
 import { useCurrentUsername } from '../hooks/useCurrentUsername';
 import type { ResolvedTheme } from '../types';
 import { openRedditUrl } from '../utils/navigation';
@@ -14,12 +15,10 @@ import { useEChart } from './useEChart';
 
 export function ContributorsChart({
   data,
-  zoomEnabled,
   currentUserRippleEnabled,
   resolvedTheme,
 }: {
   data: ContributorsChartDataResponse;
-  zoomEnabled: boolean;
   currentUserRippleEnabled: boolean;
   resolvedTheme: ResolvedTheme;
 }) {
@@ -59,19 +58,12 @@ export function ContributorsChart({
     chart.setOption(
       createContributorsOption(
         chartData,
-        zoomEnabled,
         currentUserRippleEnabled,
         resolvedTheme
       ),
       true
     );
-  }, [
-    chartData,
-    chartRef,
-    currentUserRippleEnabled,
-    resolvedTheme,
-    zoomEnabled,
-  ]);
+  }, [chartData, chartRef, currentUserRippleEnabled, resolvedTheme]);
 
   return (
     <div className="chart-stage-shell">
@@ -82,6 +74,7 @@ export function ContributorsChart({
         aria-label={`Contributors in r/${data.subredditName} plotted by total comment upvotes and total post upvotes`}
       />
       <ChartHelpOverlay details={helpDetails} />
+      <ChartZoomControls chartRef={chartRef} />
     </div>
   );
 }

@@ -1,3 +1,5 @@
+import type { DataZoomComponentOption } from 'echarts/components';
+
 import type { ResolvedTheme } from '../../types';
 import type { EChartsCoreOption } from '../echarts';
 import { formatCompactUpvoteCount } from '../formatting';
@@ -13,6 +15,17 @@ export const COMMENT_BUBBLE_FILL_ALPHA = 0.94;
 
 type TooltipVariant = 'light' | 'dark';
 type AxisLabelFormatter = (value: number) => string;
+type AxisLabelAlignment = 'left' | 'center' | 'right';
+type AxisLabelOverrides = Partial<{
+  margin: number;
+  lineHeight: number;
+  textMargin: [number, number];
+  hideOverlap: boolean;
+  showMinLabel: boolean;
+  alignMinLabel: AxisLabelAlignment;
+  showMaxLabel: boolean;
+  alignMaxLabel: AxisLabelAlignment;
+}>;
 
 export type ChartTheme = {
   mode: ResolvedTheme;
@@ -20,7 +33,6 @@ export type ChartTheme = {
   gridLineColor: string;
   axisLineColor: string;
   axisLabelColor: string;
-  axisNameColor: string;
   tooltipBackgroundColor: string;
   tooltipTextColor: string;
   tooltipExtraCss: string;
@@ -37,7 +49,6 @@ const CHART_THEMES: Record<ResolvedTheme, ChartTheme> = {
     gridLineColor: '#edf1f4',
     axisLineColor: '#c6d1d8',
     axisLabelColor: '#56636d',
-    axisNameColor: '#697780',
     tooltipBackgroundColor: '#ffffff',
     tooltipTextColor: '#0f1419',
     tooltipExtraCss:
@@ -53,7 +64,6 @@ const CHART_THEMES: Record<ResolvedTheme, ChartTheme> = {
     gridLineColor: '#28332f',
     axisLineColor: '#3a4642',
     axisLabelColor: '#a9b5af',
-    axisNameColor: '#b7c2bd',
     tooltipBackgroundColor: '#151b19',
     tooltipTextColor: '#eef3ef',
     tooltipExtraCss:
@@ -87,7 +97,7 @@ export function createChartGrid(
 ) {
   return {
     top: 24,
-    right: 10,
+    right: 18,
     bottom: 16,
     left: 20,
     outerBoundsMode: 'same',
@@ -174,10 +184,6 @@ export function enableNarrowTimeAxisMedia(option: EChartsCoreOption): void {
 
 export function createUpvotesYAxis(theme = LIGHT_CHART_THEME) {
   return {
-    name: 'Upvotes',
-    nameLocation: 'middle',
-    nameGap: 40,
-    nameTextStyle: createAxisNameTextStyle(theme),
     type: 'value',
     minInterval: 1,
     splitLine: createSplitLine(theme),
@@ -191,59 +197,49 @@ export function createUpvotesYAxis(theme = LIGHT_CHART_THEME) {
 
 export function createValueAxis(
   {
-    name,
     min,
     max,
-    nameGap,
+    axisLabelOverrides,
   }: {
-    name: string;
     min: number;
-    max: number;
-    nameGap: number;
+    max?: number;
+    axisLabelOverrides?: AxisLabelOverrides;
   },
   theme = LIGHT_CHART_THEME
 ) {
   return {
-    name,
-    nameLocation: 'middle',
-    nameGap,
-    nameTextStyle: createAxisNameTextStyle(theme),
     type: 'value',
     min,
-    max,
+    ...(max === undefined ? {} : { max }),
     minInterval: 1,
     splitLine: createSplitLine(theme),
     axisLine: createAxisLine(theme),
     axisTick: {
       show: false,
     },
-    axisLabel: createAxisLabel(theme, formatCompactUpvoteCount),
+    axisLabel: createAxisLabel(
+      theme,
+      formatCompactUpvoteCount,
+      axisLabelOverrides
+    ),
   };
 }
 
-export function createSingleAxisDataZoom(minSpan: number) {
+export function createSingleAxisDataZoom(
+  minSpan: number
+): DataZoomComponentOption {
   return {
     type: 'inside',
+    xAxisIndex: 0,
     filterMode: 'none',
     minSpan,
+    disabled: true,
+    zoomLock: true,
+    zoomOnMouseWheel: false,
+    moveOnMouseMove: false,
+    moveOnMouseWheel: false,
+    preventDefaultMouseMove: false,
   };
-}
-
-export function createDualAxisDataZoom() {
-  return [
-    {
-      type: 'inside',
-      xAxisIndex: 0,
-      filterMode: 'none',
-      minSpan: 1,
-    },
-    {
-      type: 'inside',
-      yAxisIndex: 0,
-      filterMode: 'none',
-      minSpan: 1,
-    },
-  ];
 }
 
 export function createCurrentUserRippleSeries({
@@ -286,13 +282,6 @@ export function createCurrentUserRippleSeries({
   };
 }
 
-export function enableSingleAxisZoom(
-  option: EChartsCoreOption,
-  minSpan = 10
-): void {
-  option.dataZoom = createSingleAxisDataZoom(minSpan);
-}
-
 function createSplitLine(theme: ChartTheme) {
   return {
     show: true,
@@ -312,20 +301,17 @@ function createAxisLine(theme: ChartTheme) {
   };
 }
 
-function createAxisLabel(theme: ChartTheme, formatter?: AxisLabelFormatter) {
+function createAxisLabel(
+  theme: ChartTheme,
+  formatter?: AxisLabelFormatter,
+  overrides: AxisLabelOverrides = {}
+) {
   const axisLabel = {
     color: theme.axisLabelColor,
     fontSize: 12,
     fontWeight: 600,
+    ...overrides,
   };
 
   return formatter ? { ...axisLabel, formatter } : axisLabel;
-}
-
-function createAxisNameTextStyle(theme: ChartTheme) {
-  return {
-    color: theme.axisNameColor,
-    fontSize: 12,
-    fontWeight: 700,
-  };
 }
