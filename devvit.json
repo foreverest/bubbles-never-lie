@@ -59,7 +59,7 @@
       },
       "refreshCommentCacheQueue": {
         "endpoint": "/internal/cache/refresh-comment-cache-queue",
-        "cron": "* * * * *"
+        "cron": "*/30 * * * * *"
       },
       "refreshContributorCache": {
         "endpoint": "/internal/cache/refresh-contributor-cache",
