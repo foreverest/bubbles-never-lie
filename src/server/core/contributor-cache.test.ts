@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import { reddit } from '@devvit/web/server';
 import { beforeEach, expect, test, vi } from 'vitest';
 import {
+  DATA_RETENTION_TTL_SECONDS,
   createDataLayer,
   getDataKeys,
   type CommentEntity,
@@ -27,8 +28,31 @@ vi.mock('@devvit/web/server', () => ({
 }));
 
 class FakeRedisClient implements RedisDataClient {
+  readonly expireCalls: Array<{ key: string; seconds: number }> = [];
   readonly hashes = new Map<string, Map<string, string>>();
   readonly sortedSets = new Map<string, Map<string, number>>();
+
+  async expire(key: string, seconds: number): Promise<void> {
+    this.expireCalls.push({ key, seconds });
+  }
+
+  async hDel(key: string, fields: string[]): Promise<number> {
+    const hash = this.hashes.get(key);
+
+    if (!hash) {
+      return 0;
+    }
+
+    let removedFieldCount = 0;
+
+    fields.forEach((field) => {
+      if (hash.delete(field)) {
+        removedFieldCount += 1;
+      }
+    });
+
+    return removedFieldCount;
+  }
 
   async hGet(key: string, field: string): Promise<string | undefined> {
     return this.hashes.get(key)?.get(field);
@@ -199,6 +223,10 @@ test('refreshContributorCache replaces stale queue entries and orders contributo
     { member: 'carol', score: 1 },
     { member: 'alice', score: 2 },
   ]);
+  assert.deepEqual(redisClient.expireCalls.at(-1), {
+    key: keys.contributorRefreshQueue,
+    seconds: DATA_RETENTION_TTL_SECONDS,
+  });
 });
 
 test('processContributorCacheQueue refreshes contributors in queue order until empty', async () => {
@@ -245,6 +273,10 @@ test('processContributorCacheQueue refreshes contributors in queue order until e
     invalidQueueItemCount: 0,
     queueEmpty: true,
     generatedAt: '1970-01-01T00:00:00.000Z',
+  });
+  assert.deepEqual(redisClient.expireCalls.at(-1), {
+    key: getDataKeys('ExampleSub').contributorRefreshQueue,
+    seconds: DATA_RETENTION_TTL_SECONDS,
   });
 });
 
@@ -431,6 +463,8 @@ const createContributorRepository = (
     await onUpsert(contributor);
   },
   upsertMany: async () => {},
+  delete: async () => {},
+  deleteMany: async () => {},
 });
 
 const createPost = (

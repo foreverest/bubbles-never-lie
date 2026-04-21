@@ -1,7 +1,9 @@
 import { Hono } from 'hono';
 import type {
   OnAppInstallRequest,
+  OnCommentDeleteRequest,
   OnCommentCreateRequest,
+  OnPostDeleteRequest,
   OnPostCreateRequest,
   TriggerResponse,
 } from '@devvit/web/shared';
@@ -12,15 +14,20 @@ import {
 } from './cache';
 import {
   cacheCommentCreateEvent,
+  deleteCommentCacheEvent,
+  deletePostCacheEvent,
   cachePostCreateEvent,
   type EventCacheResult,
+  type EventDeleteResult,
 } from '../core/event-cache';
 import { createLogger } from '../logging/logger';
 
 export const triggers = new Hono();
 const appInstallLogger = createLogger('triggers:on-app-install');
 const postCreateLogger = createLogger('triggers:on-post-create');
+const postDeleteLogger = createLogger('triggers:on-post-delete');
 const commentCreateLogger = createLogger('triggers:on-comment-create');
+const commentDeleteLogger = createLogger('triggers:on-comment-delete');
 
 triggers.post('/on-app-install', async (c) => {
   const input = await c.req.json<OnAppInstallRequest>();
@@ -158,6 +165,102 @@ triggers.post('/on-comment-create', async (c) => {
   }
 });
 
+triggers.post('/on-post-delete', async (c) => {
+  const input = await c.req.json<OnPostDeleteRequest>();
+  postDeleteLogger.info('Received post delete trigger', {
+    currentSubredditName: context.subredditName,
+    triggerType: input.type,
+    eventSubredditName: input.subreddit?.name ?? null,
+    postId: input.postId ?? null,
+  });
+
+  try {
+    const result = await deletePostCacheEvent(input);
+
+    logEventDeleteResult(
+      postDeleteLogger,
+      'Completed post delete event cache update',
+      result
+    );
+
+    return c.json<TriggerResponse>(
+      {
+        status: 'success',
+        message:
+          result.status === 'deleted'
+            ? `Post delete event removed cached data for r/${result.subredditName}`
+            : `Post delete event skipped for r/${result.subredditName}`,
+      },
+      200
+    );
+  } catch (error) {
+    postDeleteLogger.error('Post delete event cache update failed', {
+      currentSubredditName: context.subredditName,
+      triggerType: input.type,
+      eventSubredditName: input.subreddit?.name ?? null,
+      postId: input.postId ?? null,
+      error: getErrorMessage(error),
+    });
+
+    return c.json<TriggerResponse>(
+      {
+        status: 'error',
+        message: 'Failed to delete cached post data',
+      },
+      500
+    );
+  }
+});
+
+triggers.post('/on-comment-delete', async (c) => {
+  const input = await c.req.json<OnCommentDeleteRequest>();
+  commentDeleteLogger.info('Received comment delete trigger', {
+    currentSubredditName: context.subredditName,
+    triggerType: input.type,
+    eventSubredditName: input.subreddit?.name ?? null,
+    postId: input.postId ?? null,
+    commentId: input.commentId ?? null,
+  });
+
+  try {
+    const result = await deleteCommentCacheEvent(input);
+
+    logEventDeleteResult(
+      commentDeleteLogger,
+      'Completed comment delete event cache update',
+      result
+    );
+
+    return c.json<TriggerResponse>(
+      {
+        status: 'success',
+        message:
+          result.status === 'deleted'
+            ? `Comment delete event removed cached data for r/${result.subredditName}`
+            : `Comment delete event skipped for r/${result.subredditName}`,
+      },
+      200
+    );
+  } catch (error) {
+    commentDeleteLogger.error('Comment delete event cache update failed', {
+      currentSubredditName: context.subredditName,
+      triggerType: input.type,
+      eventSubredditName: input.subreddit?.name ?? null,
+      postId: input.postId ?? null,
+      commentId: input.commentId ?? null,
+      error: getErrorMessage(error),
+    });
+
+    return c.json<TriggerResponse>(
+      {
+        status: 'error',
+        message: 'Failed to delete cached comment data',
+      },
+      500
+    );
+  }
+});
+
 const logEventCacheResult = (
   logger: ReturnType<typeof createLogger>,
   message: string,
@@ -170,6 +273,29 @@ const logEventCacheResult = (
     cachedPostCount: result.cachedPostCount,
     cachedCommentCount: result.cachedCommentCount,
     refreshedContributorCount: result.refreshedContributorCount,
+    generatedAt: result.generatedAt,
+    skippedReason: result.skippedReason ?? null,
+  };
+
+  if (result.status === 'skipped') {
+    logger.warn(message, metadata);
+    return;
+  }
+
+  logger.info(message, metadata);
+};
+
+const logEventDeleteResult = (
+  logger: ReturnType<typeof createLogger>,
+  message: string,
+  result: EventDeleteResult
+): void => {
+  const metadata = {
+    currentSubredditName: context.subredditName,
+    subredditName: result.subredditName,
+    status: result.status,
+    deletedPostCount: result.deletedPostCount,
+    deletedCommentCount: result.deletedCommentCount,
     generatedAt: result.generatedAt,
     skippedReason: result.skippedReason ?? null,
   };

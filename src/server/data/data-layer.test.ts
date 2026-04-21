@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'vitest';
 import {
+  DATA_RETENTION_TTL_SECONDS,
   createDataLayer,
   getDataKeys,
   type ContributorEntity,
@@ -10,9 +11,32 @@ import {
 } from './index';
 
 class FakeRedisDataClient implements RedisDataClient {
+  readonly expireCalls: Array<{ key: string; seconds: number }> = [];
   readonly hMGetCalls: Array<{ key: string; fields: string[] }> = [];
   readonly hashes = new Map<string, Map<string, string>>();
   readonly sortedSets = new Map<string, Map<string, number>>();
+
+  async expire(key: string, seconds: number): Promise<void> {
+    this.expireCalls.push({ key, seconds });
+  }
+
+  async hDel(key: string, fields: string[]): Promise<number> {
+    const hash = this.hashes.get(key);
+
+    if (!hash) {
+      return 0;
+    }
+
+    let removedFieldCount = 0;
+
+    fields.forEach((field) => {
+      if (hash.delete(field)) {
+        removedFieldCount += 1;
+      }
+    });
+
+    return removedFieldCount;
+  }
 
   async hGet(key: string, field: string): Promise<string | undefined> {
     return this.hashes.get(key)?.get(field);
@@ -63,6 +87,24 @@ class FakeRedisDataClient implements RedisDataClient {
     return addedMemberCount;
   }
 
+  async zRem(key: string, members: string[]): Promise<number> {
+    const sortedSet = this.sortedSets.get(key);
+
+    if (!sortedSet) {
+      return 0;
+    }
+
+    let removedMemberCount = 0;
+
+    members.forEach((member) => {
+      if (sortedSet.delete(member)) {
+        removedMemberCount += 1;
+      }
+    });
+
+    return removedMemberCount;
+  }
+
   async zRange(
     key: string,
     start: number | string,
@@ -107,6 +149,7 @@ class FakeRedisDataClient implements RedisDataClient {
   }
 
   clearCallHistory(): void {
+    this.expireCalls.length = 0;
     this.hMGetCalls.length = 0;
   }
 }
@@ -117,6 +160,7 @@ test('data keys use app-local prefixes', () => {
     postCreatedAtIndex: 'data:v1:examplesub:posts:createdAt',
     comments: 'data:v1:examplesub:comments',
     commentCreatedAtIndex: 'data:v1:examplesub:comments:createdAt',
+    commentIdsByPost: 'data:v1:examplesub:comments:byPost',
     commentRefreshPostQueue: 'data:v1:examplesub:comments:refresh:posts',
     commentRefreshCommentQueue: 'data:v1:examplesub:comments:refresh:comments',
     contributors: 'data:v1:examplesub:contributors',
@@ -283,6 +327,133 @@ test('comment repositories parse comment previews without preview kind metadata'
   assert.deepEqual(await dataLayer.comments.getById(legacyComment.id), {
     ...legacyComment,
   });
+});
+
+test('repositories refresh data retention TTLs after writes', async () => {
+  const redisClient = new FakeRedisDataClient();
+  const dataLayer = createDataLayer('ExampleSub', redisClient);
+  const keys = getDataKeys('ExampleSub');
+
+  await dataLayer.posts.upsert(
+    createPost('t3_post_1', '2026-04-15T10:00:00.000Z')
+  );
+  await dataLayer.comments.upsert(
+    createComment('t1_comment_1', '2026-04-15T10:30:00.000Z')
+  );
+  await dataLayer.contributors.upsert(createContributor('alice'));
+  await dataLayer.commentPostIndex.addCommentIds('t3_post_1', [
+    't1_comment_1',
+    't1_comment_1',
+  ]);
+
+  assert.deepEqual(redisClient.expireCalls, [
+    { key: keys.posts, seconds: DATA_RETENTION_TTL_SECONDS },
+    {
+      key: keys.postCreatedAtIndex,
+      seconds: DATA_RETENTION_TTL_SECONDS,
+    },
+    { key: keys.comments, seconds: DATA_RETENTION_TTL_SECONDS },
+    {
+      key: keys.commentCreatedAtIndex,
+      seconds: DATA_RETENTION_TTL_SECONDS,
+    },
+    { key: keys.contributors, seconds: DATA_RETENTION_TTL_SECONDS },
+    { key: keys.commentIdsByPost, seconds: DATA_RETENTION_TTL_SECONDS },
+  ]);
+});
+
+test('repositories delete cached entities and remove sorted set members', async () => {
+  const redisClient = new FakeRedisDataClient();
+  const dataLayer = createDataLayer('ExampleSub', redisClient);
+  const keys = getDataKeys('ExampleSub');
+  const startTime = Date.parse('2026-04-15T09:00:00.000Z');
+  const endTime = Date.parse('2026-04-15T13:00:00.000Z');
+
+  await dataLayer.posts.upsertMany([
+    createPost('t3_post_1', '2026-04-15T10:00:00.000Z'),
+    createPost('t3_post_2', '2026-04-15T12:00:00.000Z'),
+  ]);
+  await dataLayer.comments.upsertMany([
+    createComment('t1_comment_1', '2026-04-15T10:30:00.000Z'),
+    createComment('t1_comment_2', '2026-04-15T11:30:00.000Z'),
+  ]);
+  await dataLayer.contributors.upsertMany([
+    createContributor('alice'),
+    createContributor('bob'),
+  ]);
+  await dataLayer.commentPostIndex.addCommentIds('t3_post_1', [
+    't1_comment_1',
+    't1_comment_2',
+  ]);
+  redisClient.clearCallHistory();
+
+  await dataLayer.posts.delete('t3_post_1');
+  await dataLayer.comments.deleteMany(['t1_comment_1']);
+  await dataLayer.contributors.delete('alice');
+  await dataLayer.commentPostIndex.removeCommentIds('t3_post_1', [
+    't1_comment_1',
+  ]);
+  await dataLayer.commentPostIndex.delete('t3_missing');
+
+  assert.equal(await dataLayer.posts.getById('t3_post_1'), null);
+  assert.deepEqual(
+    await dataLayer.posts.getIdsInTimeRange({ startTime, endTime }),
+    ['t3_post_2']
+  );
+  assert.equal(await dataLayer.comments.getById('t1_comment_1'), null);
+  assert.deepEqual(
+    await dataLayer.comments.getIdsInTimeRange({ startTime, endTime }),
+    ['t1_comment_2']
+  );
+  assert.equal(await dataLayer.contributors.getById('alice'), null);
+  assert.deepEqual(
+    await dataLayer.commentPostIndex.getCommentIds('t3_post_1'),
+    ['t1_comment_2']
+  );
+  assert.deepEqual(redisClient.expireCalls, [
+    { key: keys.posts, seconds: DATA_RETENTION_TTL_SECONDS },
+    {
+      key: keys.postCreatedAtIndex,
+      seconds: DATA_RETENTION_TTL_SECONDS,
+    },
+    { key: keys.comments, seconds: DATA_RETENTION_TTL_SECONDS },
+    {
+      key: keys.commentCreatedAtIndex,
+      seconds: DATA_RETENTION_TTL_SECONDS,
+    },
+    { key: keys.contributors, seconds: DATA_RETENTION_TTL_SECONDS },
+    { key: keys.commentIdsByPost, seconds: DATA_RETENTION_TTL_SECONDS },
+    { key: keys.commentIdsByPost, seconds: DATA_RETENTION_TTL_SECONDS },
+  ]);
+});
+
+test('comment post index stores deduplicated ids and supports delete', async () => {
+  const redisClient = new FakeRedisDataClient();
+  const dataLayer = createDataLayer('ExampleSub', redisClient);
+
+  await dataLayer.commentPostIndex.addCommentIds('t3_post_1', [
+    't1_comment_1',
+    't1_comment_2',
+    't1_comment_1',
+  ]);
+  assert.deepEqual(
+    await dataLayer.commentPostIndex.getCommentIds('t3_post_1'),
+    ['t1_comment_1', 't1_comment_2']
+  );
+
+  await dataLayer.commentPostIndex.removeCommentIds('t3_post_1', [
+    't1_comment_2',
+  ]);
+  assert.deepEqual(
+    await dataLayer.commentPostIndex.getCommentIds('t3_post_1'),
+    ['t1_comment_1']
+  );
+
+  await dataLayer.commentPostIndex.delete('t3_post_1');
+  assert.deepEqual(
+    await dataLayer.commentPostIndex.getCommentIds('t3_post_1'),
+    []
+  );
 });
 
 test('time indexed repositories read latest ids in newest-first order', async () => {

@@ -1,15 +1,18 @@
 import {
+  stringArrayCodec,
   contributorEntityCodec,
   commentEntityCodec,
   postEntityCodec,
 } from './codecs';
 import { getDataKeys } from './keys';
 import {
+  createRedisCommentPostIndexRepository,
   createRedisHashRepository,
   createRedisTimeIndexedRepository,
   type RedisDataClient,
 } from './redis-repository';
 import type {
+  CommentPostIndexRepository,
   ContributorRepository,
   CommentRepository,
   PostRepository,
@@ -58,5 +61,18 @@ export const createContributorRepository = (
     hashKey: keys.contributors,
     codec: contributorEntityCodec,
     getId: (contributor) => contributor.id,
+  });
+};
+
+export const createCommentPostIndexRepository = (
+  subredditName: string,
+  redisClient?: RedisDataClient
+): CommentPostIndexRepository => {
+  const keys = getDataKeys(subredditName);
+
+  return createRedisCommentPostIndexRepository({
+    redisClient,
+    hashKey: keys.commentIdsByPost,
+    codec: stringArrayCodec,
   });
 };

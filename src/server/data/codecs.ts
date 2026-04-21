@@ -89,6 +89,26 @@ export const contributorEntityCodec: EntityCodec<ContributorEntity> = {
   serialize: JSON.stringify,
 };
 
+export const stringArrayCodec: EntityCodec<string[]> = {
+  parse(value) {
+    if (value === null || value === undefined) {
+      return [];
+    }
+
+    try {
+      const parsed = JSON.parse(value) as unknown;
+
+      return Array.isArray(parsed) &&
+        parsed.every((item) => typeof item === 'string')
+        ? parsed
+        : [];
+    } catch {
+      return [];
+    }
+  },
+  serialize: JSON.stringify,
+};
+
 const parseJsonRecord = (
   value: string | null | undefined
 ): Record<string, unknown> | null => {

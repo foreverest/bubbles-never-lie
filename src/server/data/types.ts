@@ -35,12 +35,21 @@ export type EntityRepository<Entity> = {
   getByIds(ids: string[]): Promise<Entity[]>;
   upsert(entity: Entity): Promise<void>;
   upsertMany(entities: Entity[]): Promise<void>;
+  delete(id: string): Promise<void>;
+  deleteMany(ids: string[]): Promise<void>;
 };
 
 export type TimeIndexedEntityRepository<Entity> = EntityRepository<Entity> & {
   getIdsInTimeRange(range: TimeRange): Promise<string[]>;
   getInTimeRange(range: TimeRange): Promise<Entity[]>;
   getLatestIds(limit: number): Promise<string[]>;
+};
+
+export type CommentPostIndexRepository = {
+  getCommentIds(postId: string): Promise<string[]>;
+  addCommentIds(postId: string, commentIds: string[]): Promise<void>;
+  removeCommentIds(postId: string, commentIds: string[]): Promise<void>;
+  delete(postId: string): Promise<void>;
 };
 
 export type PostRepository = TimeIndexedEntityRepository<PostEntity>;
