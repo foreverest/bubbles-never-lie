@@ -78,4 +78,4 @@ jobs:
         env:
           DEVVIT_AUTH_TOKEN: ${{ secrets.DEVVIT_AUTH_TOKEN }}
           DEVVIT_VERSION: ${{ steps.version.outputs.version }}
-        run: npm exec devvit -- publish --version "$DEVVIT_VERSION"
+        run: npm exec devvit -- publish --version "$DEVVIT_VERSION" --public
