@@ -6,7 +6,7 @@ import {
   defaultCreatePostFormValues,
   resolveCurrentTimeZone,
 } from '../core/post-config';
-import { canUseTestDataSource } from '../core/subreddits';
+import { canConfigurePostDataSource } from '../core/subreddits';
 import { createLogger } from '../logging/logger';
 
 export const menu = new Hono();
@@ -23,11 +23,13 @@ menu.post('/create-post', async (c) => {
     title: 'Subreddit Activity Charts',
     ...defaults,
   };
-  const allowTestDataSource = canUseTestDataSource(context.subredditName);
+  const showDataSourceSubredditField = canConfigurePostDataSource(
+    context.subredditName
+  );
   logger.info('Opened create post form', {
     subredditName: context.subredditName,
     currentTimeZone,
-    allowTestDataSource,
+    showDataSourceSubredditField,
   });
 
   return c.json<UiResponse>(
@@ -35,7 +37,7 @@ menu.post('/create-post', async (c) => {
       showForm: {
         name: 'createPostForm',
         form: createPostForm({
-          allowTestDataSource,
+          showDataSourceSubredditField,
           currentTimeZone,
           defaultValues: formDefaults,
         }),

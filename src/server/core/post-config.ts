@@ -1,6 +1,6 @@
 import type { Form, JsonObject } from '@devvit/web/shared';
 import type { DateRange, PostConfig } from '../../shared/api';
-import { TEST_DATA_SOURCE_SUBREDDIT_NAME } from './subreddits';
+import { normalizeOptionalSubredditName } from './subreddits';
 
 const minYear = 2026;
 const defaultStartHour = 0;
@@ -16,11 +16,11 @@ export type CreatePostFormValues = {
   timeZone?: SelectValue;
   durationDays?: SelectValue;
   title?: string;
-  useTestDataSource?: boolean;
+  dataSourceSubredditName?: string;
 };
 
 export type CreatePostFormOptions = {
-  allowTestDataSource?: boolean;
+  showDataSourceSubredditField?: boolean;
   currentTimeZone?: string;
   defaultValues?: CreatePostFormValues;
 };
@@ -144,12 +144,15 @@ export const createPostForm = (options: CreatePostFormOptions = {}): Form => {
     },
   ];
 
-  if (options.allowTestDataSource) {
+  if (options.showDataSourceSubredditField) {
     fields.push({
-      type: 'boolean',
-      name: 'useTestDataSource',
-      label: `Use r/${TEST_DATA_SOURCE_SUBREDDIT_NAME} as data source`,
-      defaultValue: defaultValues.useTestDataSource === true,
+      type: 'string',
+      name: 'dataSourceSubredditName',
+      label: 'Data Source Subreddit',
+      helpText:
+        'Optional. Leave blank to use the current subreddit for this post.',
+      placeholder: 'AskReddit',
+      defaultValue: defaultValues.dataSourceSubredditName ?? '',
     });
   }
 
@@ -187,15 +190,18 @@ export const parseFormDateRange = (values: CreatePostFormValues): DateRange => {
 
 export const createPostData = (
   range: DateRange,
-  options: { useTestDataSource?: boolean } = {}
+  options: { dataSourceSubredditName?: string } = {}
 ): PostConfig => {
   const postConfig: PostConfig = {
     type: 'post-config',
     dateRange: range,
   };
+  const dataSourceSubredditName = normalizeOptionalSubredditName(
+    options.dataSourceSubredditName
+  );
 
-  if (options.useTestDataSource) {
-    postConfig.dataSourceSubredditName = TEST_DATA_SOURCE_SUBREDDIT_NAME;
+  if (dataSourceSubredditName) {
+    postConfig.dataSourceSubredditName = dataSourceSubredditName;
   }
 
   return postConfig;
@@ -208,11 +214,10 @@ export const readPostConfig = (
     return null;
   }
 
-  const dataSourceSubredditName = postDataValue.dataSourceSubredditName;
-  if (
-    dataSourceSubredditName !== undefined &&
-    dataSourceSubredditName !== TEST_DATA_SOURCE_SUBREDDIT_NAME
-  ) {
+  const dataSourceSubredditName = readStoredDataSourceSubredditName(
+    postDataValue.dataSourceSubredditName
+  );
+  if (dataSourceSubredditName === null) {
     return null;
   }
 
@@ -240,7 +245,7 @@ export const readPostConfig = (
     },
   };
 
-  if (dataSourceSubredditName === TEST_DATA_SOURCE_SUBREDDIT_NAME) {
+  if (dataSourceSubredditName !== undefined) {
     postConfig.dataSourceSubredditName = dataSourceSubredditName;
   }
 
@@ -290,6 +295,20 @@ const tryParseIsoDate = (value: string): Date | null => {
   return Number.isNaN(date.getTime()) || date.toISOString() !== value
     ? null
     : date;
+};
+
+const readStoredDataSourceSubredditName = (
+  value: unknown
+): string | undefined | null => {
+  if (value === undefined) {
+    return undefined;
+  }
+
+  if (typeof value !== 'string') {
+    return null;
+  }
+
+  return normalizeOptionalSubredditName(value);
 };
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>

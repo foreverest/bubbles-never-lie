@@ -1,14 +1,9 @@
 import { reddit, redis } from '@devvit/web/server';
 import { createLogger } from '../logging/logger';
-import {
-  normalizeSubredditName,
-  TEST_DATA_SOURCE_SUBREDDIT_NAME,
-} from './subreddits';
+import { normalizeSubredditName } from './subreddits';
 
 const logger = createLogger('subreddit-icons');
 const SUBREDDIT_ICON_URL_KEY_PREFIX = 'subreddits:icon-url';
-const TEST_DATA_SOURCE_SUBREDDIT_ICON_URL =
-  'https://styles.redditmedia.com/t5_4x7l6b/styles/communityIcon_tofdifo8b35f1.png?width=128&frame=1&auto=webp&s=d847af3d81a242af471946e2aff1f26e9692f35b';
 
 export type SubredditIconRefreshResult = {
   subredditName: string;
@@ -20,11 +15,6 @@ export const readCachedSubredditIconUrl = async (
   subredditName: string
 ): Promise<string | null> => {
   const normalizedSubredditName = normalizeSubredditName(subredditName);
-
-  if (normalizedSubredditName === TEST_DATA_SOURCE_SUBREDDIT_NAME) {
-    return TEST_DATA_SOURCE_SUBREDDIT_ICON_URL;
-  }
-
   const iconUrl = await redis.hGet(
     getSubredditIconUrlKey(normalizedSubredditName),
     'subredditIconUrl'
@@ -73,11 +63,6 @@ export const refreshCurrentSubredditIconCache = async (
 const fetchSubredditIconUrl = async (
   subredditName: string
 ): Promise<string | null> => {
-  if (subredditName === TEST_DATA_SOURCE_SUBREDDIT_NAME) {
-    logger.debug('Using test data source subreddit icon', { subredditName });
-    return TEST_DATA_SOURCE_SUBREDDIT_ICON_URL;
-  }
-
   logger.debug('Fetching subreddit icon from Reddit', { subredditName });
   const subreddit = await reddit.getSubredditInfoByName(subredditName);
 

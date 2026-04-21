@@ -8,7 +8,7 @@ import type {
 import { context } from '@devvit/web/server';
 import {
   createAppCacheRefreshLogMetadata,
-  refreshAppCachesForCurrentSubreddits,
+  refreshAppCachesForActiveSubreddit,
 } from './cache';
 import {
   cacheCommentCreateEvent,
@@ -30,7 +30,7 @@ triggers.post('/on-app-install', async (c) => {
   });
 
   try {
-    const result = await refreshAppCachesForCurrentSubreddits();
+    const result = await refreshAppCachesForActiveSubreddit();
     appInstallLogger.info('Completed app install cache refresh', {
       currentSubredditName: context.subredditName,
       triggerType: input.type,
@@ -40,7 +40,7 @@ triggers.post('/on-app-install', async (c) => {
     return c.json<TriggerResponse>(
       {
         status: 'success',
-        message: `Bubbles Never Lie caches refreshed for r/${context.subredditName} (trigger: ${input.type})`,
+        message: `Bubbles Never Lie caches refreshed for r/${result.subredditIcon.subredditName} (trigger: ${input.type})`,
       },
       200
     );

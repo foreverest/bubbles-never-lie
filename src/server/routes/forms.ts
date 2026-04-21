@@ -8,7 +8,7 @@ import {
   resolveCurrentTimeZone,
   type CreatePostFormValues,
 } from '../core/post-config';
-import { canUseTestDataSource } from '../core/subreddits';
+import { canConfigurePostDataSource } from '../core/subreddits';
 import { createLogger } from '../logging/logger';
 
 export const forms = new Hono();
@@ -52,7 +52,9 @@ forms.post('/create-post-submit', async (c) => {
           showForm: {
             name: 'createPostForm',
             form: createPostForm({
-              allowTestDataSource: canUseTestDataSource(context.subredditName),
+              showDataSourceSubredditField: canConfigurePostDataSource(
+                context.subredditName
+              ),
               currentTimeZone: resolveCurrentTimeZone(
                 readSingleFormValue(values.timeZone)
               ),
@@ -82,7 +84,7 @@ const createFormLogMetadata = (values: unknown): Record<string, unknown> => {
 
   return {
     titleLength: typeof title === 'string' ? title.length : 0,
-    useTestDataSource: data.useTestDataSource === true,
+    dataSourceSubredditName: readStringFormValue(data.dataSourceSubredditName),
     startYear: data.startYear,
     startMonth: data.startMonth,
     startDay: data.startDay,
@@ -100,10 +102,11 @@ const createFormData = (values: CreatePostFormValues): JsonObject => {
   copyFormValue(data, 'startDay', values.startDay);
   copyFormValue(data, 'timeZone', values.timeZone);
   copyFormValue(data, 'durationDays', values.durationDays);
-
-  if (values.useTestDataSource !== undefined) {
-    data.useTestDataSource = values.useTestDataSource;
-  }
+  copyFormValue(
+    data,
+    'dataSourceSubredditName',
+    values.dataSourceSubredditName
+  );
 
   return data;
 };
@@ -124,6 +127,9 @@ const readSingleFormValue = (
   const selectedValue = Array.isArray(value) ? value[0] : value;
   return typeof selectedValue === 'string' ? selectedValue : undefined;
 };
+
+const readStringFormValue = (value: unknown): string | null =>
+  typeof value === 'string' ? value : null;
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   value !== null && typeof value === 'object' && !Array.isArray(value);

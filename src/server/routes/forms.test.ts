@@ -20,7 +20,7 @@ const submittedValues: CreatePostFormValues = {
   startDay: ['30'],
   timeZone: ['UTC'],
   durationDays: ['3'],
-  useTestDataSource: true,
+  dataSourceSubredditName: 'r/Funny',
 };
 
 beforeEach(() => {
@@ -37,6 +37,9 @@ test('reopens create post form with submitted values when start date is invalid'
   });
   const body: unknown = await response.json();
   const fields = readFormFields(body);
+  const fieldNames = fields.flatMap((field) =>
+    isRecord(field) && typeof field.name === 'string' ? [field.name] : []
+  );
 
   expect(response.status).toBe(200);
   expect(reddit.submitCustomPost).not.toHaveBeenCalled();
@@ -74,11 +77,12 @@ test('reopens create post form with submitted values when start date is invalid'
         defaultValue: ['3'],
       }),
       expect.objectContaining({
-        name: 'useTestDataSource',
-        defaultValue: true,
+        name: 'dataSourceSubredditName',
+        defaultValue: 'r/Funny',
       }),
     ])
   );
+  expect(fieldNames).not.toContain('useTestDataSource');
 });
 
 const readFormFields = (body: unknown): unknown[] => {

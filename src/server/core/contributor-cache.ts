@@ -1,7 +1,12 @@
-import { reddit } from '@devvit/web/server';
+import { context, reddit } from '@devvit/web/server';
 import { resolveUserAvatarUrl } from '../../shared/api';
 import { createDataLayer } from '../data';
-import type { ContributorEntity, CommentEntity, PostEntity } from '../data';
+import type {
+  ContributorEntity,
+  CommentEntity,
+  DataLayer,
+  PostEntity,
+} from '../data';
 import { createLogger } from '../logging/logger';
 import { shouldUseSyntheticContributorKarma } from './subreddits';
 
@@ -23,14 +28,35 @@ export type ContributorMetadataRefreshResult = {
   generatedAt: string;
 };
 
+export type ContributorCacheDependencies = {
+  createDataLayerForSubreddit?: (
+    subredditName: string
+  ) => Pick<DataLayer, 'posts' | 'comments' | 'contributors'>;
+  currentSubredditName?: string;
+  now?: () => Date;
+};
+
+export type ContributorMetadataRefreshDependencies = {
+  createDataLayerForSubreddit?: (
+    subredditName: string
+  ) => Pick<DataLayer, 'contributors'>;
+  currentSubredditName?: string;
+  now?: () => Date;
+};
+
 export const refreshContributorCache = async (
-  subredditName: string
+  subredditName: string,
+  {
+    createDataLayerForSubreddit = createDataLayer,
+    currentSubredditName = context.subredditName,
+    now = () => new Date(),
+  }: ContributorCacheDependencies = {}
 ): Promise<ContributorCacheRefreshResult> => {
   logger.info('Refreshing contributor cache', { subredditName });
 
   try {
-    const dataLayer = createDataLayer(subredditName);
-    const fetchedAt = new Date();
+    const dataLayer = createDataLayerForSubreddit(subredditName);
+    const fetchedAt = now();
     const [posts, comments] = await Promise.all([
       dataLayer.posts.getInTimeRange({
         startTime: fetchedAt.getTime() - CONTRIBUTOR_LOOKBACK_MS,
@@ -42,8 +68,10 @@ export const refreshContributorCache = async (
       }),
     ]);
     const usernames = getUniqueRefreshableContributorNames(posts, comments);
-    const useSyntheticContributorKarma =
-      shouldUseSyntheticContributorKarma(subredditName);
+    const useSyntheticContributorKarma = shouldUseSyntheticContributorKarma(
+      currentSubredditName,
+      subredditName
+    );
 
     logger.info('Loaded contributor cache candidates', {
       subredditName,
@@ -69,7 +97,7 @@ export const refreshContributorCache = async (
     const result = {
       candidateContributorCount: usernames.length,
       refreshedContributorCount: refreshedContributors.length,
-      generatedAt: new Date().toISOString(),
+      generatedAt: now().toISOString(),
     };
 
     logger.info('Stored contributor cache entries', {
@@ -91,10 +119,15 @@ export const refreshContributorCache = async (
 
 export const refreshContributorMetadata = async (
   subredditName: string,
-  username: string
+  username: string,
+  {
+    createDataLayerForSubreddit = createDataLayer,
+    currentSubredditName = context.subredditName,
+    now = () => new Date(),
+  }: ContributorMetadataRefreshDependencies = {}
 ): Promise<ContributorMetadataRefreshResult> => {
   const contributorName = readRefreshableContributorName(username);
-  const fetchedAt = new Date();
+  const fetchedAt = now();
   const generatedAt = fetchedAt.toISOString();
 
   if (!contributorName) {
@@ -110,11 +143,11 @@ export const refreshContributorMetadata = async (
     };
   }
 
-  const dataLayer = createDataLayer(subredditName);
+  const dataLayer = createDataLayerForSubreddit(subredditName);
   const contributor = await getContributorEntity(
     contributorName,
     fetchedAt,
-    shouldUseSyntheticContributorKarma(subredditName)
+    shouldUseSyntheticContributorKarma(currentSubredditName, subredditName)
   );
 
   await dataLayer.contributors.upsert(contributor);

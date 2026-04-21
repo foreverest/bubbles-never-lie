@@ -82,6 +82,26 @@ test('create post form omits hour and prioritizes timezone options', () => {
   expect(remainingTimeZones).toEqual([...remainingTimeZones].sort());
 });
 
+test('create post form includes optional data source subreddit field in dev mode', () => {
+  const form = createPostForm({
+    showDataSourceSubredditField: true,
+    defaultValues: {
+      ...formValues,
+      dataSourceSubredditName: 'r/AskReddit',
+    },
+  });
+  const dataSourceField = form.fields.find(
+    (field) =>
+      field.type !== 'group' && field.name === 'dataSourceSubredditName'
+  );
+
+  expect(dataSourceField).toMatchObject({
+    type: 'string',
+    label: 'Data Source Subreddit',
+    defaultValue: 'r/AskReddit',
+  });
+});
+
 test('timezone selector marks UTC as current when it is the current timezone', () => {
   const form = createPostForm({
     currentTimeZone: 'UTC',
@@ -112,11 +132,14 @@ test('timezone selector marks UTC as current when it is the current timezone', (
 
 test('validates post config with nested date range', () => {
   const dateRange = parseFormDateRange(formValues);
-  const postConfig = createPostData(dateRange);
+  const postConfig = createPostData(dateRange, {
+    dataSourceSubredditName: ' r/Funny ',
+  });
 
   expect(postConfig).toEqual({
     type: 'post-config',
     dateRange,
+    dataSourceSubredditName: 'funny',
   });
   expect(readPostConfig(postConfig)).toEqual({
     config: postConfig,
@@ -144,7 +167,39 @@ test('validates post config with nested date range', () => {
   expect(
     readPostConfig({
       ...postConfig,
-      dataSourceSubredditName: 'unexpected',
+      dataSourceSubredditName: 123,
     })
   ).toBeNull();
+  expect(createPostData(dateRange, { dataSourceSubredditName: '   ' })).toEqual(
+    {
+      type: 'post-config',
+      dateRange,
+    }
+  );
+  expect(
+    readPostConfig({
+      ...postConfig,
+      dataSourceSubredditName: ' r/AskReddit ',
+    })
+  ).toEqual({
+    config: {
+      ...postConfig,
+      dataSourceSubredditName: 'askreddit',
+    },
+    start: new Date('2026-01-01T15:00:00.000Z'),
+    end: new Date('2026-01-02T15:00:00.000Z'),
+  });
+  expect(
+    readPostConfig({
+      ...postConfig,
+      dataSourceSubredditName: '   ',
+    })
+  ).toEqual({
+    config: {
+      type: 'post-config',
+      dateRange,
+    },
+    start: new Date('2026-01-01T15:00:00.000Z'),
+    end: new Date('2026-01-02T15:00:00.000Z'),
+  });
 });
