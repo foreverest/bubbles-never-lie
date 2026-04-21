@@ -120,6 +120,7 @@ test('data keys use app-local prefixes', () => {
     commentRefreshPostQueue: 'data:v1:examplesub:comments:refresh:posts',
     commentRefreshCommentQueue: 'data:v1:examplesub:comments:refresh:comments',
     contributors: 'data:v1:examplesub:contributors',
+    contributorRefreshQueue: 'data:v1:examplesub:contributors:refresh',
   });
 });
 

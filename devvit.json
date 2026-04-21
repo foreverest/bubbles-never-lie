@@ -63,7 +63,11 @@
       },
       "refreshContributorCache": {
         "endpoint": "/internal/cache/refresh-contributor-cache",
-        "cron": "*/30 * * * *"
+        "cron": "0 * * * *"
+      },
+      "refreshContributorCacheQueue": {
+        "endpoint": "/internal/cache/refresh-contributor-cache-queue",
+        "cron": "*/30 * * * * *"
       },
       "refreshSubredditIcons": {
         "endpoint": "/internal/cache/refresh-subreddit-icons",

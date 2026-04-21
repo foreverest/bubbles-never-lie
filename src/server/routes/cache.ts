@@ -1,6 +1,9 @@
 import { context } from '@devvit/web/server';
 import { Hono } from 'hono';
-import { refreshContributorCache } from '../core/contributor-cache';
+import {
+  processContributorCacheQueue,
+  refreshContributorCache,
+} from '../core/contributor-cache';
 import {
   processCommentCacheQueue,
   refreshCommentCache,
@@ -15,9 +18,10 @@ const cachePostsLogger = createLogger('cache:posts');
 const cacheCommentsLogger = createLogger('cache:comments');
 const cacheCommentQueueLogger = createLogger('cache:comments-queue');
 const cacheContributorsLogger = createLogger('cache:contributors');
+const cacheContributorQueueLogger = createLogger('cache:contributors-queue');
 const cacheSubredditIconsLogger = createLogger('cache:subreddit-icons');
 const cacheAppLogger = createLogger('cache:app');
-const COMMENT_QUEUE_WORKER_ROUTE_DURATION_MS = 25 * 1000;
+const CACHE_QUEUE_WORKER_ROUTE_DURATION_MS = 25 * 1000;
 
 cache.post('/refresh-post-cache', async (c) => {
   cachePostsLogger.info(
@@ -173,7 +177,7 @@ cache.post('/refresh-contributor-cache', async (c) => {
         results: results.map(({ subredditName, result }) => ({
           subredditName,
           candidateContributorCount: result.candidateContributorCount,
-          refreshedContributorCount: result.refreshedContributorCount,
+          enqueuedContributorCount: result.enqueuedContributorCount,
         })),
       }
     );
@@ -191,6 +195,57 @@ cache.post('/refresh-contributor-cache', async (c) => {
       ...createContextLogMetadata(),
       error: message,
     });
+
+    return c.json(
+      {
+        status: 'error',
+        message,
+      },
+      500
+    );
+  }
+});
+
+cache.post('/refresh-contributor-cache-queue', async (c) => {
+  cacheContributorQueueLogger.info(
+    'Received contributor cache queue refresh request',
+    createContextLogMetadata()
+  );
+
+  try {
+    const results = await processContributorCacheQueuesForActiveSubreddit();
+    cacheContributorQueueLogger.info(
+      'Completed contributor cache queue refresh request',
+      {
+        ...createContextLogMetadata(),
+        subredditCount: results.length,
+        results: results.map(({ subredditName, result }) => ({
+          subredditName,
+          processedContributorCount: result.processedContributorCount,
+          refreshedContributorCount: result.refreshedContributorCount,
+          failedItemCount: result.failedItemCount,
+          invalidQueueItemCount: result.invalidQueueItemCount,
+          queueEmpty: result.queueEmpty,
+        })),
+      }
+    );
+
+    return c.json(
+      {
+        status: 'ok',
+        results,
+      },
+      200
+    );
+  } catch (error) {
+    const message = getErrorMessage(error);
+    cacheContributorQueueLogger.error(
+      'Contributor cache queue refresh request failed',
+      {
+        ...createContextLogMetadata(),
+        error: message,
+      }
+    );
 
     return c.json(
       {
@@ -385,7 +440,7 @@ const processCommentCacheQueuesForActiveSubreddit = async () => {
   try {
     const result = await processCommentCacheQueue({
       subredditName,
-      maxDurationMs: COMMENT_QUEUE_WORKER_ROUTE_DURATION_MS,
+      maxDurationMs: CACHE_QUEUE_WORKER_ROUTE_DURATION_MS,
     });
     cacheCommentQueueLogger.info(
       'Processed comment cache queue for subreddit',
@@ -422,31 +477,82 @@ const refreshContributorCachesForActiveSubreddit = async () => {
   const subredditName = resolveActiveRefreshSubredditName(
     context.subredditName
   );
-  cacheContributorsLogger.info('Refreshing contributor cache for subreddit', {
-    ...createContextLogMetadata(),
-    subredditName,
-  });
+  cacheContributorsLogger.info(
+    'Seeding contributor cache refresh queue for subreddit',
+    {
+      ...createContextLogMetadata(),
+      subredditName,
+    }
+  );
 
   try {
     const result = await refreshContributorCache(subredditName);
-    cacheContributorsLogger.info('Refreshed contributor cache for subreddit', {
-      subredditName,
-      candidateContributorCount: result.candidateContributorCount,
-      refreshedContributorCount: result.refreshedContributorCount,
-    });
+    cacheContributorsLogger.info(
+      'Seeded contributor cache refresh queue for subreddit',
+      {
+        subredditName,
+        candidateContributorCount: result.candidateContributorCount,
+        enqueuedContributorCount: result.enqueuedContributorCount,
+      }
+    );
 
     return [{ subredditName, result }];
   } catch (error) {
     const message = getErrorMessage(error);
     cacheContributorsLogger.warn(
-      'Contributor cache refresh failed for subreddit',
+      'Contributor cache refresh queue seed failed for subreddit',
       {
         subredditName,
         error: message,
       }
     );
     throw new Error(
-      `Unable to refresh contributor cache for r/${subredditName}: ${message}`
+      `Unable to seed contributor cache refresh queue for r/${subredditName}: ${message}`
+    );
+  }
+};
+
+const processContributorCacheQueuesForActiveSubreddit = async () => {
+  const subredditName = resolveActiveRefreshSubredditName(
+    context.subredditName
+  );
+  cacheContributorQueueLogger.info(
+    'Processing contributor cache queue for subreddit',
+    {
+      ...createContextLogMetadata(),
+      subredditName,
+    }
+  );
+
+  try {
+    const result = await processContributorCacheQueue({
+      subredditName,
+      maxDurationMs: CACHE_QUEUE_WORKER_ROUTE_DURATION_MS,
+    });
+    cacheContributorQueueLogger.info(
+      'Processed contributor cache queue for subreddit',
+      {
+        subredditName,
+        processedContributorCount: result.processedContributorCount,
+        refreshedContributorCount: result.refreshedContributorCount,
+        failedItemCount: result.failedItemCount,
+        invalidQueueItemCount: result.invalidQueueItemCount,
+        queueEmpty: result.queueEmpty,
+      }
+    );
+
+    return [{ subredditName, result }];
+  } catch (error) {
+    const message = getErrorMessage(error);
+    cacheContributorQueueLogger.warn(
+      'Contributor cache queue processing failed for subreddit',
+      {
+        subredditName,
+        error: message,
+      }
+    );
+    throw new Error(
+      `Unable to process contributor cache queue for r/${subredditName}: ${message}`
     );
   }
 };
