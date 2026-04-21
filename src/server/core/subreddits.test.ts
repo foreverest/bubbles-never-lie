@@ -36,7 +36,7 @@ test('active refresh subreddit normalizes the override value', () => {
 
 test('active refresh subreddit uses the configured development override by default', () => {
   expect(resolveActiveRefreshSubredditName('bubblesneverlie_dev')).toBe(
-    'wallstreetbets'
+    'redditstock'
   );
 });
 

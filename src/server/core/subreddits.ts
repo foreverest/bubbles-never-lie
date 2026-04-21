@@ -10,7 +10,7 @@ type AppEnvironmentConfig = {
 // keep the per-environment refresh-source config in code.
 const APP_ENVIRONMENTS: Record<AppEnvironmentName, AppEnvironmentConfig> = {
   development: {
-    activeRefreshSubredditName: 'wallstreetbets',
+    activeRefreshSubredditName: 'redditstock',
   },
   production: {},
 };

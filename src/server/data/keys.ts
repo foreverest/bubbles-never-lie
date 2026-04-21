@@ -10,6 +10,7 @@ export type DataKeys = {
   commentRefreshPostQueue: string;
   commentRefreshCommentQueue: string;
   contributors: string;
+  contributorRefreshQueue: string;
 };
 
 export const getDataKeys = (subredditName: string): DataKeys => {
@@ -23,5 +24,6 @@ export const getDataKeys = (subredditName: string): DataKeys => {
     commentRefreshPostQueue: `${baseKey}:comments:refresh:posts`,
     commentRefreshCommentQueue: `${baseKey}:comments:refresh:comments`,
     contributors: `${baseKey}:contributors`,
+    contributorRefreshQueue: `${baseKey}:contributors:refresh`,
   };
 };

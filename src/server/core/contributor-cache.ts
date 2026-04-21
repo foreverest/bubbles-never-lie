@@ -1,6 +1,6 @@
-import { context, reddit } from '@devvit/web/server';
+import { context, reddit, redis } from '@devvit/web/server';
 import { resolveUserAvatarUrl } from '../../shared/api';
-import { createDataLayer } from '../data';
+import { createDataLayer, getDataKeys } from '../data';
 import type {
   ContributorEntity,
   CommentEntity,
@@ -11,15 +11,50 @@ import { createLogger } from '../logging/logger';
 import { shouldUseSyntheticContributorKarma } from './subreddits';
 
 const logger = createLogger('contributor-cache');
-const CONTRIBUTOR_METADATA_CONCURRENCY = 4;
 const DAY_MS = 24 * 60 * 60 * 1000;
 const CONTRIBUTOR_LOOKBACK_MS = 90 * DAY_MS;
+export const CONTRIBUTOR_REFRESH_QUEUE_WORKER_DURATION_MS = 25 * 1000;
 const SYNTHETIC_KARMA_MIN = -100;
 const SYNTHETIC_KARMA_MAX = 50_000;
+const REDIS_QUEUE_CHUNK_SIZE = 100;
+
+type ContributorRefreshQueueRedisClient = Pick<
+  typeof redis,
+  'del' | 'zAdd' | 'zRange' | 'zRem'
+>;
+
+type ContributorQueueSeedCandidate = {
+  username: string;
+  lastContributionTimeMs: number;
+};
+
+type ContributorQueueItem =
+  | {
+      kind: 'valid';
+      username: string;
+    }
+  | {
+      kind: 'invalid';
+      member: string;
+    };
 
 export type ContributorCacheRefreshResult = {
   candidateContributorCount: number;
+  enqueuedContributorCount: number;
+  generatedAt: string;
+};
+
+export type ContributorCacheQueueProcessOptions = {
+  subredditName: string;
+  maxDurationMs?: number;
+};
+
+export type ContributorCacheQueueProcessResult = {
+  processedContributorCount: number;
   refreshedContributorCount: number;
+  failedItemCount: number;
+  invalidQueueItemCount: number;
+  queueEmpty: boolean;
   generatedAt: string;
 };
 
@@ -31,8 +66,8 @@ export type ContributorMetadataRefreshResult = {
 export type ContributorCacheDependencies = {
   createDataLayerForSubreddit?: (
     subredditName: string
-  ) => Pick<DataLayer, 'posts' | 'comments' | 'contributors'>;
-  currentSubredditName?: string;
+  ) => Pick<DataLayer, 'posts' | 'comments'>;
+  redisClient?: ContributorRefreshQueueRedisClient;
   now?: () => Date;
 };
 
@@ -44,15 +79,29 @@ export type ContributorMetadataRefreshDependencies = {
   now?: () => Date;
 };
 
+export type ContributorCacheQueueProcessDependencies = {
+  redisClient?: ContributorRefreshQueueRedisClient;
+  refreshContributorMetadataForUser?: (
+    subredditName: string,
+    username: string,
+    dependencies: ContributorMetadataRefreshDependencies
+  ) => Promise<ContributorMetadataRefreshResult>;
+  createDataLayerForSubreddit?: (
+    subredditName: string
+  ) => Pick<DataLayer, 'contributors'>;
+  currentSubredditName?: string;
+  now?: () => number;
+};
+
 export const refreshContributorCache = async (
   subredditName: string,
   {
     createDataLayerForSubreddit = createDataLayer,
-    currentSubredditName = context.subredditName,
+    redisClient = redis,
     now = () => new Date(),
   }: ContributorCacheDependencies = {}
 ): Promise<ContributorCacheRefreshResult> => {
-  logger.info('Refreshing contributor cache', { subredditName });
+  logger.info('Seeding contributor cache refresh queue', { subredditName });
 
   try {
     const dataLayer = createDataLayerForSubreddit(subredditName);
@@ -67,49 +116,127 @@ export const refreshContributorCache = async (
         endTime: fetchedAt.getTime() + DAY_MS,
       }),
     ]);
-    const usernames = getUniqueRefreshableContributorNames(posts, comments);
-    const useSyntheticContributorKarma = shouldUseSyntheticContributorKarma(
-      currentSubredditName,
-      subredditName
-    );
+    const candidates = createContributorQueueSeedCandidates(posts, comments);
+    const queueKey = getContributorRefreshQueueKey(subredditName);
 
-    logger.info('Loaded contributor cache candidates', {
+    await redisClient.del(queueKey);
+
+    const enqueuedContributorCount = await enqueueContributorQueueItems(
+      redisClient,
+      queueKey,
+      candidates.map(({ username }) => username)
+    );
+    const result = {
+      candidateContributorCount: candidates.length,
+      enqueuedContributorCount,
+      generatedAt: fetchedAt.toISOString(),
+    };
+
+    logger.info('Seeded contributor cache refresh queue', {
       subredditName,
       postCount: posts.length,
       commentCount: comments.length,
-      candidateContributorCount: usernames.length,
-      useSyntheticContributorKarma,
-    });
-
-    const refreshedContributors = await mapWithConcurrency(
-      usernames,
-      CONTRIBUTOR_METADATA_CONCURRENCY,
-      async (username) =>
-        await getContributorEntity(
-          username,
-          fetchedAt,
-          useSyntheticContributorKarma
-        )
-    );
-
-    await dataLayer.contributors.upsertMany(refreshedContributors);
-
-    const result = {
-      candidateContributorCount: usernames.length,
-      refreshedContributorCount: refreshedContributors.length,
-      generatedAt: now().toISOString(),
-    };
-
-    logger.info('Stored contributor cache entries', {
-      subredditName,
       candidateContributorCount: result.candidateContributorCount,
-      refreshedContributorCount: result.refreshedContributorCount,
+      enqueuedContributorCount: result.enqueuedContributorCount,
       generatedAt: result.generatedAt,
     });
 
     return result;
   } catch (error) {
-    logger.error('Contributor cache refresh failed', {
+    logger.error('Contributor cache refresh queue seed failed', {
+      subredditName,
+      error: getErrorMessage(error),
+    });
+    throw error;
+  }
+};
+
+export const processContributorCacheQueue = async (
+  {
+    subredditName,
+    maxDurationMs = CONTRIBUTOR_REFRESH_QUEUE_WORKER_DURATION_MS,
+  }: ContributorCacheQueueProcessOptions,
+  {
+    redisClient = redis,
+    refreshContributorMetadataForUser = refreshContributorMetadata,
+    createDataLayerForSubreddit = createDataLayer,
+    currentSubredditName = context.subredditName,
+    now = Date.now,
+  }: ContributorCacheQueueProcessDependencies = {}
+): Promise<ContributorCacheQueueProcessResult> => {
+  logger.info('Processing contributor cache refresh queue', {
+    subredditName,
+    maxDurationMs,
+  });
+
+  const startedAt = now();
+  const queueKey = getContributorRefreshQueueKey(subredditName);
+  const result: ContributorCacheQueueProcessResult = {
+    processedContributorCount: 0,
+    refreshedContributorCount: 0,
+    failedItemCount: 0,
+    invalidQueueItemCount: 0,
+    queueEmpty: false,
+    generatedAt: new Date(startedAt).toISOString(),
+  };
+
+  try {
+    while (now() - startedAt < maxDurationMs) {
+      const item = await dequeueNextContributorQueueItem(redisClient, queueKey);
+
+      if (!item) {
+        result.queueEmpty = true;
+        break;
+      }
+
+      if (item.kind === 'invalid') {
+        result.invalidQueueItemCount += 1;
+        logger.warn('Skipped invalid contributor refresh queue item', {
+          subredditName,
+          member: item.member,
+        });
+        continue;
+      }
+
+      result.processedContributorCount += 1;
+
+      try {
+        const refreshResult = await refreshContributorMetadataForUser(
+          subredditName,
+          item.username,
+          {
+            createDataLayerForSubreddit,
+            currentSubredditName,
+          }
+        );
+
+        result.refreshedContributorCount +=
+          refreshResult.refreshedContributorCount;
+      } catch (error) {
+        result.failedItemCount += 1;
+        logger.warn('Unable to refresh contributor metadata from queue', {
+          subredditName,
+          username: item.username,
+          error: getErrorMessage(error),
+        });
+      }
+    }
+
+    result.generatedAt = new Date(now()).toISOString();
+
+    logger.info('Processed contributor cache refresh queue', {
+      subredditName,
+      processedContributorCount: result.processedContributorCount,
+      refreshedContributorCount: result.refreshedContributorCount,
+      failedItemCount: result.failedItemCount,
+      invalidQueueItemCount: result.invalidQueueItemCount,
+      queueEmpty: result.queueEmpty,
+      generatedAt: result.generatedAt,
+    });
+
+    return result;
+  } catch (error) {
+    logger.error('Contributor cache refresh queue processing failed', {
       subredditName,
       error: getErrorMessage(error),
     });
@@ -231,20 +358,105 @@ const getContributorAvatarUrl = async (username: string): Promise<string> => {
   }
 };
 
-const getUniqueRefreshableContributorNames = (
+const createContributorQueueSeedCandidates = (
   posts: PostEntity[],
   comments: CommentEntity[]
-): string[] =>
-  Array.from(
-    new Set(
-      [
-        ...posts.map((post) => post.authorName),
-        ...comments.map((comment) => comment.authorName),
-      ]
-        .map(readRefreshableContributorName)
-        .filter((username): username is string => username !== null)
-    )
-  );
+): ContributorQueueSeedCandidate[] => {
+  const latestContributionTimes = new Map<string, number>();
+
+  [...posts, ...comments].forEach((entity) => {
+    const username = readRefreshableContributorName(entity.authorName);
+
+    if (!username) {
+      return;
+    }
+
+    const createdAt = Date.parse(entity.createdAt);
+
+    if (!Number.isFinite(createdAt)) {
+      return;
+    }
+
+    const latestContributionTimeMs = latestContributionTimes.get(username);
+
+    if (
+      latestContributionTimeMs === undefined ||
+      createdAt > latestContributionTimeMs
+    ) {
+      latestContributionTimes.set(username, createdAt);
+    }
+  });
+
+  return [...latestContributionTimes.entries()]
+    .map(([username, lastContributionTimeMs]) => ({
+      username,
+      lastContributionTimeMs,
+    }))
+    .sort(
+      (left, right) =>
+        right.lastContributionTimeMs - left.lastContributionTimeMs ||
+        left.username.localeCompare(right.username)
+    );
+};
+
+const getContributorRefreshQueueKey = (subredditName: string): string =>
+  getDataKeys(subredditName).contributorRefreshQueue;
+
+const enqueueContributorQueueItems = async (
+  redisClient: ContributorRefreshQueueRedisClient,
+  queueKey: string,
+  usernames: string[]
+): Promise<number> => {
+  if (usernames.length === 0) {
+    return 0;
+  }
+
+  let enqueuedContributorCount = 0;
+
+  for (
+    let start = 0;
+    start < usernames.length;
+    start += REDIS_QUEUE_CHUNK_SIZE
+  ) {
+    const chunk = usernames.slice(start, start + REDIS_QUEUE_CHUNK_SIZE);
+
+    enqueuedContributorCount += await redisClient.zAdd(
+      queueKey,
+      ...chunk.map((member, index) => ({
+        member,
+        score: start + index,
+      }))
+    );
+  }
+
+  return enqueuedContributorCount;
+};
+
+const dequeueNextContributorQueueItem = async (
+  redisClient: ContributorRefreshQueueRedisClient,
+  queueKey: string
+): Promise<ContributorQueueItem | null> => {
+  const nextItems = await redisClient.zRange(queueKey, 0, 0, { by: 'rank' });
+  const nextItem = nextItems[0];
+
+  if (!nextItem) {
+    return null;
+  }
+
+  await redisClient.zRem(queueKey, [nextItem.member]);
+
+  const username = readRefreshableContributorName(nextItem.member);
+
+  return username
+    ? {
+        kind: 'valid',
+        username,
+      }
+    : {
+        kind: 'invalid',
+        member: nextItem.member,
+      };
+};
 
 const getSyntheticContributorKarma = (): number =>
   randomInteger(SYNTHETIC_KARMA_MIN, SYNTHETIC_KARMA_MAX);
@@ -258,32 +470,6 @@ const sumKarma = (karma: GetUserKarmaForSubredditResponse): number =>
 type GetUserKarmaForSubredditResponse = {
   fromPosts?: number | undefined;
   fromComments?: number | undefined;
-};
-
-const mapWithConcurrency = async <Input, Output>(
-  items: Input[],
-  limit: number,
-  mapper: (item: Input) => Promise<Output>
-): Promise<Output[]> => {
-  const results = new Array<Output | undefined>(items.length);
-  let nextIndex = 0;
-  const workerCount = Math.min(limit, items.length);
-
-  await Promise.all(
-    Array.from({ length: workerCount }, async () => {
-      while (nextIndex < items.length) {
-        const index = nextIndex;
-        nextIndex += 1;
-        const item = items[index];
-
-        if (item !== undefined) {
-          results[index] = await mapper(item);
-        }
-      }
-    })
-  );
-
-  return results.filter((result): result is Output => result !== undefined);
 };
 
 const getErrorMessage = (error: unknown): string =>
