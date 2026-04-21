@@ -5,18 +5,20 @@ import {
   parseFormDateRange,
 } from './post-config';
 import type { CreatePostFormValues } from './post-config';
-import { canUseTestDataSource } from './subreddits';
+import { canConfigurePostDataSource } from './subreddits';
 
 export const createPost = async (values: CreatePostFormValues) => {
   const range = parseFormDateRange(values);
-  const useTestDataSource =
-    values.useTestDataSource === true &&
-    canUseTestDataSource(context.subredditName);
+  const dataSourceSubredditName = canConfigurePostDataSource(
+    context.subredditName
+  )
+    ? values.dataSourceSubredditName
+    : undefined;
 
   return await reddit.submitCustomPost({
     subredditName: context.subredditName,
     title: normalizeTitle(values.title),
     entry: 'default',
-    postData: createPostData(range, { useTestDataSource }),
+    postData: createPostData(range, { dataSourceSubredditName }),
   });
 };
