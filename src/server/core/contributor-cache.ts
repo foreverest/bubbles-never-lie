@@ -1,6 +1,7 @@
 import { context, reddit, redis } from '@devvit/web/server';
 import { resolveUserAvatarUrl } from '../../shared/api';
 import { createDataLayer, getDataKeys } from '../data';
+import { retainRedisKeys } from '../data';
 import type {
   ContributorEntity,
   CommentEntity,
@@ -20,7 +21,7 @@ const REDIS_QUEUE_CHUNK_SIZE = 100;
 
 type ContributorRefreshQueueRedisClient = Pick<
   typeof redis,
-  'del' | 'zAdd' | 'zRange' | 'zRem'
+  'del' | 'expire' | 'zAdd' | 'zRange' | 'zRem'
 >;
 
 type ContributorQueueSeedCandidate = {
@@ -126,6 +127,7 @@ export const refreshContributorCache = async (
       queueKey,
       candidates.map(({ username }) => username)
     );
+    await retainRedisKeys(redisClient, [queueKey]);
     const result = {
       candidateContributorCount: candidates.length,
       enqueuedContributorCount,
@@ -223,6 +225,7 @@ export const processContributorCacheQueue = async (
     }
 
     result.generatedAt = new Date(now()).toISOString();
+    await retainRedisKeys(redisClient, [queueKey]);
 
     logger.info('Processed contributor cache refresh queue', {
       subredditName,

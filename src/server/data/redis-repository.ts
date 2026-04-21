@@ -1,6 +1,8 @@
 import { redis } from '@devvit/web/server';
 import type { EntityCodec } from './codecs';
+import { retainRedisKeys } from './retention';
 import type {
+  CommentPostIndexRepository,
   EntityRepository,
   TimeIndexedEntityRepository,
   TimeRange,
@@ -11,7 +13,7 @@ const REDIS_RANGE_READ_CHUNK_SIZE = 1000;
 
 export type RedisDataClient = Pick<
   typeof redis,
-  'hGet' | 'hMGet' | 'hSet' | 'zAdd' | 'zRange'
+  'expire' | 'hDel' | 'hGet' | 'hMGet' | 'hSet' | 'zAdd' | 'zRange' | 'zRem'
 >;
 
 type RedisHashRepositoryOptions<Entity> = {
@@ -60,8 +62,21 @@ export const createRedisHashRepository = <Entity>({
 
       if (Object.keys(fields).length > 0) {
         await redisClient.hSet(hashKey, fields);
+        await retainRedisKeys(redisClient, [hashKey]);
       }
     }
+  };
+
+  const deleteMany = async (ids: string[]): Promise<void> => {
+    if (ids.length === 0) {
+      return;
+    }
+
+    for (const chunk of chunkItems(uniqueItems(ids), REDIS_CHUNK_SIZE)) {
+      await redisClient.hDel(hashKey, chunk);
+    }
+
+    await retainRedisKeys(redisClient, [hashKey]);
   };
 
   return {
@@ -71,6 +86,10 @@ export const createRedisHashRepository = <Entity>({
       await upsertMany([entity]);
     },
     upsertMany,
+    async delete(id) {
+      await deleteMany([id]);
+    },
+    deleteMany,
   };
 };
 
@@ -116,8 +135,24 @@ export const createRedisTimeIndexedRepository = <Entity>({
           redisClient.hSet(hashKey, fields),
           redisClient.zAdd(indexKey, ...indexMembers),
         ]);
+        await retainRedisKeys(redisClient, [hashKey, indexKey]);
       }
     }
+  };
+
+  const deleteMany = async (ids: string[]): Promise<void> => {
+    if (ids.length === 0) {
+      return;
+    }
+
+    for (const chunk of chunkItems(uniqueItems(ids), REDIS_CHUNK_SIZE)) {
+      await Promise.all([
+        redisClient.hDel(hashKey, chunk),
+        redisClient.zRem(indexKey, chunk),
+      ]);
+    }
+
+    await retainRedisKeys(redisClient, [hashKey, indexKey]);
   };
 
   const getIdsInTimeRange = async ({
@@ -173,6 +208,10 @@ export const createRedisTimeIndexedRepository = <Entity>({
       await upsertMany([entity]);
     },
     upsertMany,
+    async delete(id) {
+      await deleteMany([id]);
+    },
+    deleteMany,
     getIdsInTimeRange,
     getLatestIds,
     async getInTimeRange(range) {
@@ -180,6 +219,75 @@ export const createRedisTimeIndexedRepository = <Entity>({
     },
   };
 };
+
+export const createRedisCommentPostIndexRepository = ({
+  redisClient = redis,
+  hashKey,
+  codec,
+}: {
+  redisClient?: RedisDataClient;
+  hashKey: string;
+  codec: EntityCodec<string[]>;
+}): CommentPostIndexRepository => ({
+  async getCommentIds(postId) {
+    return codec.parse(await redisClient.hGet(hashKey, postId)) ?? [];
+  },
+
+  async addCommentIds(postId, commentIds) {
+    const uniqueCommentIds = uniqueItems(commentIds);
+
+    if (uniqueCommentIds.length === 0) {
+      return;
+    }
+
+    const existingCommentIds =
+      codec.parse(await redisClient.hGet(hashKey, postId)) ?? [];
+    const nextCommentIds = uniqueItems([
+      ...existingCommentIds,
+      ...uniqueCommentIds,
+    ]);
+
+    await redisClient.hSet(hashKey, {
+      [postId]: codec.serialize(nextCommentIds),
+    });
+    await retainRedisKeys(redisClient, [hashKey]);
+  },
+
+  async removeCommentIds(postId, commentIds) {
+    const uniqueCommentIds = uniqueItems(commentIds);
+
+    if (uniqueCommentIds.length === 0) {
+      return;
+    }
+
+    const existingCommentIds =
+      codec.parse(await redisClient.hGet(hashKey, postId)) ?? [];
+
+    if (existingCommentIds.length === 0) {
+      return;
+    }
+
+    const commentIdsToRemove = new Set(uniqueCommentIds);
+    const remainingCommentIds = existingCommentIds.filter(
+      (commentId) => !commentIdsToRemove.has(commentId)
+    );
+
+    if (remainingCommentIds.length === 0) {
+      await redisClient.hDel(hashKey, [postId]);
+    } else {
+      await redisClient.hSet(hashKey, {
+        [postId]: codec.serialize(remainingCommentIds),
+      });
+    }
+
+    await retainRedisKeys(redisClient, [hashKey]);
+  },
+
+  async delete(postId) {
+    await redisClient.hDel(hashKey, [postId]);
+    await retainRedisKeys(redisClient, [hashKey]);
+  },
+});
 
 export const chunkItems = <Item>(items: Item[], size: number): Item[][] => {
   const chunks: Item[][] = [];
@@ -189,6 +297,22 @@ export const chunkItems = <Item>(items: Item[], size: number): Item[][] => {
   }
 
   return chunks;
+};
+
+const uniqueItems = <Item>(items: Item[]): Item[] => {
+  const seen = new Set<Item>();
+  const unique: Item[] = [];
+
+  items.forEach((item) => {
+    if (seen.has(item)) {
+      return;
+    }
+
+    seen.add(item);
+    unique.push(item);
+  });
+
+  return unique;
 };
 
 const createEntityFields = <Entity>(

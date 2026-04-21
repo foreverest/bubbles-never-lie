@@ -5,7 +5,12 @@ import {
   COMMENT_GIF_PREVIEW_MARKER,
   COMMENT_IMAGE_PREVIEW_MARKER,
 } from '../../shared/api';
-import { createDataLayer, getDataKeys, type RedisDataClient } from '../data';
+import {
+  DATA_RETENTION_TTL_SECONDS,
+  createDataLayer,
+  getDataKeys,
+  type RedisDataClient,
+} from '../data';
 import {
   processCommentCacheQueue,
   refreshCommentCache,
@@ -14,8 +19,31 @@ import {
 } from './comment-cache';
 
 class FakeRedisClient implements RedisDataClient {
+  readonly expireCalls: Array<{ key: string; seconds: number }> = [];
   readonly hashes = new Map<string, Map<string, string>>();
   readonly sortedSets = new Map<string, Map<string, number>>();
+
+  async expire(key: string, seconds: number): Promise<void> {
+    this.expireCalls.push({ key, seconds });
+  }
+
+  async hDel(key: string, fields: string[]): Promise<number> {
+    const hash = this.hashes.get(key);
+
+    if (!hash) {
+      return 0;
+    }
+
+    let removedFieldCount = 0;
+
+    fields.forEach((field) => {
+      if (hash.delete(field)) {
+        removedFieldCount += 1;
+      }
+    });
+
+    return removedFieldCount;
+  }
 
   async hGet(key: string, field: string): Promise<string | undefined> {
     return this.hashes.get(key)?.get(field);
@@ -194,6 +222,16 @@ test('refreshCommentCache resets queues and seeds post ids with timestamp batch 
     redisClient.readSortedSet(keys.commentRefreshCommentQueue),
     []
   );
+  assert.deepEqual(redisClient.expireCalls, [
+    {
+      key: keys.commentRefreshPostQueue,
+      seconds: DATA_RETENTION_TTL_SECONDS,
+    },
+    {
+      key: keys.commentRefreshCommentQueue,
+      seconds: DATA_RETENTION_TTL_SECONDS,
+    },
+  ]);
 });
 
 test('processCommentCacheQueue prefers comment queue items before post queue items', async () => {
@@ -301,6 +339,24 @@ test('processCommentCacheQueue caches post comments and fetches child comments w
         bodyPreview: 'Child body',
       },
     ]
+  );
+  assert.deepEqual(
+    await dataLayer.commentPostIndex.getCommentIds('t3_post_1'),
+    ['t1_parent', 't1_child']
+  );
+  assert.ok(
+    redisClient.expireCalls.some(
+      ({ key, seconds }) =>
+        key === keys.commentRefreshPostQueue &&
+        seconds === DATA_RETENTION_TTL_SECONDS
+    )
+  );
+  assert.ok(
+    redisClient.expireCalls.some(
+      ({ key, seconds }) =>
+        key === keys.commentRefreshCommentQueue &&
+        seconds === DATA_RETENTION_TTL_SECONDS
+    )
   );
 });
 

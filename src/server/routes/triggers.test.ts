@@ -3,6 +3,8 @@ import { beforeEach, expect, test, vi } from 'vitest';
 import {
   cacheCommentCreateEvent,
   cachePostCreateEvent,
+  deleteCommentCacheEvent,
+  deletePostCacheEvent,
 } from '../core/event-cache';
 import { triggers } from './triggers';
 
@@ -15,11 +17,15 @@ vi.mock('@devvit/web/server', () => ({
 vi.mock('../core/event-cache', () => ({
   cachePostCreateEvent: vi.fn(),
   cacheCommentCreateEvent: vi.fn(),
+  deletePostCacheEvent: vi.fn(),
+  deleteCommentCacheEvent: vi.fn(),
 }));
 
 beforeEach(() => {
   vi.mocked(cachePostCreateEvent).mockReset();
   vi.mocked(cacheCommentCreateEvent).mockReset();
+  vi.mocked(deletePostCacheEvent).mockReset();
+  vi.mocked(deleteCommentCacheEvent).mockReset();
 });
 
 test('post create trigger returns success after caching event data', async () => {
@@ -142,5 +148,75 @@ test('post create trigger returns an error response when caching fails', async (
   assert.deepEqual(body, {
     status: 'error',
     message: 'Failed to cache post create event',
+  });
+});
+
+test('post delete trigger returns success after deleting cached data', async () => {
+  vi.mocked(deletePostCacheEvent).mockResolvedValue({
+    status: 'deleted',
+    subredditName: 'examplesub',
+    deletedPostCount: 1,
+    deletedCommentCount: 2,
+    generatedAt: '2026-04-15T12:00:00.000Z',
+  });
+
+  const response = await triggers.request('/on-post-delete', {
+    method: 'POST',
+    body: JSON.stringify({
+      type: 'PostDelete',
+      postId: 'post_1',
+      subreddit: { name: 'ExampleSub' },
+    }),
+    headers: {
+      'Content-Type': 'application/json',
+    },
+  });
+  const body: unknown = await response.json();
+
+  assert.equal(response.status, 200);
+  assert.deepEqual(body, {
+    status: 'success',
+    message: 'Post delete event removed cached data for r/examplesub',
+  });
+  expect(deletePostCacheEvent).toHaveBeenCalledWith({
+    type: 'PostDelete',
+    postId: 'post_1',
+    subreddit: { name: 'ExampleSub' },
+  });
+});
+
+test('comment delete trigger returns success after deleting cached data', async () => {
+  vi.mocked(deleteCommentCacheEvent).mockResolvedValue({
+    status: 'deleted',
+    subredditName: 'examplesub',
+    deletedPostCount: 0,
+    deletedCommentCount: 1,
+    generatedAt: '2026-04-15T12:00:00.000Z',
+  });
+
+  const response = await triggers.request('/on-comment-delete', {
+    method: 'POST',
+    body: JSON.stringify({
+      type: 'CommentDelete',
+      commentId: 'comment_1',
+      postId: 'post_1',
+      subreddit: { name: 'ExampleSub' },
+    }),
+    headers: {
+      'Content-Type': 'application/json',
+    },
+  });
+  const body: unknown = await response.json();
+
+  assert.equal(response.status, 200);
+  assert.deepEqual(body, {
+    status: 'success',
+    message: 'Comment delete event removed cached data for r/examplesub',
+  });
+  expect(deleteCommentCacheEvent).toHaveBeenCalledWith({
+    type: 'CommentDelete',
+    commentId: 'comment_1',
+    postId: 'post_1',
+    subreddit: { name: 'ExampleSub' },
   });
 });

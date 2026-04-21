@@ -5,7 +5,9 @@ import {
   SubredditRating,
   SubredditType,
   type CommentV2,
+  type OnCommentDeleteRequest,
   type OnCommentCreateRequest,
+  type OnPostDeleteRequest,
   type OnPostCreateRequest,
   type PostV2,
   type SubredditV2,
@@ -16,12 +18,34 @@ import { createDataLayer, type RedisDataClient } from '../data';
 import {
   cacheCommentCreateEvent,
   cachePostCreateEvent,
+  deleteCommentCacheEvent,
+  deletePostCacheEvent,
   type EventCacheDependencies,
 } from './event-cache';
 
 class FakeRedisDataClient implements RedisDataClient {
   readonly hashes = new Map<string, Map<string, string>>();
   readonly sortedSets = new Map<string, Map<string, number>>();
+
+  async expire(_key: string, _seconds: number): Promise<void> {}
+
+  async hDel(key: string, fields: string[]): Promise<number> {
+    const hash = this.hashes.get(key);
+
+    if (!hash) {
+      return 0;
+    }
+
+    let removedFieldCount = 0;
+
+    fields.forEach((field) => {
+      if (hash.delete(field)) {
+        removedFieldCount += 1;
+      }
+    });
+
+    return removedFieldCount;
+  }
 
   async hGet(key: string, field: string): Promise<string | undefined> {
     return this.hashes.get(key)?.get(field);
@@ -69,6 +93,24 @@ class FakeRedisDataClient implements RedisDataClient {
 
     this.sortedSets.set(key, sortedSet);
     return addedMemberCount;
+  }
+
+  async zRem(key: string, members: string[]): Promise<number> {
+    const sortedSet = this.sortedSets.get(key);
+
+    if (!sortedSet) {
+      return 0;
+    }
+
+    let removedMemberCount = 0;
+
+    members.forEach((member) => {
+      if (sortedSet.delete(member)) {
+        removedMemberCount += 1;
+      }
+    });
+
+    return removedMemberCount;
   }
 
   async zRange(
@@ -383,6 +425,117 @@ test('deleted authors are cached without contributor metadata refresh', async ()
   assert.deepEqual(contributorRefreshCalls, []);
 });
 
+test('post delete events remove cached posts and their indexed comments', async () => {
+  const redisClient = new FakeRedisDataClient();
+  const dataLayer = createDataLayer('examplesub', redisClient);
+  const contributorRefreshCalls: ContributorRefreshCall[] = [];
+  const dependencies = createDependencies(redisClient, contributorRefreshCalls);
+
+  await dataLayer.posts.upsert({
+    id: 't3_post_1',
+    title: 'Original post',
+    authorName: 'post-author',
+    comments: 2,
+    score: 10,
+    createdAt: '2026-04-15T09:00:00.000Z',
+    permalink: '/r/ExampleSub/comments/post_1/original_post/',
+  });
+  await dataLayer.comments.upsertMany([
+    {
+      id: 't1_comment_1',
+      postId: 't3_post_1',
+      authorName: 'alice',
+      score: 4,
+      bodyPreview: 'First comment',
+      createdAt: '2026-04-15T10:00:00.000Z',
+      permalink: '/r/ExampleSub/comments/post_1/comment_1/',
+    },
+    {
+      id: 't1_comment_2',
+      postId: 't3_post_1',
+      authorName: 'bob',
+      score: 5,
+      bodyPreview: 'Second comment',
+      createdAt: '2026-04-15T10:05:00.000Z',
+      permalink: '/r/ExampleSub/comments/post_1/comment_2/',
+    },
+  ]);
+  await dataLayer.commentPostIndex.addCommentIds('t3_post_1', [
+    't1_comment_1',
+    't1_comment_2',
+  ]);
+
+  const result = await deletePostCacheEvent(
+    createPostDeleteRequest(),
+    dependencies
+  );
+
+  assert.deepEqual(result, {
+    status: 'deleted',
+    subredditName: 'examplesub',
+    deletedPostCount: 1,
+    deletedCommentCount: 2,
+    generatedAt: '2026-04-15T12:00:00.000Z',
+  });
+  assert.equal(await dataLayer.posts.getById('t3_post_1'), null);
+  assert.equal(await dataLayer.comments.getById('t1_comment_1'), null);
+  assert.equal(await dataLayer.comments.getById('t1_comment_2'), null);
+  assert.deepEqual(
+    await dataLayer.commentPostIndex.getCommentIds('t3_post_1'),
+    []
+  );
+});
+
+test('comment delete events remove cached comments and update the post index', async () => {
+  const redisClient = new FakeRedisDataClient();
+  const dataLayer = createDataLayer('examplesub', redisClient);
+  const contributorRefreshCalls: ContributorRefreshCall[] = [];
+  const dependencies = createDependencies(redisClient, contributorRefreshCalls);
+
+  await dataLayer.comments.upsertMany([
+    {
+      id: 't1_comment_1',
+      postId: 't3_post_1',
+      authorName: 'alice',
+      score: 4,
+      bodyPreview: 'First comment',
+      createdAt: '2026-04-15T10:00:00.000Z',
+      permalink: '/r/ExampleSub/comments/post_1/comment_1/',
+    },
+    {
+      id: 't1_comment_2',
+      postId: 't3_post_1',
+      authorName: 'bob',
+      score: 5,
+      bodyPreview: 'Second comment',
+      createdAt: '2026-04-15T10:05:00.000Z',
+      permalink: '/r/ExampleSub/comments/post_1/comment_2/',
+    },
+  ]);
+  await dataLayer.commentPostIndex.addCommentIds('t3_post_1', [
+    't1_comment_1',
+    't1_comment_2',
+  ]);
+
+  const result = await deleteCommentCacheEvent(
+    createCommentDeleteRequest(),
+    dependencies
+  );
+
+  assert.deepEqual(result, {
+    status: 'deleted',
+    subredditName: 'examplesub',
+    deletedPostCount: 0,
+    deletedCommentCount: 1,
+    generatedAt: '2026-04-15T12:00:00.000Z',
+  });
+  assert.equal(await dataLayer.comments.getById('t1_comment_1'), null);
+  assert.deepEqual(
+    await dataLayer.commentPostIndex.getCommentIds('t3_post_1'),
+    ['t1_comment_2']
+  );
+});
+
 const createDependencies = (
   redisClient: RedisDataClient,
   contributorRefreshCalls: ContributorRefreshCall[],
@@ -433,6 +586,40 @@ const createCommentCreateRequest = ({
   comment,
   post,
   author,
+  subreddit,
+});
+
+const createPostDeleteRequest = ({
+  postId = 'post_1',
+  subreddit = createEventSubreddit(),
+}: {
+  postId?: string;
+  subreddit?: SubredditV2 | undefined;
+} = {}): OnPostDeleteRequest => ({
+  type: 'PostDelete',
+  postId,
+  deletedAt: '2026-04-15T12:00:00.000Z',
+  source: 0,
+  reason: 0,
+  subreddit,
+});
+
+const createCommentDeleteRequest = ({
+  commentId = 'comment_1',
+  postId = 'post_1',
+  subreddit = createEventSubreddit(),
+}: {
+  commentId?: string;
+  postId?: string;
+  subreddit?: SubredditV2 | undefined;
+} = {}): OnCommentDeleteRequest => ({
+  type: 'CommentDelete',
+  commentId,
+  postId,
+  parentId: 't3_post_1',
+  deletedAt: '2026-04-15T12:00:00.000Z',
+  source: 0,
+  reason: 0,
   subreddit,
 });
 

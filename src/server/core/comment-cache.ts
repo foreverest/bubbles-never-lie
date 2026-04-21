@@ -7,6 +7,7 @@ import {
   type ChartComment,
 } from '../../shared/api';
 import { createDataLayer, getDataKeys, type DataLayer } from '../data';
+import { retainRedisKeys } from '../data';
 import type { CommentEntity, HydratedComment } from '../data';
 import { createLogger } from '../logging/logger';
 import { readLatestCachedPostIds } from './post-cache';
@@ -24,7 +25,7 @@ type CommentId = `t1_${string}`;
 type CommentQueueMember = `${PostId}:${CommentId}`;
 type CommentRefreshQueueRedisClient = Pick<
   typeof redis,
-  'del' | 'zAdd' | 'zRange' | 'zRem'
+  'del' | 'expire' | 'zAdd' | 'zRange' | 'zRem'
 >;
 type CommentRefreshRedditClient = Pick<typeof reddit, 'getComments'>;
 
@@ -174,6 +175,10 @@ export const refreshCommentCache = async (
       parentPostIds,
       now()
     );
+    await retainRedisKeys(redisClient, [
+      queueKeys.postQueue,
+      queueKeys.commentQueue,
+    ]);
 
     const result = {
       parentPostCount: parentPostIds.length,
@@ -274,6 +279,10 @@ export const processCommentCacheQueue = async (
     }
 
     result.generatedAt = new Date(now()).toISOString();
+    await retainRedisKeys(redisClient, [
+      queueKeys.postQueue,
+      queueKeys.commentQueue,
+    ]);
 
     logger.info('Processed comment cache refresh queue', {
       subredditName,
@@ -438,16 +447,21 @@ const refreshQueuedCommentParent = async ({
 
     const commentEntities = comments.map(toCommentEntity);
 
-    await dataLayer.comments.upsertMany(commentEntities);
-
-    const enqueuedCommentParentCount = await enqueueQueueItems(
-      redisClient,
-      queueKeys.commentQueue,
-      comments
-        .map((comment) => createCommentQueueMember(comment.postId, comment.id))
-        .filter((member): member is CommentQueueMember => member !== null),
-      now()
-    );
+    const commentIds = commentEntities.map((comment) => comment.id);
+    const enqueuedCommentParentCount = await Promise.all([
+      dataLayer.comments.upsertMany(commentEntities),
+      dataLayer.commentPostIndex.addCommentIds(item.postId, commentIds),
+      enqueueQueueItems(
+        redisClient,
+        queueKeys.commentQueue,
+        comments
+          .map((comment) =>
+            createCommentQueueMember(comment.postId, comment.id)
+          )
+          .filter((member): member is CommentQueueMember => member !== null),
+        now()
+      ),
+    ]).then(([, , enqueuedCount]) => enqueuedCount);
 
     return {
       fetchedCommentCount: comments.length,

@@ -1,7 +1,9 @@
 import { context, reddit } from '@devvit/web/server';
 import type {
   CommentV2,
+  OnCommentDeleteRequest,
   OnCommentCreateRequest,
+  OnPostDeleteRequest,
   OnPostCreateRequest,
   PostV2,
   SubredditV2,
@@ -21,7 +23,10 @@ import { normalizeSubredditName } from './subreddits';
 const logger = createLogger('event-cache');
 const SECONDS_TIMESTAMP_THRESHOLD = 10_000_000_000;
 
-type EventDataLayer = Pick<DataLayer, 'posts' | 'comments'>;
+type EventDataLayer = Pick<
+  DataLayer,
+  'commentPostIndex' | 'posts' | 'comments'
+>;
 
 type EventContributorRefreshOptions = {
   subredditName: string;
@@ -48,6 +53,15 @@ export type EventCacheResult = {
   cachedPostCount: number;
   cachedCommentCount: number;
   refreshedContributorCount: number;
+  generatedAt: string;
+  skippedReason?: string;
+};
+
+export type EventDeleteResult = {
+  status: 'deleted' | 'skipped';
+  subredditName: string;
+  deletedPostCount: number;
+  deletedCommentCount: number;
   generatedAt: string;
   skippedReason?: string;
 };
@@ -133,6 +147,7 @@ export const cacheCommentCreateEvent = async (
   const [parentPostCached] = await Promise.all([
     upsertExistingParentPostFromEvent(input.post, dataLayer),
     dataLayer.comments.upsert(comment),
+    dataLayer.commentPostIndex.addCommentIds(comment.postId, [comment.id]),
   ]);
   const refreshedContributorCount = await refreshContributorForAuthor({
     subredditName,
@@ -146,6 +161,85 @@ export const cacheCommentCreateEvent = async (
     cachedPostCount: parentPostCached ? 1 : 0,
     cachedCommentCount: 1,
     refreshedContributorCount,
+    generatedAt: now().toISOString(),
+  };
+};
+
+export const deletePostCacheEvent = async (
+  input: OnPostDeleteRequest,
+  {
+    createDataLayerForSubreddit = createDataLayer,
+    currentSubredditName = context.subredditName,
+    now = () => new Date(),
+  }: EventCacheDependencies = {}
+): Promise<EventDeleteResult> => {
+  const subredditName = resolveEventSubredditName(
+    input.subreddit,
+    currentSubredditName
+  );
+  const postId = normalizeThingId(input.postId, 't3_');
+
+  if (!postId) {
+    return createSkippedEventDeleteResult({
+      subredditName,
+      skippedReason: 'missing_or_invalid_post_delete_payload',
+      now,
+    });
+  }
+
+  const dataLayer = createDataLayerForSubreddit(subredditName);
+  const commentIds = await dataLayer.commentPostIndex.getCommentIds(postId);
+
+  await Promise.all([
+    dataLayer.posts.delete(postId),
+    dataLayer.comments.deleteMany(commentIds),
+    dataLayer.commentPostIndex.delete(postId),
+  ]);
+
+  return {
+    status: 'deleted',
+    subredditName,
+    deletedPostCount: 1,
+    deletedCommentCount: commentIds.length,
+    generatedAt: now().toISOString(),
+  };
+};
+
+export const deleteCommentCacheEvent = async (
+  input: OnCommentDeleteRequest,
+  {
+    createDataLayerForSubreddit = createDataLayer,
+    currentSubredditName = context.subredditName,
+    now = () => new Date(),
+  }: EventCacheDependencies = {}
+): Promise<EventDeleteResult> => {
+  const subredditName = resolveEventSubredditName(
+    input.subreddit,
+    currentSubredditName
+  );
+  const commentId = normalizeThingId(input.commentId, 't1_');
+  const postId = normalizeThingId(input.postId, 't3_');
+
+  if (!commentId || !postId) {
+    return createSkippedEventDeleteResult({
+      subredditName,
+      skippedReason: 'missing_or_invalid_comment_delete_payload',
+      now,
+    });
+  }
+
+  const dataLayer = createDataLayerForSubreddit(subredditName);
+
+  await Promise.all([
+    dataLayer.comments.delete(commentId),
+    dataLayer.commentPostIndex.removeCommentIds(postId, [commentId]),
+  ]);
+
+  return {
+    status: 'deleted',
+    subredditName,
+    deletedPostCount: 0,
+    deletedCommentCount: 1,
     generatedAt: now().toISOString(),
   };
 };
@@ -404,6 +498,23 @@ const createSkippedEventCacheResult = ({
   cachedPostCount: 0,
   cachedCommentCount: 0,
   refreshedContributorCount: 0,
+  generatedAt: now().toISOString(),
+  skippedReason,
+});
+
+const createSkippedEventDeleteResult = ({
+  subredditName,
+  skippedReason,
+  now,
+}: {
+  subredditName: string;
+  skippedReason: string;
+  now: () => Date;
+}): EventDeleteResult => ({
+  status: 'skipped',
+  subredditName,
+  deletedPostCount: 0,
+  deletedCommentCount: 0,
   generatedAt: now().toISOString(),
   skippedReason,
 });
