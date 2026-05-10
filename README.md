@@ -18,19 +18,19 @@ itself, repeat whenever the vibes need receipts.
 
 ### Posts
 
-![Posts bubble chart](docs/images/posts.png)
+![Posts bubble chart](https://raw.githubusercontent.com/foreverest/bubbles-never-lie/main/docs/images/posts.png)
 
 ### Comments
 
-![Comments bubble chart](docs/images/comments.png)
+![Comments bubble chart](https://raw.githubusercontent.com/foreverest/bubbles-never-lie/main/docs/images/comments.png)
 
 ### Contributors
 
-![Contributors bubble chart](docs/images/contributors.png)
+![Contributors bubble chart](https://raw.githubusercontent.com/foreverest/bubbles-never-lie/main/docs/images/contributors.png)
 
 ### Hint
 
-![Bubble hint tooltip](docs/images/hint.png)
+![Bubble hint tooltip](https://raw.githubusercontent.com/foreverest/bubbles-never-lie/main/docs/images/hint.png)
 
 ## Why Install It?
 
